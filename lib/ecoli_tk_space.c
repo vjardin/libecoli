@@ -30,26 +30,27 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_space.h>
 
 static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_parsed_tk *parsed_tk;
 	size_t len = 0;
 
-	if (!isspace(str[off]))
+	if (!isspace(str[0]))
 		return NULL;
 
 	parsed_tk = ec_parsed_tk_new(gen_tk);
 	if (parsed_tk == NULL)
 		return NULL;
 
-	while (isspace(str[off + len]))
+	while (isspace(str[len]))
 		len++;
 
-	parsed_tk->str = strndup(str + off, len);
+	parsed_tk->str = ec_strndup(str, len);
 
 	return parsed_tk;
 }

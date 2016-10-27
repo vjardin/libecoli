@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <errno.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_int.h>
 #include <ecoli_test.h>
@@ -60,14 +61,14 @@ static size_t parse_llint(struct ec_tk_int *tk, const char *str,
 }
 
 static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_tk_int *tk = (struct ec_tk_int *)gen_tk;
 	struct ec_parsed_tk *parsed_tk;
 	long long val;
 	size_t len;
 
-	len = parse_llint(tk, str + off, &val);
+	len = parse_llint(tk, str, &val);
 	if (len == 0)
 		return NULL;
 
@@ -75,7 +76,7 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	if (parsed_tk == NULL)
 		return NULL;
 
-	parsed_tk->str = strndup(str + off, len);
+	parsed_tk->str = ec_strndup(str, len);
 
 	return parsed_tk;
 }
@@ -132,7 +133,7 @@ static int testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0x101", NULL);
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, " 1", NULL);
 
-	p = ec_tk_parse(tk, "0", 0);
+	p = ec_tk_parse(tk, "0");
 	s = ec_parsed_tk_to_string(p);
 	if (s == NULL) {
 		TEST_ERR();
@@ -141,7 +142,7 @@ static int testcase(void)
 			TEST_ERR();
 	}
 
-	p = ec_tk_parse(tk, "10", 0);
+	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
 	if (s == NULL) {
 		TEST_ERR();
@@ -165,7 +166,7 @@ static int testcase(void)
 		"0x7fffffffffffffff");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-2", NULL);
 
-	p = ec_tk_parse(tk, "10", 0);
+	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
 	if (s == NULL) {
 		TEST_ERR();

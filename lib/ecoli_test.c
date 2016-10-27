@@ -47,7 +47,7 @@ int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
 	const char *s;
 	int ret = -1;
 
-	p = ec_tk_parse(tk, input, 0);
+	p = ec_tk_parse(tk, input);
 	s = ec_parsed_tk_to_string(p);
 	if (s == NULL && expected == NULL)
 		ret = 0;
@@ -73,7 +73,7 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 	const char *s;
 	int ret = -1;
 
-	p = ec_tk_complete(tk, input, 0);
+	p = ec_tk_complete(tk, input);
 	s = ec_completed_tk_smallest_start(p);
 	if (s == NULL && expected == NULL)
 		ret = 0;

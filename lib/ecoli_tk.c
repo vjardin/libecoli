@@ -30,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_tk.h>
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
@@ -39,12 +40,12 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 
 	assert(size >= sizeof(*tk));
 
-	tk = calloc(1, size);
+	tk = ec_calloc(1, size);
 	if (tk == NULL)
 		goto fail;
 
 	if (id != NULL) {
-		tk->id = strdup(id);
+		tk->id = ec_strdup(id);
 		if (tk->id == NULL)
 			goto fail;
 	}
@@ -65,16 +66,15 @@ void ec_tk_free(struct ec_tk *tk)
 
 	if (tk->ops != NULL && tk->ops->free_priv != NULL)
 		tk->ops->free_priv(tk);
-	free(tk->id);
-	free(tk);
+	ec_free(tk->id);
+	ec_free(tk);
 }
 
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str,
-	size_t off)
+struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str)
 {
 	struct ec_parsed_tk *parsed_tk;
 
-	parsed_tk = token->ops->parse(token, str, off);
+	parsed_tk = token->ops->parse(token, str);
 
 	return parsed_tk;
 }
@@ -84,7 +84,7 @@ struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk)
 {
 	struct ec_parsed_tk *parsed_tk;
 
-	parsed_tk = calloc(1, sizeof(*parsed_tk));
+	parsed_tk = ec_calloc(1, sizeof(*parsed_tk));
 	if (parsed_tk == NULL)
 		goto fail;
 
@@ -109,8 +109,8 @@ void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk)
 		TAILQ_REMOVE(&parsed_tk->children, child, next);
 		ec_parsed_tk_free(child);
 	}
-	free(parsed_tk->str);
-	free(parsed_tk);
+	ec_free(parsed_tk->str);
+	ec_free(parsed_tk);
 }
 
 static void __ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk,
@@ -175,11 +175,11 @@ const char *ec_parsed_tk_to_string(const struct ec_parsed_tk *parsed_tk)
 }
 
 struct ec_completed_tk *ec_tk_complete(const struct ec_tk *token,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_completed_tk *completed_tk;
 
-	completed_tk = token->ops->complete(token, str, off);
+	completed_tk = token->ops->complete(token, str);
 
 	return completed_tk;
 }
@@ -188,7 +188,7 @@ struct ec_completed_tk *ec_completed_tk_new(void)
 {
 	struct ec_completed_tk *completed_tk = NULL;
 
-	completed_tk = calloc(1, sizeof(*completed_tk));
+	completed_tk = ec_calloc(1, sizeof(*completed_tk));
 	if (completed_tk == NULL)
 		return NULL;
 
@@ -203,13 +203,13 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 {
 	struct ec_completed_tk_elt *elt = NULL;
 
-	elt = calloc(1, sizeof(*elt));
+	elt = ec_calloc(1, sizeof(*elt));
 	if (elt == NULL)
 		return NULL;
 
 	elt->tk = tk;
-	elt->add = strdup(add);
-	elt->full = strdup(full);
+	elt->add = ec_strdup(add);
+	elt->full = ec_strdup(full);
 	if (elt->add == NULL || elt->full == NULL) {
 		ec_completed_tk_elt_free(elt);
 		return NULL;
@@ -238,7 +238,7 @@ void ec_completed_tk_add_elt(
 	completed_tk->count++;
 	if (elt->add != NULL) {
 		if (completed_tk->smallest_start == NULL) {
-			completed_tk->smallest_start = strdup(elt->add);
+			completed_tk->smallest_start = ec_strdup(elt->add);
 		} else {
 			n = strcmp_count(elt->add,
 				completed_tk->smallest_start);
@@ -249,9 +249,9 @@ void ec_completed_tk_add_elt(
 
 void ec_completed_tk_elt_free(struct ec_completed_tk_elt *elt)
 {
-	free(elt->add);
-	free(elt->full);
-	free(elt);
+	ec_free(elt->add);
+	ec_free(elt->full);
+	ec_free(elt);
 }
 
 struct ec_completed_tk *ec_completed_tk_merge(
@@ -289,8 +289,8 @@ void ec_completed_tk_free(struct ec_completed_tk *completed_tk)
 		TAILQ_REMOVE(&completed_tk->elts, elt, next);
 		ec_completed_tk_elt_free(elt);
 	}
-	free(completed_tk->smallest_start);
-	free(completed_tk);
+	ec_free(completed_tk->smallest_start);
+	ec_free(completed_tk);
 }
 
 void ec_completed_tk_dump(const struct ec_completed_tk *completed_tk)

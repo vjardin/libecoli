@@ -37,9 +37,9 @@ struct ec_tk;
 struct ec_parsed_tk;
 
 typedef struct ec_parsed_tk *(*ec_tk_parse_t)(const struct ec_tk *tk,
-	const char *str, size_t off);
+	const char *str);
 typedef struct ec_completed_tk *(*ec_tk_complete_t)(const struct ec_tk *tk,
-	const char *str, size_t off);
+	const char *str);
 typedef void (*ec_tk_free_priv_t)(struct ec_tk *);
 
 struct ec_tk_ops {
@@ -68,8 +68,7 @@ struct ec_parsed_tk {
 };
 
 struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk);
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str,
-	size_t off);
+struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str);
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
 	struct ec_parsed_tk *child);
 void ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk);
@@ -102,7 +101,7 @@ struct ec_completed_tk {
  * return "xyz" if it knows how to complete
  */
 struct ec_completed_tk *ec_tk_complete(const struct ec_tk *token,
-	const char *str, size_t off);
+	const char *str);
 struct ec_completed_tk *ec_completed_tk_new(void);
 struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 	const char *add, const char *full);

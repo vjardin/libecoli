@@ -29,30 +29,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
 
 static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
 	struct ec_parsed_tk *parsed_tk;
 
-	if (strncmp(str + off, tk->string, tk->len) != 0)
+	if (strncmp(str, tk->string, tk->len) != 0)
 		return NULL;
 
 	parsed_tk = ec_parsed_tk_new(gen_tk);
 	if (parsed_tk == NULL)
 		return NULL;
 
-	parsed_tk->str = strndup(str + off, tk->len);
+	parsed_tk->str = ec_strndup(str, tk->len);
 
 	return parsed_tk;
 }
 
 static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
 	struct ec_completed_tk *completed_tk;
@@ -60,11 +61,11 @@ static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
 	size_t n;
 
 	for (n = 0; n < tk->len; n++) {
-		if (str[off + n] != tk->string[n])
+		if (str[n] != tk->string[n])
 			break;
 	}
 
-	if (str[off + n] != '\0')
+	if (str[n] != '\0')
 		return NULL;
 
 	completed_tk = ec_completed_tk_new();
@@ -87,7 +88,7 @@ static void free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
 
-	free(tk->string);
+	ec_free(tk->string);
 }
 
 static struct ec_tk_ops str_ops = {
@@ -105,7 +106,7 @@ struct ec_tk *ec_tk_str_new(const char *id, const char *str)
 	if (tk == NULL)
 		goto fail;
 
-	s = strdup(str);
+	s = ec_strdup(str);
 	if (s == NULL)
 		goto fail;
 
@@ -115,8 +116,8 @@ struct ec_tk *ec_tk_str_new(const char *id, const char *str)
 	return &tk->gen;
 
 fail:
-	free(s);
-	free(tk);
+	ec_free(s);
+	ec_free(tk);
 	return NULL;
 }
 

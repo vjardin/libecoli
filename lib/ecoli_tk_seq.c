@@ -31,11 +31,14 @@
 #include <assert.h>
 #include <stdarg.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_seq.h>
 
+// XXX to handle the quote, it will be done in tk_shseq
+// it will unquote the string and parse each token separately
 static struct ec_parsed_tk *parse(const struct ec_tk *tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_tk_seq *seq = (struct ec_tk_seq *)tk;
 	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
@@ -47,7 +50,7 @@ static struct ec_parsed_tk *parse(const struct ec_tk *tk,
 		return NULL;
 
 	for (i = 0; i < seq->len; i++) {
-		child_parsed_tk = ec_tk_parse(seq->table[i], str, off + len);
+		child_parsed_tk = ec_tk_parse(seq->table[i], str + len);
 		if (child_parsed_tk == NULL)
 			goto fail;
 
@@ -55,7 +58,7 @@ static struct ec_parsed_tk *parse(const struct ec_tk *tk,
 		ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
 	}
 
-	parsed_tk->str = strndup(str + off, len);
+	parsed_tk->str = ec_strndup(str, len);
 
 	return parsed_tk;
 
@@ -82,7 +85,7 @@ struct ec_tk *ec_tk_seq_new(const char *id)
 	return &tk->gen;
 
 fail:
-	free(tk);
+	ec_free(tk);
 	return NULL;
 }
 
@@ -111,7 +114,7 @@ struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
 	return &tk->gen;
 
 fail:
-	free(tk); // XXX use tk_free? we need to delete all child on error
+	ec_free(tk); // XXX use tk_free? we need to delete all child on error
 	va_end(ap);
 	return NULL;
 }

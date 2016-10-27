@@ -33,7 +33,7 @@
 #include <ecoli_tk_empty.h>
 
 static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
-	const char *str, size_t off)
+	const char *str)
 {
 	struct ec_parsed_tk *parsed_tk;
 
@@ -42,7 +42,6 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 		return NULL;
 
 	(void)str;
-	(void)off;
 	parsed_tk->str = strdup("");
 
 	return parsed_tk;

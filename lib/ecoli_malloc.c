@@ -25,57 +25,87 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+#include <ecoli_malloc.h>
+
 #include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
+#include <string.h>
+#include <errno.h>
 
-#include <ecoli_test.h>
-#include <ecoli_tk_str.h>
-#include <ecoli_tk_seq.h>
-#include <ecoli_tk_space.h>
-#include <ecoli_tk_or.h>
+struct ec_malloc_handler ec_malloc_handler;
 
-static void test(void)
+int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
+	ec_realloc_t usr_realloc)
 {
-	struct ec_tk *seq;
-	struct ec_parsed_tk *p;
-	const char *name;
+	if (usr_malloc == NULL || usr_free == NULL || usr_realloc == NULL)
+		return -1;
 
-	seq = ec_tk_seq_new_list(NULL,
-		ec_tk_str_new(NULL, "hello"),
-		ec_tk_space_new(NULL),
-		ec_tk_or_new_list("name",
-			ec_tk_str_new(NULL, "john"),
-			ec_tk_str_new(NULL, "mike"),
-			EC_TK_ENDLIST),
-		EC_TK_ENDLIST);
-	if (seq == NULL) {
-		printf("cannot create token\n");
-		return;
-	}
-
-	/* ok */
-	p = ec_tk_parse(seq, "hello  mike");
-	ec_parsed_tk_dump(p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
-
-	/* ko */
-	p = ec_tk_parse(seq, "hello robert");
-	ec_parsed_tk_dump(p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
-
-	ec_tk_free(seq);
-}
-
-int main(void)
-{
-	ec_test_all();
-
-	test();
+	ec_malloc_handler.malloc = usr_malloc;
+	ec_malloc_handler.free = usr_free;
+	ec_malloc_handler.realloc = usr_realloc;
 
 	return 0;
+}
+
+void *__ec_malloc(size_t size)
+{
+	return ec_malloc_handler.malloc(size);
+}
+
+void __ec_free(void *ptr)
+{
+	ec_malloc_handler.free(ptr);
+}
+
+void *__ec_calloc(size_t nmemb, size_t size)
+{
+	void *ptr;
+	size_t total;
+
+	total = size * nmemb;
+	if (nmemb != 0 && size != (total / nmemb)) {
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	ptr = __ec_malloc(total);
+	if (ptr == NULL)
+		return NULL;
+
+	memset(ptr, 0, size);
+	return ptr;
+}
+
+void *__ec_realloc(void *ptr, size_t size)
+{
+	return ec_malloc_handler.realloc(ptr, size);
+}
+
+char *__ec_strdup(const char *s)
+{
+	size_t sz = strlen(s) + 1;
+	char *s2;
+
+	s2 = __ec_malloc(sz);
+	if (s2 == NULL)
+		return NULL;
+
+	memcpy(s2, s, sz);
+
+	return s2;
+}
+
+char *__ec_strndup(const char *s, size_t n)
+{
+	size_t sz = strnlen(s, n);
+	char *s2;
+
+	s2 = __ec_malloc(sz + 1);
+	if (s2 == NULL)
+		return NULL;
+
+	memcpy(s2, s, sz);
+	s2[sz] = '\0';
+
+	return s2;
 }
