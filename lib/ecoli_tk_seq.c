@@ -37,20 +37,20 @@
 
 // XXX to handle the quote, it will be done in tk_shseq
 // it will unquote the string and parse each token separately
-static struct ec_parsed_tk *parse(const struct ec_tk *tk,
+static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
-	struct ec_tk_seq *seq = (struct ec_tk_seq *)tk;
+	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
 	size_t len = 0;
 	unsigned int i;
 
-	parsed_tk = ec_parsed_tk_new(tk);
+	parsed_tk = ec_parsed_tk_new(gen_tk);
 	if (parsed_tk == NULL)
 		return NULL;
 
-	for (i = 0; i < seq->len; i++) {
-		child_parsed_tk = ec_tk_parse(seq->table[i], str + len);
+	for (i = 0; i < tk->len; i++) {
+		child_parsed_tk = ec_tk_parse(tk->table[i], str + len);
 		if (child_parsed_tk == NULL)
 			goto fail;
 
@@ -67,8 +67,19 @@ static struct ec_parsed_tk *parse(const struct ec_tk *tk,
 	return NULL;
 }
 
+static void free_priv(struct ec_tk *gen_tk)
+{
+	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
+	unsigned int i;
+
+	for (i = 0; i < tk->len; i++)
+		ec_tk_free(tk->table[i]);
+	ec_free(tk->table);
+}
+
 static struct ec_tk_ops seq_ops = {
 	.parse = parse,
+	.free_priv = free_priv,
 };
 
 struct ec_tk *ec_tk_seq_new(const char *id)
@@ -77,16 +88,12 @@ struct ec_tk *ec_tk_seq_new(const char *id)
 
 	tk = (struct ec_tk_seq *)ec_tk_new(id, &seq_ops, sizeof(*tk));
 	if (tk == NULL)
-		goto fail;
+		return NULL;
 
 	tk->table = NULL;
 	tk->len = 0;
 
 	return &tk->gen;
-
-fail:
-	ec_free(tk);
-	return NULL;
 }
 
 struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
@@ -114,26 +121,26 @@ struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
 	return &tk->gen;
 
 fail:
-	ec_free(tk); // XXX use tk_free? we need to delete all child on error
+	ec_tk_free(&tk->gen); /* will also free children */
 	va_end(ap);
 	return NULL;
 }
 
-int ec_tk_seq_add(struct ec_tk *tk, struct ec_tk *child)
+int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 {
-	struct ec_tk_seq *seq = (struct ec_tk_seq *)tk;
+	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_tk **table;
 
 	assert(tk != NULL);
 	assert(child != NULL);
 
-	table = realloc(seq->table, seq->len + 1);
+	table = ec_realloc(tk->table, tk->len + 1);
 	if (table == NULL)
 		return -1;
 
-	seq->table = table;
-	table[seq->len] = child;
-	seq->len ++;
+	tk->table = table;
+	table[tk->len] = child;
+	tk->len ++;
 
 	return 0;
 }

@@ -47,17 +47,25 @@ int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
 	return 0;
 }
 
-void *__ec_malloc(size_t size)
+void ec_malloc_unregister(void)
 {
-	return ec_malloc_handler.malloc(size);
+	ec_malloc_handler.malloc = NULL;
+	ec_malloc_handler.free = NULL;
+	ec_malloc_handler.realloc = NULL;
 }
 
-void __ec_free(void *ptr)
+void *__ec_malloc(size_t size, const char *file, unsigned int line)
 {
-	ec_malloc_handler.free(ptr);
+	return ec_malloc_handler.malloc(size, file, line);
 }
 
-void *__ec_calloc(size_t nmemb, size_t size)
+void __ec_free(void *ptr, const char *file, unsigned int line)
+{
+	ec_malloc_handler.free(ptr, file, line);
+}
+
+void *__ec_calloc(size_t nmemb, size_t size, const char *file,
+	unsigned int line)
 {
 	void *ptr;
 	size_t total;
@@ -68,7 +76,7 @@ void *__ec_calloc(size_t nmemb, size_t size)
 		return NULL;
 	}
 
-	ptr = __ec_malloc(total);
+	ptr = __ec_malloc(total, file, line);
 	if (ptr == NULL)
 		return NULL;
 
@@ -76,17 +84,17 @@ void *__ec_calloc(size_t nmemb, size_t size)
 	return ptr;
 }
 
-void *__ec_realloc(void *ptr, size_t size)
+void *__ec_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 {
-	return ec_malloc_handler.realloc(ptr, size);
+	return ec_malloc_handler.realloc(ptr, size, file, line);
 }
 
-char *__ec_strdup(const char *s)
+char *__ec_strdup(const char *s, const char *file, unsigned int line)
 {
 	size_t sz = strlen(s) + 1;
 	char *s2;
 
-	s2 = __ec_malloc(sz);
+	s2 = __ec_malloc(sz, file, line);
 	if (s2 == NULL)
 		return NULL;
 
@@ -95,12 +103,12 @@ char *__ec_strdup(const char *s)
 	return s2;
 }
 
-char *__ec_strndup(const char *s, size_t n)
+char *__ec_strndup(const char *s, size_t n, const char *file, unsigned int line)
 {
 	size_t sz = strnlen(s, n);
 	char *s2;
 
-	s2 = __ec_malloc(sz + 1);
+	s2 = __ec_malloc(sz + 1, file, line);
 	if (s2 == NULL)
 		return NULL;
 

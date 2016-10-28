@@ -92,7 +92,10 @@ static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
 static void free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
+	unsigned int i;
 
+	for (i = 0; i < tk->len; i++)
+		ec_tk_free(tk->table[i]);
 	ec_free(tk->table);
 }
 
@@ -108,16 +111,12 @@ struct ec_tk *ec_tk_or_new(const char *id)
 
 	tk = (struct ec_tk_or *)ec_tk_new(id, &or_ops, sizeof(*tk));
 	if (tk == NULL)
-		goto fail;
+		return NULL;
 
 	tk->table = NULL;
 	tk->len = 0;
 
 	return &tk->gen;
-
-fail:
-	ec_free(tk);
-	return NULL;
 }
 
 struct ec_tk *ec_tk_or_new_list(const char *id, ...)
@@ -145,26 +144,26 @@ struct ec_tk *ec_tk_or_new_list(const char *id, ...)
 	return &tk->gen;
 
 fail:
-	ec_free(tk); // XXX use tk_free? we need to delete all child on error
+	ec_tk_free(&tk->gen); /* will also free children */
 	va_end(ap);
 	return NULL;
 }
 
-int ec_tk_or_add(struct ec_tk *tk, struct ec_tk *child)
+int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 {
-	struct ec_tk_or *or = (struct ec_tk_or *)tk;
+	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
 	struct ec_tk **table;
 
 	assert(tk != NULL);
 	assert(child != NULL);
 
-	table = realloc(or->table, (or->len + 1) * sizeof(*or->table));
+	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
 	if (table == NULL)
 		return -1;
 
-	or->table = table;
-	table[or->len] = child;
-	or->len ++;
+	tk->table = table;
+	table[tk->len] = child;
+	tk->len ++;
 
 	return 0;
 }

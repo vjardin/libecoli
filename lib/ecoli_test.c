@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_tk.h>
 
@@ -92,6 +93,140 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 	return ret;
 }
 
+TAILQ_HEAD(debug_alloc_hdr_list, debug_alloc_hdr);
+static struct debug_alloc_hdr_list debug_alloc_hdr_list =
+	TAILQ_HEAD_INITIALIZER(debug_alloc_hdr_list);
+
+struct debug_alloc_hdr {
+	TAILQ_ENTRY(debug_alloc_hdr) next;
+	const char *file;
+	unsigned int line;
+	size_t size;
+	unsigned int cookie;
+};
+
+static void *debug_malloc(size_t size, const char *file, unsigned int line)
+{
+	struct debug_alloc_hdr *hdr;
+	size_t new_size = size + sizeof(*hdr) + sizeof(unsigned int);
+	void *ret;
+
+	hdr = malloc(new_size);
+	if (hdr == NULL) {
+		ret = NULL;
+	} else {
+		hdr->file = file;
+		hdr->line = line;
+		hdr->size = size;
+		hdr->cookie = 0x12345678;
+		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
+		ret = hdr + 1;
+	}
+
+	printf("%s:%d: info: malloc(%zd) -> %p\n", file, line, size, ret);
+
+	return ret;
+}
+
+static void debug_free(void *ptr, const char *file, unsigned int line)
+{
+	struct debug_alloc_hdr *hdr, *h;
+
+	(void)file;
+	(void)line;
+
+	printf("%s:%d: info: free(%p)\n", file, line, ptr);
+
+	if (ptr == NULL)
+		return;
+
+	hdr = (ptr - sizeof(*hdr));
+	if (hdr->cookie != 0x12345678) {
+		printf("%s:%d: error: free(%p): bad start cookie\n",
+			file, line, ptr);
+		abort();
+	}
+
+	TAILQ_FOREACH(h, &debug_alloc_hdr_list, next) {
+		if (h == hdr)
+			break;
+	}
+
+	if (h == NULL) {
+		printf("%s:%d: error: free(%p): bad ptr\n",
+			file, line, ptr);
+		abort();
+	}
+
+	TAILQ_REMOVE(&debug_alloc_hdr_list, hdr, next);
+	free(hdr);
+}
+
+void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
+{
+	struct debug_alloc_hdr *hdr = (ptr - sizeof(*hdr));
+	struct debug_alloc_hdr *h;
+	size_t new_size = size + sizeof(*hdr) + sizeof(unsigned int);
+	void *ret;
+
+	if (ptr != NULL) {
+		if (hdr->cookie != 0x12345678) {
+			printf("%s:%d: error: realloc(%p): bad start cookie\n",
+				file, line, ptr);
+			abort();
+		}
+
+		TAILQ_FOREACH(h, &debug_alloc_hdr_list, next) {
+			if (h == hdr)
+				break;
+		}
+
+		if (h == NULL) {
+			printf("%s:%d: error: realloc(%p): bad ptr\n",
+				file, line, ptr);
+			abort();
+		}
+
+		TAILQ_REMOVE(&debug_alloc_hdr_list, h, next);
+		hdr = realloc(hdr, new_size);
+		if (hdr == NULL) {
+			TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, h, next);
+			ret = NULL;
+		} else {
+			ret = hdr + 1;
+		}
+	} else {
+		hdr = realloc(NULL, new_size);
+		if (hdr == NULL)
+			ret = NULL;
+		else
+			ret= hdr + 1;
+	}
+
+	if (hdr != NULL) {
+		hdr->file = file;
+		hdr->line = line;
+		hdr->size = size;
+		hdr->cookie = 0x12345678;
+		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
+	}
+
+	printf("%s:%d: info: realloc(%p, %zd) -> %p\n",
+		file, line, ptr, size, ret);
+
+	return ret;
+}
+
+void debug_alloc_dump(void)
+{
+	struct debug_alloc_hdr *hdr;
+
+	TAILQ_FOREACH(hdr, &debug_alloc_hdr_list, next) {
+		printf("%s:%d: error: memory leak size=%zd ptr=%p\n",
+			hdr->file, hdr->line, hdr->size, hdr + 1);
+	}
+}
+
 /* int ec_test_check_tk_complete_list(const struct ec_tk *tk, */
 /*	const char *input, ...) */
 
@@ -100,7 +235,13 @@ int ec_test_all(void)
 	struct ec_test *test;
 	int ret = 0;
 
-	// XXX register a new malloc to trac memleaks
+	TAILQ_INIT(&debug_alloc_hdr_list);
+
+	/* register a new malloc to trac memleaks */
+	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
+		printf("cannot register new malloc\n");
+		return -1;
+	}
 
 	TAILQ_FOREACH(test, &test_list, next) {
 		if (test->test() == 0) {
@@ -110,6 +251,9 @@ int ec_test_all(void)
 			ret = -1;
 		}
 	}
+
+	ec_malloc_unregister();
+	debug_alloc_dump();
 
 	return ret;
 }

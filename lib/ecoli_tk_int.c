@@ -141,6 +141,7 @@ static int testcase(void)
 		if (ec_tk_int_getval(tk, s) != 0)
 			TEST_ERR();
 	}
+	ec_parsed_tk_free(p);
 
 	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
@@ -150,7 +151,7 @@ static int testcase(void)
 		if (ec_tk_int_getval(tk, s) != 10)
 			TEST_ERR();
 	}
-
+	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 
 	tk = ec_tk_int_new(NULL, -1, LLONG_MAX, 16);
@@ -174,7 +175,7 @@ static int testcase(void)
 		if (ec_tk_int_getval(tk, s) != 16)
 			TEST_ERR();
 	}
-
+	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 
 	tk = ec_tk_int_new(NULL, LLONG_MIN, 0, 10);

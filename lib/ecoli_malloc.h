@@ -30,9 +30,10 @@
 
 #include <sys/types.h>
 
-typedef void *(*ec_malloc_t)(size_t size);
-typedef void (*ec_free_t)(void *ptr);
-typedef void *(*ec_realloc_t)(void *ptr, size_t size);
+typedef void *(*ec_malloc_t)(size_t size, const char *file, unsigned int line);
+typedef void (*ec_free_t)(void *ptr, const char *file, unsigned int line);
+typedef void *(*ec_realloc_t)(void *ptr, size_t size, const char *file,
+	unsigned int line);
 
 struct ec_malloc_handler {
 	ec_malloc_t malloc;
@@ -44,68 +45,71 @@ extern struct ec_malloc_handler ec_malloc_handler;
 
 int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
 	ec_realloc_t usr_realloc);
+void ec_malloc_unregister(void);
 
 /* internal */
-void *__ec_malloc(size_t size);
-void __ec_free(void *ptr);
-void *__ec_calloc(size_t nmemb, size_t size);
-void *__ec_realloc(void *ptr, size_t size);
-char *__ec_strdup(const char *s);
-char *__ec_strndup(const char *s, size_t n);
+void *__ec_malloc(size_t size, const char *file, unsigned int line);
+void __ec_free(void *ptr, const char *file, unsigned int line);
+void *__ec_calloc(size_t nmemb, size_t size, const char *file,
+	unsigned int line);
+void *__ec_realloc(void *ptr, size_t size, const char *file, unsigned int line);
+char *__ec_strdup(const char *s, const char *file, unsigned int line);
+char *__ec_strndup(const char *s, size_t n, const char *file,
+	unsigned int line);
 
 /* we use macros here to ensure the file/line stay correct when
  * debugging the standard malloc with valgrind */
 
-#define ec_malloc(sz) ({				\
-	void *ret_;					\
-	if (ec_malloc_handler.malloc == NULL)		\
-		ret_ = malloc(sz);			\
-	else						\
-		ret_ = __ec_malloc(sz);			\
-	ret_;						\
+#define ec_malloc(sz) ({						\
+	void *ret_;							\
+	if (ec_malloc_handler.malloc == NULL)				\
+		ret_ = malloc(sz);					\
+	else								\
+		ret_ = __ec_malloc(sz, __FILE__, __LINE__);		\
+	ret_;								\
 	})
 
-#define ec_free(ptr) ({					\
-	if (ec_malloc_handler.free == NULL)		\
-		free(ptr);				\
-	else						\
-		__ec_free(ptr);				\
+#define ec_free(ptr) ({							\
+	if (ec_malloc_handler.free == NULL)				\
+		free(ptr);						\
+	else								\
+		__ec_free(ptr, __FILE__, __LINE__);			\
 	})
 
-#define ec_realloc(ptr, sz) ({				\
-	void *ret_;					\
-	if (ec_malloc_handler.realloc == NULL)		\
-		ret_ = realloc(ptr, sz);		\
-	else						\
-		ret_ = __ec_realloc(ptr, sz);		\
-	ret_;						\
+#define ec_realloc(ptr, sz) ({						\
+	void *ret_;							\
+	if (ec_malloc_handler.realloc == NULL)				\
+		ret_ = realloc(ptr, sz);				\
+	else								\
+		ret_ = __ec_realloc(ptr, sz, __FILE__, __LINE__);	\
+	ret_;								\
 	})
 
-#define ec_calloc(n, sz) ({				\
-	void *ret_;					\
-	if (ec_malloc_handler.malloc == NULL)		\
-		ret_ = calloc(n, sz);			\
-	else						\
-		ret_ = __ec_calloc(n, sz);		\
-	ret_;						\
+#define ec_calloc(n, sz) ({						\
+	void *ret_;							\
+	if (ec_malloc_handler.malloc == NULL)				\
+		ret_ = calloc(n, sz);					\
+	else								\
+		ret_ = __ec_calloc(n, sz, __FILE__, __LINE__);		\
+	ret_;								\
 	})
 
-#define ec_strdup(s) ({					\
-	void *ret_;					\
-	if (ec_malloc_handler.malloc == NULL)		\
-		ret_ = strdup(s);			\
-	else						\
-		ret_ = __ec_strdup(s);			\
-	ret_;						\
+#define ec_strdup(s) ({							\
+	void *ret_;							\
+	if (ec_malloc_handler.malloc == NULL)				\
+		ret_ = strdup(s);					\
+	else								\
+		ret_ = __ec_strdup(s, __FILE__, __LINE__);		\
+	ret_;								\
 	})
 
-#define ec_strndup(s, n) ({				\
-	void *ret_;					\
-	if (ec_malloc_handler.malloc == NULL)		\
-		ret_ = strndup(s, n);			\
-	else						\
-		ret_ = __ec_strndup(s, n);		\
-	ret_;						\
+#define ec_strndup(s, n) ({						\
+	void *ret_;							\
+	if (ec_malloc_handler.malloc == NULL)				\
+		ret_ = strndup(s, n);					\
+	else								\
+		ret_ = __ec_strndup(s, n, __FILE__, __LINE__);		\
+	ret_;								\
 	})
 
 
