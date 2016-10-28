@@ -32,6 +32,7 @@
 #include <stdarg.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_log.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_or.h>
 #include <ecoli_tk_str.h>
@@ -179,7 +180,7 @@ static int testcase(void)
 		ec_tk_str_new(NULL, "bar"),
 		EC_TK_ENDLIST);
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
@@ -197,7 +198,7 @@ static int testcase(void)
 		ec_tk_str_new(NULL, "titi"),
 		EC_TK_ENDLIST);
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");

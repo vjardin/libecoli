@@ -25,57 +25,69 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdlib.h>
+#define _GNU_SOURCE /* for vasprintf */
 #include <stdio.h>
-#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
-#include <ecoli_test.h>
-#include <ecoli_tk_str.h>
-#include <ecoli_tk_seq.h>
-#include <ecoli_tk_space.h>
-#include <ecoli_tk_or.h>
+#include <ecoli_log.h>
 
-static void test(void)
+static ec_log_t ec_log_fct = ec_log_default;
+static void *ec_log_opaque;
+
+int ec_log_default(unsigned int level, void *opaque, const char *str)
 {
-	struct ec_tk *seq;
-	struct ec_parsed_tk *p;
-	const char *name;
+	(void)opaque;
+	(void)level;
 
-	seq = ec_tk_seq_new_list(NULL,
-		ec_tk_str_new(NULL, "hello"),
-		ec_tk_space_new(NULL),
-		ec_tk_or_new_list("name",
-			ec_tk_str_new(NULL, "john"),
-			ec_tk_str_new(NULL, "mike"),
-			EC_TK_ENDLIST),
-		EC_TK_ENDLIST);
-	if (seq == NULL) {
-		printf("cannot create token\n");
-		return;
-	}
-
-	/* ok */
-	p = ec_tk_parse(seq, "hello  mike");
-	ec_parsed_tk_dump(stdout, p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
-
-	/* ko */
-	p = ec_tk_parse(seq, "hello robert");
-	ec_parsed_tk_dump(stdout, p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
-
-	ec_tk_free(seq);
+	return printf("%s", str);
 }
 
-int main(void)
+int ec_log_register(ec_log_t usr_log, void *opaque)
 {
-	ec_test_all();
+	if (usr_log == NULL)
+		return -1;
 
-	test();
+	ec_log_fct = usr_log;
+	ec_log_opaque = opaque;
 
 	return 0;
+}
+
+void ec_log_unregister(void)
+{
+	ec_log_fct = NULL;
+}
+
+int ec_vlog(unsigned int level, const char *format, va_list ap)
+{
+	char *s;
+	int ret;
+
+	if (ec_log_fct == NULL) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	ret = vasprintf(&s, format, ap);
+	if (ret < 0)
+		return ret;
+
+	ret = ec_log_fct(level, ec_log_opaque, s);
+	free(s);
+
+	return ret;
+}
+
+int ec_log(unsigned int level, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = ec_vlog(level, format, ap);
+	va_end(ap);
+
+	return ret;
 }

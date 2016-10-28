@@ -113,7 +113,7 @@ void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk)
 	ec_free(parsed_tk);
 }
 
-static void __ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk,
+static void __ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk,
 	size_t indent)
 {
 	struct ec_parsed_tk *child;
@@ -122,22 +122,22 @@ static void __ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk,
 
 	/* XXX enhance */
 	for (i = 0; i < indent; i++)
-		printf(" ");
+		fprintf(out, " ");
 	s = ec_parsed_tk_to_string(parsed_tk);
-	printf("id=%s, s=<%s>\n", parsed_tk->tk->id, s);
+	fprintf(out, "id=%s, s=<%s>\n", parsed_tk->tk->id, s);
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next)
-		__ec_parsed_tk_dump(child, indent + 2);
+		__ec_parsed_tk_dump(out, child, indent + 2);
 }
 
-void ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk)
+void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk)
 {
 	if (parsed_tk == NULL) {
-		printf("no match\n");
+		fprintf(out, "no match\n");
 		return;
 	}
 
-	__ec_parsed_tk_dump(parsed_tk, 0);
+	__ec_parsed_tk_dump(out, parsed_tk, 0);
 }
 
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
@@ -293,20 +293,20 @@ void ec_completed_tk_free(struct ec_completed_tk *completed_tk)
 	ec_free(completed_tk);
 }
 
-void ec_completed_tk_dump(const struct ec_completed_tk *completed_tk)
+void ec_completed_tk_dump(FILE *out, const struct ec_completed_tk *completed_tk)
 {
 	struct ec_completed_tk_elt *elt;
 
 	if (completed_tk == NULL || completed_tk->count == 0) {
-		printf("no completion\n");
+		fprintf(out, "no completion\n");
 		return;
 	}
 
-	printf("completion: count=%u smallest_start=<%s>\n",
+	fprintf(out, "completion: count=%u smallest_start=<%s>\n",
 		completed_tk->count, completed_tk->smallest_start);
 
 	TAILQ_FOREACH(elt, &completed_tk->elts, next)
-		printf("add=<%s> full=<%s>\n", elt->add, elt->full);
+		fprintf(out, "add=<%s> full=<%s>\n", elt->add, elt->full);
 }
 
 const char *ec_completed_tk_smallest_start(

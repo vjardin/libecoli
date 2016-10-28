@@ -25,57 +25,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
+#ifndef ECOLI_LOG_
+#define ECOLI_LOG_
 
-#include <ecoli_test.h>
-#include <ecoli_tk_str.h>
-#include <ecoli_tk_seq.h>
-#include <ecoli_tk_space.h>
-#include <ecoli_tk_or.h>
+#define EC_LOG_EMERG    0  /* system is unusable               */
+#define EC_LOG_ALERT    1  /* action must be taken immediately */
+#define EC_LOG_CRIT     2  /* critical conditions              */
+#define EC_LOG_ERR      3  /* error conditions                 */
+#define EC_LOG_WARNING  4  /* warning conditions               */
+#define EC_LOG_NOTICE   5  /* normal but significant condition */
+#define EC_LOG_INFO     6  /* informational                    */
+#define EC_LOG_DEBUG    7  /* debug-level messages             */
 
-static void test(void)
-{
-	struct ec_tk *seq;
-	struct ec_parsed_tk *p;
-	const char *name;
+#include <stdarg.h>
 
-	seq = ec_tk_seq_new_list(NULL,
-		ec_tk_str_new(NULL, "hello"),
-		ec_tk_space_new(NULL),
-		ec_tk_or_new_list("name",
-			ec_tk_str_new(NULL, "john"),
-			ec_tk_str_new(NULL, "mike"),
-			EC_TK_ENDLIST),
-		EC_TK_ENDLIST);
-	if (seq == NULL) {
-		printf("cannot create token\n");
-		return;
-	}
+/* return -1 on error, len(s) on success */
+typedef int (*ec_log_t)(unsigned int level, void *opaque, const char *str);
 
-	/* ok */
-	p = ec_tk_parse(seq, "hello  mike");
-	ec_parsed_tk_dump(stdout, p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
+int ec_log_register(ec_log_t usr_log, void *opaque);
+void ec_log_unregister(void);
 
-	/* ko */
-	p = ec_tk_parse(seq, "hello robert");
-	ec_parsed_tk_dump(stdout, p);
-	name = ec_parsed_tk_to_string(ec_parsed_tk_find_first(p, "name"));
-	printf("parsed with name=%s\n", name);
-	ec_parsed_tk_free(p);
+/* same api than printf */
+int ec_log(unsigned int level, const char *format, ...);
+int ec_vlog(unsigned int level, const char *format, va_list ap);
 
-	ec_tk_free(seq);
-}
+/* default log handler for the library, use printf */
+int ec_log_default(unsigned int level, void *opaque, const char *str);
 
-int main(void)
-{
-	ec_test_all();
-
-	test();
-
-	return 0;
-}
+#endif

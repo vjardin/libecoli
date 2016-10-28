@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <ecoli_log.h>
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_tk.h>
@@ -129,7 +130,7 @@ static int testcase(void)
 	/* all inputs starting with foo should match */
 	tk = ec_tk_str_new(NULL, "foo");
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
@@ -142,7 +143,7 @@ static int testcase(void)
 	/* all inputs starting with foo should match */
 	tk = ec_tk_str_new(NULL, "Здравствуйте");
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "Здравствуйте", "Здравствуйте");
@@ -154,7 +155,7 @@ static int testcase(void)
 	/* an empty token string always matches */
 	tk = ec_tk_str_new(NULL, "");
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
@@ -164,7 +165,7 @@ static int testcase(void)
 	/* test completion */
 	tk = ec_tk_str_new(NULL, "foo");
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");

@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <ecoli_log.h>
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_tk.h>
@@ -57,9 +58,9 @@ int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
 		ret = 0;
 
 	if (expected == NULL && ret != 0)
-		printf("tk should not match but matches <%s>\n", s);
+		ec_log(EC_LOG_ERR, "tk should not match but matches <%s>\n", s);
 	if (expected != NULL && ret != 0)
-		printf("tk should match <%s> but matches <%s>\n",
+		ec_log(EC_LOG_ERR, "tk should match <%s> but matches <%s>\n",
 			expected, s);
 
 	ec_parsed_tk_free(p);
@@ -83,9 +84,11 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 		ret = 0;
 
 	if (expected == NULL && ret != 0)
-		printf("tk should not complete but completes with <%s>\n", s);
+		ec_log(EC_LOG_ERR,
+			"tk should not complete but completes with <%s>\n", s);
 	if (expected != NULL && ret != 0)
-		printf("tk should complete with <%s> but completes with <%s>\n",
+		ec_log(EC_LOG_ERR,
+			"tk should complete with <%s> but completes with <%s>\n",
 			expected, s);
 
 	ec_completed_tk_free(p);
@@ -123,7 +126,8 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 		ret = hdr + 1;
 	}
 
-	printf("%s:%d: info: malloc(%zd) -> %p\n", file, line, size, ret);
+	ec_log(EC_LOG_INFO, "%s:%d: info: malloc(%zd) -> %p\n",
+		file, line, size, ret);
 
 	return ret;
 }
@@ -135,14 +139,14 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	(void)file;
 	(void)line;
 
-	printf("%s:%d: info: free(%p)\n", file, line, ptr);
+	ec_log(EC_LOG_INFO, "%s:%d: info: free(%p)\n", file, line, ptr);
 
 	if (ptr == NULL)
 		return;
 
 	hdr = (ptr - sizeof(*hdr));
 	if (hdr->cookie != 0x12345678) {
-		printf("%s:%d: error: free(%p): bad start cookie\n",
+		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad start cookie\n",
 			file, line, ptr);
 		abort();
 	}
@@ -153,7 +157,7 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	}
 
 	if (h == NULL) {
-		printf("%s:%d: error: free(%p): bad ptr\n",
+		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad ptr\n",
 			file, line, ptr);
 		abort();
 	}
@@ -171,7 +175,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 
 	if (ptr != NULL) {
 		if (hdr->cookie != 0x12345678) {
-			printf("%s:%d: error: realloc(%p): bad start cookie\n",
+			ec_log(EC_LOG_ERR, "%s:%d: error: realloc(%p): bad start cookie\n",
 				file, line, ptr);
 			abort();
 		}
@@ -182,7 +186,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		}
 
 		if (h == NULL) {
-			printf("%s:%d: error: realloc(%p): bad ptr\n",
+			ec_log(EC_LOG_ERR, "%s:%d: error: realloc(%p): bad ptr\n",
 				file, line, ptr);
 			abort();
 		}
@@ -211,7 +215,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
 	}
 
-	printf("%s:%d: info: realloc(%p, %zd) -> %p\n",
+	ec_log(EC_LOG_INFO, "%s:%d: info: realloc(%p, %zd) -> %p\n",
 		file, line, ptr, size, ret);
 
 	return ret;
@@ -222,11 +226,12 @@ void debug_alloc_dump(void)
 	struct debug_alloc_hdr *hdr;
 
 	TAILQ_FOREACH(hdr, &debug_alloc_hdr_list, next) {
-		printf("%s:%d: error: memory leak size=%zd ptr=%p\n",
+		ec_log(EC_LOG_ERR, "%s:%d: error: memory leak size=%zd ptr=%p\n",
 			hdr->file, hdr->line, hdr->size, hdr + 1);
 	}
 }
 
+/* XXX todo */
 /* int ec_test_check_tk_complete_list(const struct ec_tk *tk, */
 /*	const char *input, ...) */
 
@@ -239,15 +244,17 @@ int ec_test_all(void)
 
 	/* register a new malloc to trac memleaks */
 	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
-		printf("cannot register new malloc\n");
+		ec_log(EC_LOG_ERR, "cannot register new malloc\n");
 		return -1;
 	}
 
 	TAILQ_FOREACH(test, &test_list, next) {
 		if (test->test() == 0) {
-			printf("== test %-20s success\n", test->name);
+			ec_log(EC_LOG_INFO, "== test %-20s success\n",
+				test->name);
 		} else {
-			printf("== test %-20s failed\n", test->name);
+			ec_log(EC_LOG_INFO, "== test %-20s failed\n",
+				test->name);
 			ret = -1;
 		}
 	}

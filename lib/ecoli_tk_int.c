@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <errno.h>
 
+#include <ecoli_log.h>
 #include <ecoli_malloc.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_int.h>
@@ -123,7 +124,7 @@ static int testcase(void)
 
 	tk = ec_tk_int_new(NULL, 0, 256, 0);
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
@@ -156,7 +157,7 @@ static int testcase(void)
 
 	tk = ec_tk_int_new(NULL, -1, LLONG_MAX, 16);
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
@@ -180,7 +181,7 @@ static int testcase(void)
 
 	tk = ec_tk_int_new(NULL, LLONG_MIN, 0, 10);
 	if (tk == NULL) {
-		printf("cannot create tk\n");
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
@@ -194,7 +195,7 @@ static int testcase(void)
 	/* /\* test completion *\/ */
 	/* tk = ec_tk_int_new(NULL, "foo"); */
 	/* if (tk == NULL) { */
-	/* 	printf("cannot create tk\n"); */
+	/* 	ec_log(EC_LOG_ERR, "cannot create tk\n"); */
 	/* 	return -1; */
 	/* } */
 	/* ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo"); */

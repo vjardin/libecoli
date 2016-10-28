@@ -31,6 +31,8 @@
 #include <sys/queue.h>
 #include <sys/types.h>
 
+#include <stdio.h>
+
 #define EC_TK_ENDLIST ((void *)1)
 
 struct ec_tk;
@@ -71,7 +73,7 @@ struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk);
 struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str);
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
 	struct ec_parsed_tk *child);
-void ec_parsed_tk_dump(const struct ec_parsed_tk *parsed_tk);
+void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk);
 void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk);
 
 struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
@@ -112,7 +114,8 @@ struct ec_completed_tk *ec_completed_tk_merge(
 	struct ec_completed_tk *completed_tk1,
 	struct ec_completed_tk *completed_tk2);
 void ec_completed_tk_free(struct ec_completed_tk *completed_tk);
-void ec_completed_tk_dump(const struct ec_completed_tk *completed_tk);
+void ec_completed_tk_dump(FILE *out,
+	const struct ec_completed_tk *completed_tk);
 
 const char *ec_completed_tk_smallest_start(
 	const struct ec_completed_tk *completed_tk);
