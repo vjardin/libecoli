@@ -38,7 +38,7 @@
 #include <ecoli_tk_str.h>
 #include <ecoli_test.h>
 
-static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_or_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
@@ -70,7 +70,7 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
+static struct ec_completed_tk *ec_tk_or_complete(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
@@ -90,7 +90,7 @@ static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 }
 
-static void free_priv(struct ec_tk *gen_tk)
+static void ec_tk_or_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
 	unsigned int i;
@@ -100,17 +100,17 @@ static void free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->table);
 }
 
-static struct ec_tk_ops or_ops = {
-	.parse = parse,
-	.complete = complete,
-	.free_priv = free_priv,
+static struct ec_tk_ops ec_tk_or_ops = {
+	.parse = ec_tk_or_parse,
+	.complete = ec_tk_or_complete,
+	.free_priv = ec_tk_or_free_priv,
 };
 
 struct ec_tk *ec_tk_or_new(const char *id)
 {
 	struct ec_tk_or *tk = NULL;
 
-	tk = (struct ec_tk_or *)ec_tk_new(id, &or_ops, sizeof(*tk));
+	tk = (struct ec_tk_or *)ec_tk_new(id, &ec_tk_or_ops, sizeof(*tk));
 	if (tk == NULL)
 		return NULL;
 
@@ -169,7 +169,7 @@ int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
-static int testcase(void)
+static int ec_tk_or_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
@@ -207,14 +207,22 @@ static int testcase(void)
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "t", "");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "to", "to");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "",
+		"foo", "bar", "bar2", "toto", "titi", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "f",
+		"oo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "b",
+		"ar", "ar2", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "t",
+		"oto", "iti", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	return ret;
 }
 
-static struct ec_test test = {
+static struct ec_test ec_tk_or_test = {
 	.name = "tk_or",
-	.test = testcase,
+	.test = ec_tk_or_testcase,
 };
 
-EC_REGISTER_TEST(test);
+EC_REGISTER_TEST(ec_tk_or_test);

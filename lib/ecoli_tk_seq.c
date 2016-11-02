@@ -32,12 +32,15 @@
 #include <stdarg.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_log.h>
+#include <ecoli_test.h>
 #include <ecoli_tk.h>
+#include <ecoli_tk_str.h>
 #include <ecoli_tk_seq.h>
 
 // XXX to handle the quote, it will be done in tk_shseq
 // it will unquote the string and parse each token separately
-static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
@@ -67,7 +70,34 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static void free_priv(struct ec_tk *gen_tk)
+static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
+	const char *str)
+{
+	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
+	struct ec_completed_tk *completed_tk;
+	struct ec_parsed_tk *parsed_tk;
+	size_t len = 0;
+	unsigned int i;
+
+	if (tk->len == 0)
+		return ec_completed_tk_new();
+
+	/* parse the first tokens */
+	for (i = 0; i < tk->len - 1; i++) {
+		parsed_tk = ec_tk_parse(tk->table[i], str + len);
+		if (parsed_tk == NULL)
+			break;
+
+		len += strlen(parsed_tk->str);
+		ec_parsed_tk_free(parsed_tk);
+	}
+
+	completed_tk = ec_tk_complete(tk->table[i], str + len);
+
+	return completed_tk;
+}
+
+static void ec_tk_seq_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	unsigned int i;
@@ -77,16 +107,17 @@ static void free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->table);
 }
 
-static struct ec_tk_ops seq_ops = {
-	.parse = parse,
-	.free_priv = free_priv,
+static struct ec_tk_ops ec_tk_seq_ops = {
+	.parse = ec_tk_seq_parse,
+	.complete = ec_tk_seq_complete,
+	.free_priv = ec_tk_seq_free_priv,
 };
 
 struct ec_tk *ec_tk_seq_new(const char *id)
 {
 	struct ec_tk_seq *tk = NULL;
 
-	tk = (struct ec_tk_seq *)ec_tk_new(id, &seq_ops, sizeof(*tk));
+	tk = (struct ec_tk_seq *)ec_tk_new(id, &ec_tk_seq_ops, sizeof(*tk));
 	if (tk == NULL)
 		return NULL;
 
@@ -131,10 +162,12 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_tk **table;
 
+	// XXX check tk type
+
 	assert(tk != NULL);
 	assert(child != NULL);
 
-	table = ec_realloc(tk->table, tk->len + 1);
+	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
 	if (table == NULL)
 		return -1;
 
@@ -145,3 +178,51 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
+static int ec_tk_seq_testcase(void)
+{
+	struct ec_tk *tk;
+	int ret = 0;
+
+	/* all inputs starting with foo should match */
+	tk = ec_tk_seq_new_list(NULL,
+		ec_tk_str_new(NULL, "foo"),
+		ec_tk_str_new(NULL, "bar"),
+		EC_TK_ENDLIST);
+	if (tk == NULL) {
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foobar", "foobar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foobarxxx", "foobar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foobar", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "bar", NULL);
+	ec_tk_free(tk);
+
+	/* test completion */
+	tk = ec_tk_seq_new_list(NULL,
+		ec_tk_str_new(NULL, "foo"),
+		ec_tk_str_new(NULL, "bar"),
+		EC_TK_ENDLIST);
+	if (tk == NULL) {
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "bar");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foob", "ar");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobar", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobarx", NULL);
+	ec_tk_free(tk);
+
+	return ret;
+}
+
+static struct ec_test ec_tk_seq_test = {
+	.name = "tk_seq",
+	.test = ec_tk_seq_testcase,
+};
+
+EC_REGISTER_TEST(ec_tk_seq_test);

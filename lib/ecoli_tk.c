@@ -70,11 +70,15 @@ void ec_tk_free(struct ec_tk *tk)
 	ec_free(tk);
 }
 
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str)
+struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str)
 {
 	struct ec_parsed_tk *parsed_tk;
 
-	parsed_tk = token->ops->parse(token, str);
+	/* by default, it does not match anything */
+	if (tk->ops->parse == NULL)
+		return NULL;
+
+	parsed_tk = tk->ops->parse(tk, str);
 
 	return parsed_tk;
 }
@@ -174,16 +178,6 @@ const char *ec_parsed_tk_to_string(const struct ec_parsed_tk *parsed_tk)
 	return parsed_tk->str;
 }
 
-struct ec_completed_tk *ec_tk_complete(const struct ec_tk *token,
-	const char *str)
-{
-	struct ec_completed_tk *completed_tk;
-
-	completed_tk = token->ops->complete(token, str);
-
-	return completed_tk;
-}
-
 struct ec_completed_tk *ec_completed_tk_new(void)
 {
 	struct ec_completed_tk *completed_tk = NULL;
@@ -208,14 +202,39 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 		return NULL;
 
 	elt->tk = tk;
-	elt->add = ec_strdup(add);
-	elt->full = ec_strdup(full);
-	if (elt->add == NULL || elt->full == NULL) {
-		ec_completed_tk_elt_free(elt);
-		return NULL;
+	if (add != NULL) {
+		elt->add = ec_strdup(add);
+		if (elt->add == NULL) {
+			ec_completed_tk_elt_free(elt);
+			return NULL;
+		}
+	}
+	if (full != NULL) {
+		elt->full = ec_strdup(full);
+		if (elt->full == NULL) {
+			ec_completed_tk_elt_free(elt);
+			return NULL;
+		}
 	}
 
 	return elt;
+}
+
+/* XXX define when to use ec_tk_complete() or tk->complete()
+ * (same for parse)
+ * suggestion: tk->op() is internal, user calls the function
+ */
+struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
+	const char *str)
+{
+	struct ec_completed_tk *completed_tk;
+
+	if (tk->ops->complete == NULL)
+		return ec_completed_tk_new();
+
+	completed_tk = tk->ops->complete(tk, str);
+
+	return completed_tk;
 }
 
 /* count the number of identical chars at the beginning of 2 strings */
@@ -305,8 +324,10 @@ void ec_completed_tk_dump(FILE *out, const struct ec_completed_tk *completed_tk)
 	fprintf(out, "completion: count=%u smallest_start=<%s>\n",
 		completed_tk->count, completed_tk->smallest_start);
 
-	TAILQ_FOREACH(elt, &completed_tk->elts, next)
-		fprintf(out, "add=<%s> full=<%s>\n", elt->add, elt->full);
+	TAILQ_FOREACH(elt, &completed_tk->elts, next) {
+		fprintf(out, "add=<%s>, full=<%s>, tk=%p\n",
+			elt->add, elt->full, elt->tk);
+	}
 }
 
 const char *ec_completed_tk_smallest_start(
@@ -320,14 +341,8 @@ const char *ec_completed_tk_smallest_start(
 
 unsigned int ec_completed_tk_count(const struct ec_completed_tk *completed_tk)
 {
-	struct ec_completed_tk_elt *elt;
-	unsigned int count = 0;
-
 	if (completed_tk == NULL)
 		return 0;
 
-	TAILQ_FOREACH(elt, &completed_tk->elts, next)
-		count++;
-
-	return count;
+	return completed_tk->count;
 }

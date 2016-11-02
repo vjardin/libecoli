@@ -30,6 +30,7 @@
 
 #include <sys/queue.h>
 
+#include <ecoli_log.h>
 #include <ecoli_tk.h>
 
 #define EC_REGISTER_TEST(t)						\
@@ -66,13 +67,12 @@ void ec_test_register(struct ec_test *test);
 
 int ec_test_all(void);
 
-// XXX could be a macro that display file:line
 int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
 	const char *expected);
 
 #define TEST_ERR()							\
-		printf("%s:%d: error: test failed\n",			\
-			__FILE__, __LINE__);				\
+	ec_log(EC_LOG_ERR, "%s:%d: error: test failed\n",		\
+		__FILE__, __LINE__);					\
 
 #define EC_TEST_CHECK_TK_PARSE(tk, input, expected) ({			\
 	int ret = ec_test_check_tk_parse(tk, input, expected);		\
@@ -86,6 +86,16 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 
 #define EC_TEST_CHECK_TK_COMPLETE(tk, input, expected) ({		\
 	int ret = ec_test_check_tk_complete(tk, input, expected);	\
+	if (ret)							\
+		TEST_ERR();						\
+	ret;								\
+})
+
+int ec_test_check_tk_complete_list(const struct ec_tk *tk,
+	const char *input, ...);
+
+#define EC_TEST_CHECK_TK_COMPLETE_LIST(tk, input, expected...) ({	\
+	int ret = ec_test_check_tk_complete_list(tk, input, expected);	\
 	if (ret)							\
 		TEST_ERR();						\
 	ret;								\

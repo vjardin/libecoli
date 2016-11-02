@@ -71,12 +71,12 @@ int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
 int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 	const char *expected)
 {
-	struct ec_completed_tk *p;
+	struct ec_completed_tk *c;
 	const char *s;
 	int ret = -1;
 
-	p = ec_tk_complete(tk, input);
-	s = ec_completed_tk_smallest_start(p);
+	c = ec_tk_complete(tk, input);
+	s = ec_completed_tk_smallest_start(c);
 	if (s == NULL && expected == NULL)
 		ret = 0;
 	else if (s != NULL && expected != NULL &&
@@ -91,8 +91,58 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 			"tk should complete with <%s> but completes with <%s>\n",
 			expected, s);
 
-	ec_completed_tk_free(p);
+	ec_completed_tk_free(c);
 
+	return ret;
+}
+
+int ec_test_check_tk_complete_list(const struct ec_tk *tk,
+	const char *input, ...)
+{
+	struct ec_completed_tk *c = NULL;
+	struct ec_completed_tk_elt *elt;
+	const char *s;
+	int ret = -1;
+	unsigned int count = 0;
+	va_list ap;
+
+	va_start(ap, input);
+
+	c = ec_tk_complete(tk, input);
+	if (c == NULL)
+		goto out;
+
+	for (s = va_arg(ap, const char *);
+	     s != EC_TK_ENDLIST;
+	     s = va_arg(ap, const char *)) {
+		if (s == NULL)
+			goto out;
+
+		count++;
+		TAILQ_FOREACH(elt, &c->elts, next) {
+			if (strcmp(elt->add, s) == 0)
+				break;
+		}
+
+		if (elt == NULL) {
+			ec_log(EC_LOG_ERR,
+				"completion <%s> not in list\n", s);
+			goto out;
+		}
+	}
+
+	if (count != ec_completed_tk_count(c)) {
+		ec_log(EC_LOG_ERR,
+			"nb_completion (%d) does not match (%d)\n",
+			count, ec_completed_tk_count(c));
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	ec_completed_tk_free(c);
+	va_end(ap);
 	return ret;
 }
 
@@ -108,10 +158,15 @@ struct debug_alloc_hdr {
 	unsigned int cookie;
 };
 
+struct debug_alloc_ftr {
+	unsigned int cookie;
+} __attribute__((packed));
+
 static void *debug_malloc(size_t size, const char *file, unsigned int line)
 {
 	struct debug_alloc_hdr *hdr;
-	size_t new_size = size + sizeof(*hdr) + sizeof(unsigned int);
+	struct debug_alloc_ftr *ftr;
+	size_t new_size = size + sizeof(*hdr) + sizeof(*ftr);
 	void *ret;
 
 	hdr = malloc(new_size);
@@ -124,6 +179,9 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
 		ret = hdr + 1;
+		ftr = (struct debug_alloc_ftr *)(
+			(char *)hdr + size + sizeof(*hdr));
+		ftr->cookie = 0x12345678;
 	}
 
 	ec_log(EC_LOG_INFO, "%s:%d: info: malloc(%zd) -> %p\n",
@@ -135,6 +193,7 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 static void debug_free(void *ptr, const char *file, unsigned int line)
 {
 	struct debug_alloc_hdr *hdr, *h;
+	struct debug_alloc_ftr *ftr;
 
 	(void)file;
 	(void)line;
@@ -147,6 +206,13 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	hdr = (ptr - sizeof(*hdr));
 	if (hdr->cookie != 0x12345678) {
 		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad start cookie\n",
+			file, line, ptr);
+		abort();
+	}
+
+	ftr = (ptr + hdr->size);
+	if (ftr->cookie != 0x12345678) {
+		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad end cookie\n",
 			file, line, ptr);
 		abort();
 	}
@@ -168,14 +234,24 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 
 void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 {
-	struct debug_alloc_hdr *hdr = (ptr - sizeof(*hdr));
-	struct debug_alloc_hdr *h;
+	struct debug_alloc_hdr *hdr, *h;
+	struct debug_alloc_ftr *ftr;
 	size_t new_size = size + sizeof(*hdr) + sizeof(unsigned int);
 	void *ret;
 
 	if (ptr != NULL) {
+		hdr =  (ptr - sizeof(*hdr));
 		if (hdr->cookie != 0x12345678) {
-			ec_log(EC_LOG_ERR, "%s:%d: error: realloc(%p): bad start cookie\n",
+			ec_log(EC_LOG_ERR,
+				"%s:%d: error: realloc(%p): bad start cookie\n",
+				file, line, ptr);
+			abort();
+		}
+
+		ftr = (ptr + hdr->size);
+		if (ftr->cookie != 0x12345678) {
+			ec_log(EC_LOG_ERR,
+				"%s:%d: error: realloc(%p): bad end cookie\n",
 				file, line, ptr);
 			abort();
 		}
@@ -204,7 +280,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		if (hdr == NULL)
 			ret = NULL;
 		else
-			ret= hdr + 1;
+			ret = hdr + 1;
 	}
 
 	if (hdr != NULL) {
@@ -213,6 +289,9 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		hdr->size = size;
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
+		ftr = (struct debug_alloc_ftr *)(
+			(char *)hdr + size + sizeof(*hdr));
+		ftr->cookie = 0x12345678;
 	}
 
 	ec_log(EC_LOG_INFO, "%s:%d: info: realloc(%p, %zd) -> %p\n",
@@ -243,7 +322,7 @@ int ec_test_all(void)
 	TAILQ_INIT(&debug_alloc_hdr_list);
 
 	/* register a new malloc to trac memleaks */
-	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
+	if (0 && ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
 		ec_log(EC_LOG_ERR, "cannot register new malloc\n");
 		return -1;
 	}

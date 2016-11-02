@@ -69,6 +69,10 @@ struct ec_parsed_tk {
 	char *str;
 };
 
+/* XXX we could use a cache to store possible completions or match: the
+ * cache would be per-node, and would be reset for each call to parse()
+ * or complete() ? */
+
 struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk);
 struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str);
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
@@ -98,17 +102,16 @@ struct ec_completed_tk {
 };
 
 /*
- * return NULL if it does not match the beginning of the token
- * return "" if it matches but does not know how to complete
- * return "xyz" if it knows how to complete
+ * return a completed_tk object filled with elts
+ * return NULL on error (nomem?)
  */
 struct ec_completed_tk *ec_tk_complete(const struct ec_tk *token,
 	const char *str);
 struct ec_completed_tk *ec_completed_tk_new(void);
 struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 	const char *add, const char *full);
-void ec_completed_tk_add_elt(
-	struct ec_completed_tk *completed_tk, struct ec_completed_tk_elt *elt);
+void ec_completed_tk_add_elt(struct ec_completed_tk *completed_tk,
+	struct ec_completed_tk_elt *elt);
 void ec_completed_tk_elt_free(struct ec_completed_tk_elt *elt);
 struct ec_completed_tk *ec_completed_tk_merge(
 	struct ec_completed_tk *completed_tk1,
@@ -117,6 +120,7 @@ void ec_completed_tk_free(struct ec_completed_tk *completed_tk);
 void ec_completed_tk_dump(FILE *out,
 	const struct ec_completed_tk *completed_tk);
 
+/* can return NULL */
 const char *ec_completed_tk_smallest_start(
 	const struct ec_completed_tk *completed_tk);
 

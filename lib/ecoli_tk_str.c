@@ -35,7 +35,7 @@
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
 
-static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_str_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
@@ -53,7 +53,7 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	return parsed_tk;
 }
 
-static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
+static struct ec_completed_tk *ec_tk_str_complete(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
@@ -85,17 +85,17 @@ static struct ec_completed_tk *complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 }
 
-static void free_priv(struct ec_tk *gen_tk)
+static void ec_tk_str_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
 
 	ec_free(tk->string);
 }
 
-static struct ec_tk_ops str_ops = {
-	.parse = parse,
-	.complete = complete,
-	.free_priv = free_priv,
+static struct ec_tk_ops ec_tk_str_ops = {
+	.parse = ec_tk_str_parse,
+	.complete = ec_tk_str_complete,
+	.free_priv = ec_tk_str_free_priv,
 };
 
 struct ec_tk *ec_tk_str_new(const char *id, const char *str)
@@ -103,7 +103,7 @@ struct ec_tk *ec_tk_str_new(const char *id, const char *str)
 	struct ec_tk_str *tk = NULL;
 	char *s = NULL;
 
-	tk = (struct ec_tk_str *)ec_tk_new(id, &str_ops, sizeof(*tk));
+	tk = (struct ec_tk_str *)ec_tk_new(id, &ec_tk_str_ops, sizeof(*tk));
 	if (tk == NULL)
 		goto fail;
 
@@ -122,7 +122,7 @@ fail:
 	return NULL;
 }
 
-static int testcase(void)
+static int ec_tk_str_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
@@ -177,9 +177,9 @@ static int testcase(void)
 	return ret;
 }
 
-static struct ec_test test = {
+static struct ec_test ec_tk_str_test = {
 	.name = "tk_str",
-	.test = testcase,
+	.test = ec_tk_str_testcase,
 };
 
-EC_REGISTER_TEST(test);
+EC_REGISTER_TEST(ec_tk_str_test);

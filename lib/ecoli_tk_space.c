@@ -34,7 +34,7 @@
 #include <ecoli_tk.h>
 #include <ecoli_tk_space.h>
 
-static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_space_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_parsed_tk *parsed_tk;
@@ -55,12 +55,12 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	return parsed_tk;
 }
 
-static struct ec_tk_ops space_ops = {
-	.parse = parse,
+static struct ec_tk_ops ec_tk_space_ops = {
+	.parse = ec_tk_space_parse,
 };
 
 struct ec_tk *ec_tk_space_new(const char *id)
 {
-	return ec_tk_new(id, &space_ops, sizeof(struct ec_tk_space));
+	return ec_tk_new(id, &ec_tk_space_ops, sizeof(struct ec_tk_space));
 }
 

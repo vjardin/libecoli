@@ -61,7 +61,7 @@ static size_t parse_llint(struct ec_tk_int *tk, const char *str,
 	return endptr - str;
 }
 
-static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_int_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_int *tk = (struct ec_tk_int *)gen_tk;
@@ -82,8 +82,8 @@ static struct ec_parsed_tk *parse(const struct ec_tk *gen_tk,
 	return parsed_tk;
 }
 
-static struct ec_tk_ops int_ops = {
-	.parse = parse,
+static struct ec_tk_ops ec_tk_int_ops = {
+	.parse = ec_tk_int_parse,
 };
 
 struct ec_tk *ec_tk_int_new(const char *id, long long int min,
@@ -91,7 +91,7 @@ struct ec_tk *ec_tk_int_new(const char *id, long long int min,
 {
 	struct ec_tk_int *tk = NULL;
 
-	tk = (struct ec_tk_int *)ec_tk_new(id, &int_ops, sizeof(*tk));
+	tk = (struct ec_tk_int *)ec_tk_new(id, &ec_tk_int_ops, sizeof(*tk));
 	if (tk == NULL)
 		return NULL;
 
@@ -115,7 +115,7 @@ long long ec_tk_int_getval(struct ec_tk *gen_tk, const char *str)
 	return val;
 }
 
-static int testcase(void)
+static int ec_tk_int_testcase(void)
 {
 	struct ec_parsed_tk *p;
 	struct ec_tk *tk;
@@ -192,24 +192,23 @@ static int testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "1", NULL);
 	ec_tk_free(tk);
 
-	/* /\* test completion *\/ */
-	/* tk = ec_tk_int_new(NULL, "foo"); */
-	/* if (tk == NULL) { */
-	/* 	ec_log(EC_LOG_ERR, "cannot create tk\n"); */
-	/* 	return -1; */
-	/* } */
-	/* ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo"); */
-	/* ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo"); */
-	/* ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", ""); */
-	/* ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL); */
-	/* ec_tk_free(tk); */
+	/* test completion */
+	tk = ec_tk_int_new(NULL, 0, 10, 0);
+	if (tk == NULL) {
+		ec_log(EC_LOG_ERR, "cannot create tk\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "1", NULL);
+	ec_tk_free(tk);
 
 	return ret;
 }
 
-static struct ec_test test = {
+static struct ec_test ec_tk_int_test = {
 	.name = "tk_int",
-	.test = testcase,
+	.test = ec_tk_int_testcase,
 };
 
-EC_REGISTER_TEST(test);
+EC_REGISTER_TEST(ec_tk_int_test);
