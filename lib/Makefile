@@ -36,10 +36,14 @@ CFLAGS += -I.
 srcs := ecoli_tk.c ecoli_tk_str.c ecoli_tk_seq.c
 srcs += ecoli_tk_space.c ecoli_tk_or.c ecoli_test.c
 srcs += ecoli_tk_empty.c ecoli_tk_int.c
-srcs += ecoli_malloc.c ecoli_log.c
+srcs += ecoli_malloc.c ecoli_log.c ecoli_tk_option.c
+srcs += ecoli_tk_shlex.c
 shlib-y-$(O)libecoli.so := $(srcs)
 
 exe-y-$(O)test = $(srcs) main.c
+
+ldflags-$(O)readline = -lreadline
+exe-y-$(O)readline = $(srcs) main-readline.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 

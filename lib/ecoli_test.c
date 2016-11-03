@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
@@ -75,20 +76,16 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
 	const char *s;
 	int ret = -1;
 
+	assert(expected != NULL);
+
 	c = ec_tk_complete(tk, input);
 	s = ec_completed_tk_smallest_start(c);
-	if (s == NULL && expected == NULL)
-		ret = 0;
-	else if (s != NULL && expected != NULL &&
-		!strcmp(s, expected))
+	if (!strcmp(s, expected))
 		ret = 0;
 
-	if (expected == NULL && ret != 0)
+	if (ret != 0)
 		ec_log(EC_LOG_ERR,
-			"tk should not complete but completes with <%s>\n", s);
-	if (expected != NULL && ret != 0)
-		ec_log(EC_LOG_ERR,
-			"tk should complete with <%s> but completes with <%s>\n",
+			"should complete with <%s> but completes with <%s>\n",
 			expected, s);
 
 	ec_completed_tk_free(c);
@@ -135,6 +132,7 @@ int ec_test_check_tk_complete_list(const struct ec_tk *tk,
 		ec_log(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
 			count, ec_completed_tk_count(c));
+		ec_completed_tk_dump(stdout, c);
 		goto out;
 	}
 
@@ -310,10 +308,6 @@ void debug_alloc_dump(void)
 	}
 }
 
-/* XXX todo */
-/* int ec_test_check_tk_complete_list(const struct ec_tk *tk, */
-/*	const char *input, ...) */
-
 int ec_test_all(void)
 {
 	struct ec_test *test;
@@ -322,7 +316,7 @@ int ec_test_all(void)
 	TAILQ_INIT(&debug_alloc_hdr_list);
 
 	/* register a new malloc to trac memleaks */
-	if (0 && ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
+	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
 		ec_log(EC_LOG_ERR, "cannot register new malloc\n");
 		return -1;
 	}

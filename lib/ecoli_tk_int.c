@@ -198,9 +198,9 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", NULL);
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "1", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "1", "");
 	ec_tk_free(tk);
 
 	return ret;

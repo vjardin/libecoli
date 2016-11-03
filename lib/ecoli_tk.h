@@ -97,6 +97,7 @@ TAILQ_HEAD(ec_completed_tk_elt_list, ec_completed_tk_elt);
 
 struct ec_completed_tk {
 	struct ec_completed_tk_elt_list elts;
+	const struct ec_completed_tk_elt *cur;
 	unsigned count;
 	char *smallest_start;
 };
@@ -113,17 +114,20 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 void ec_completed_tk_add_elt(struct ec_completed_tk *completed_tk,
 	struct ec_completed_tk_elt *elt);
 void ec_completed_tk_elt_free(struct ec_completed_tk_elt *elt);
-struct ec_completed_tk *ec_completed_tk_merge(
-	struct ec_completed_tk *completed_tk1,
+void ec_completed_tk_merge(struct ec_completed_tk *completed_tk1,
 	struct ec_completed_tk *completed_tk2);
 void ec_completed_tk_free(struct ec_completed_tk *completed_tk);
 void ec_completed_tk_dump(FILE *out,
 	const struct ec_completed_tk *completed_tk);
 
-/* can return NULL */
+/* cannot return NULL */
 const char *ec_completed_tk_smallest_start(
 	const struct ec_completed_tk *completed_tk);
 
 unsigned int ec_completed_tk_count(const struct ec_completed_tk *completed_tk);
+
+void ec_completed_tk_iter_start(struct ec_completed_tk *completed_tk);
+const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
+	struct ec_completed_tk *completed_tk);
 
 #endif

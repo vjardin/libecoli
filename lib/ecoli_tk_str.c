@@ -61,17 +61,20 @@ static struct ec_completed_tk *ec_tk_str_complete(const struct ec_tk *gen_tk,
 	struct ec_completed_tk_elt *completed_tk_elt;
 	size_t n;
 
+	completed_tk = ec_completed_tk_new();
+	if (completed_tk == NULL)
+		return NULL;
+
+	/* check the string has the same beginning than the token */
 	for (n = 0; n < tk->len; n++) {
 		if (str[n] != tk->string[n])
 			break;
 	}
 
 	if (str[n] != '\0')
-		return NULL;
-
-	completed_tk = ec_completed_tk_new();
-	if (completed_tk == NULL)
-		return NULL;
+		return completed_tk;
+	if (tk->string[n] == '\0')
+		return completed_tk;
 
 	completed_tk_elt = ec_completed_tk_elt_new(gen_tk, tk->string + n,
 		tk->string);
@@ -127,7 +130,6 @@ static int ec_tk_str_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	/* all inputs starting with foo should match */
 	tk = ec_tk_str_new(NULL, "foo");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
@@ -140,7 +142,6 @@ static int ec_tk_str_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
 	ec_tk_free(tk);
 
-	/* all inputs starting with foo should match */
 	tk = ec_tk_str_new(NULL, "Здравствуйте");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
@@ -171,7 +172,7 @@ static int ec_tk_str_testcase(void)
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
 	ec_tk_free(tk);
 
 	return ret;

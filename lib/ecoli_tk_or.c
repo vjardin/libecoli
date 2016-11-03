@@ -74,8 +74,12 @@ static struct ec_completed_tk *ec_tk_or_complete(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
-	struct ec_completed_tk *completed_tk = NULL, *child_completed_tk;
+	struct ec_completed_tk *completed_tk, *child_completed_tk;
 	size_t n;
+
+	completed_tk = ec_completed_tk_new();
+	if (completed_tk == NULL)
+		return NULL;
 
 	for (n = 0; n < tk->len; n++) {
 		child_completed_tk = ec_tk_complete(tk->table[n], str);
@@ -83,8 +87,7 @@ static struct ec_completed_tk *ec_tk_or_complete(const struct ec_tk *gen_tk,
 		if (child_completed_tk == NULL)
 			continue;
 
-		completed_tk = ec_completed_tk_merge(completed_tk,
-			child_completed_tk);
+		ec_completed_tk_merge(completed_tk, child_completed_tk);
 	}
 
 	return completed_tk;
@@ -174,7 +177,6 @@ static int ec_tk_or_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	/* all inputs starting with foo should match */
 	tk = ec_tk_or_new_list(NULL,
 		ec_tk_str_new(NULL, "foo"),
 		ec_tk_str_new(NULL, "bar"),
@@ -206,7 +208,7 @@ static int ec_tk_or_testcase(void)
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "b", "ar");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "t", "");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "to", "to");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
 	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "",
 		"foo", "bar", "bar2", "toto", "titi", EC_TK_ENDLIST);
 	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "f",

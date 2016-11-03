@@ -36,10 +36,9 @@
 #include <ecoli_test.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
+#include <ecoli_tk_option.h>
 #include <ecoli_tk_seq.h>
 
-// XXX to handle the quote, it will be done in tk_shseq
-// it will unquote the string and parse each token separately
 static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
@@ -74,16 +73,26 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 	const char *str)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
-	struct ec_completed_tk *completed_tk;
+	struct ec_completed_tk *completed_tk, *child_completed_tk;
 	struct ec_parsed_tk *parsed_tk;
 	size_t len = 0;
 	unsigned int i;
 
-	if (tk->len == 0)
-		return ec_completed_tk_new();
+	completed_tk = ec_completed_tk_new();
+	if (completed_tk == NULL)
+		return NULL;
 
-	/* parse the first tokens */
-	for (i = 0; i < tk->len - 1; i++) {
+	if (tk->len == 0)
+		return completed_tk;
+
+	for (i = 0; i < tk->len; i++) {
+		child_completed_tk = ec_tk_complete(tk->table[i], str + len);
+		if (child_completed_tk == NULL) {
+			ec_completed_tk_free(completed_tk);
+			return NULL;
+		}
+		ec_completed_tk_merge(completed_tk, child_completed_tk);
+
 		parsed_tk = ec_tk_parse(tk->table[i], str + len);
 		if (parsed_tk == NULL)
 			break;
@@ -91,8 +100,6 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 		len += strlen(parsed_tk->str);
 		ec_parsed_tk_free(parsed_tk);
 	}
-
-	completed_tk = ec_tk_complete(tk->table[i], str + len);
 
 	return completed_tk;
 }
@@ -183,7 +190,6 @@ static int ec_tk_seq_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	/* all inputs starting with foo should match */
 	tk = ec_tk_seq_new_list(NULL,
 		ec_tk_str_new(NULL, "foo"),
 		ec_tk_str_new(NULL, "bar"),
@@ -202,6 +208,7 @@ static int ec_tk_seq_testcase(void)
 	/* test completion */
 	tk = ec_tk_seq_new_list(NULL,
 		ec_tk_str_new(NULL, "foo"),
+		ec_tk_option_new(NULL, ec_tk_str_new(NULL, "toto")),
 		ec_tk_str_new(NULL, "bar"),
 		EC_TK_ENDLIST);
 	if (tk == NULL) {
@@ -210,11 +217,14 @@ static int ec_tk_seq_testcase(void)
 	}
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "bar");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "foo",
+		"bar", "toto", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foot", "oto");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foob", "ar");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobar", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", NULL);
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobarx", NULL);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobarx", "");
 	ec_tk_free(tk);
 
 	return ret;

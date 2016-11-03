@@ -25,81 +25,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#ifndef ECOLI_TK_OPTION_
+#define ECOLI_TK_OPTION_
 
-#include <ecoli_log.h>
-#include <ecoli_test.h>
-#include <ecoli_malloc.h>
 #include <ecoli_tk.h>
-#include <ecoli_tk_space.h>
 
-static struct ec_parsed_tk *ec_tk_space_parse(const struct ec_tk *gen_tk,
-	const char *str)
-{
-	struct ec_parsed_tk *parsed_tk;
-	size_t len = 0;
-
-	if (!isspace(str[0]))
-		return NULL;
-
-	parsed_tk = ec_parsed_tk_new(gen_tk);
-	if (parsed_tk == NULL)
-		return NULL;
-
-	while (isspace(str[len]))
-		len++;
-
-	parsed_tk->str = ec_strndup(str, len);
-
-	return parsed_tk;
-}
-
-static struct ec_tk_ops ec_tk_space_ops = {
-	.parse = ec_tk_space_parse,
+struct ec_tk_option {
+	struct ec_tk gen;
+	struct ec_tk *child;
 };
 
-struct ec_tk *ec_tk_space_new(const char *id)
-{
-	return ec_tk_new(id, &ec_tk_space_ops, sizeof(struct ec_tk_space));
-}
+struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *tk);
 
-static int ec_tk_space_testcase(void)
-{
-	struct ec_tk *tk;
-	int ret = 0;
-
-	tk = ec_tk_space_new(NULL);
-	if (tk == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create tk\n");
-		return -1;
-	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " ", " ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "	", "	");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "  foo", "  ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo ", NULL);
-	ec_tk_free(tk);
-
-	/* test completion */
-	tk = ec_tk_space_new(NULL);
-	if (tk == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create tk\n");
-		return -1;
-	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, " ", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ec_tk_free(tk);
-
-	return ret;
-}
-
-static struct ec_test ec_tk_space_test = {
-	.name = "tk_space",
-	.test = ec_tk_space_testcase,
-};
-
-EC_REGISTER_TEST(ec_tk_space_test);
+#endif

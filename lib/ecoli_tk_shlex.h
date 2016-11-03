@@ -25,71 +25,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#ifndef ECOLI_TK_SHLEX_
+#define ECOLI_TK_SHLEX_
 
-#include <ecoli_malloc.h>
-#include <ecoli_log.h>
-#include <ecoli_test.h>
+#include <sys/queue.h>
+
 #include <ecoli_tk.h>
-#include <ecoli_tk_empty.h>
 
-static struct ec_parsed_tk *ec_tk_empty_parse(const struct ec_tk *gen_tk,
-	const char *str)
-{
-	struct ec_parsed_tk *parsed_tk;
-
-	parsed_tk = ec_parsed_tk_new(gen_tk);
-	if (parsed_tk == NULL)
-		return NULL;
-
-	(void)str;
-	parsed_tk->str = ec_strdup("");
-
-	return parsed_tk;
-}
-
-static struct ec_tk_ops ec_tk_empty_ops = {
-	.parse = ec_tk_empty_parse,
+struct ec_tk_shlex {
+	struct ec_tk gen;
+	struct ec_tk **table;
+	unsigned int len;
 };
 
-struct ec_tk *ec_tk_empty_new(const char *id)
-{
-	return ec_tk_new(id, &ec_tk_empty_ops, sizeof(struct ec_tk_empty));
-}
+struct ec_tk *ec_tk_shlex_new(const char *id);
 
-static int ec_tk_empty_testcase(void)
-{
-	struct ec_tk *tk;
-	int ret = 0;
+/* list must be terminated with EC_TK_ENDLIST */
+struct ec_tk *ec_tk_shlex_new_list(const char *id, ...);
 
-	tk = ec_tk_empty_new(NULL);
-	if (tk == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create tk\n");
-		return -1;
-	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foo", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
-	ec_tk_free(tk);
+int ec_tk_shlex_add(struct ec_tk *tk, struct ec_tk *child);
 
-	/* never completes */
-	tk = ec_tk_empty_new(NULL);
-	if (tk == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create tk\n");
-		return -1;
-	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ec_tk_free(tk);
-
-	return ret;
-}
-
-static struct ec_test ec_tk_empty_test = {
-	.name = "tk_empty",
-	.test = ec_tk_empty_testcase,
-};
-
-EC_REGISTER_TEST(ec_tk_empty_test);
+#endif

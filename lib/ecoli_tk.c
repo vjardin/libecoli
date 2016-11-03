@@ -223,6 +223,7 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 /* XXX define when to use ec_tk_complete() or tk->complete()
  * (same for parse)
  * suggestion: tk->op() is internal, user calls the function
+ * other idea: have 2 functions
  */
 struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
 	const char *str)
@@ -273,17 +274,13 @@ void ec_completed_tk_elt_free(struct ec_completed_tk_elt *elt)
 	ec_free(elt);
 }
 
-struct ec_completed_tk *ec_completed_tk_merge(
-	struct ec_completed_tk *completed_tk1,
+void ec_completed_tk_merge(struct ec_completed_tk *completed_tk1,
 	struct ec_completed_tk *completed_tk2)
 {
 	struct ec_completed_tk_elt *elt;
 
-	if (completed_tk2 == NULL)
-		return completed_tk1;
-
-	if (completed_tk1 == NULL)
-		return completed_tk2;
+	assert(completed_tk1 != NULL);
+	assert(completed_tk2 != NULL);
 
 	while (!TAILQ_EMPTY(&completed_tk2->elts)) {
 		elt = TAILQ_FIRST(&completed_tk2->elts);
@@ -292,8 +289,6 @@ struct ec_completed_tk *ec_completed_tk_merge(
 	}
 
 	ec_completed_tk_free(completed_tk2);
-
-	return completed_tk1;
 }
 
 void ec_completed_tk_free(struct ec_completed_tk *completed_tk)
@@ -333,8 +328,8 @@ void ec_completed_tk_dump(FILE *out, const struct ec_completed_tk *completed_tk)
 const char *ec_completed_tk_smallest_start(
 	const struct ec_completed_tk *completed_tk)
 {
-	if (completed_tk == NULL)
-		return NULL;
+	if (completed_tk == NULL || completed_tk->smallest_start == NULL)
+		return "";
 
 	return completed_tk->smallest_start;
 }
@@ -345,4 +340,27 @@ unsigned int ec_completed_tk_count(const struct ec_completed_tk *completed_tk)
 		return 0;
 
 	return completed_tk->count;
+}
+
+void ec_completed_tk_iter_start(struct ec_completed_tk *completed_tk)
+{
+	if (completed_tk == NULL)
+		return;
+
+	completed_tk->cur = NULL;
+}
+
+const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
+	struct ec_completed_tk *completed_tk)
+{
+	if (completed_tk == NULL)
+		return NULL;
+
+	if (completed_tk->cur == NULL) {
+		completed_tk->cur = TAILQ_FIRST(&completed_tk->elts);
+	} else {
+		completed_tk->cur = TAILQ_NEXT(completed_tk->cur, next);
+	}
+
+	return completed_tk->cur;
 }

@@ -28,78 +28,110 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <assert.h>
+#include <stdarg.h>
 
-#include <ecoli_log.h>
-#include <ecoli_test.h>
 #include <ecoli_malloc.h>
+#include <ecoli_log.h>
 #include <ecoli_tk.h>
-#include <ecoli_tk_space.h>
+#include <ecoli_tk_option.h>
+#include <ecoli_tk_str.h>
+#include <ecoli_test.h>
 
-static struct ec_parsed_tk *ec_tk_space_parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_option_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
-	struct ec_parsed_tk *parsed_tk;
-	size_t len = 0;
-
-	if (!isspace(str[0]))
-		return NULL;
+	struct ec_tk_option *tk = (struct ec_tk_option *)gen_tk;
+	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
 
 	parsed_tk = ec_parsed_tk_new(gen_tk);
 	if (parsed_tk == NULL)
 		return NULL;
 
-	while (isspace(str[len]))
-		len++;
-
-	parsed_tk->str = ec_strndup(str, len);
+	child_parsed_tk = ec_tk_parse(tk->child, str);
+	if (child_parsed_tk != NULL) {
+		ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
+		parsed_tk->str = ec_strndup(child_parsed_tk->str,
+			strlen(child_parsed_tk->str));
+	} else {
+		parsed_tk->str = ec_strdup("");
+	}
 
 	return parsed_tk;
 }
 
-static struct ec_tk_ops ec_tk_space_ops = {
-	.parse = ec_tk_space_parse,
-};
-
-struct ec_tk *ec_tk_space_new(const char *id)
+static struct ec_completed_tk *ec_tk_option_complete(const struct ec_tk *gen_tk,
+	const char *str)
 {
-	return ec_tk_new(id, &ec_tk_space_ops, sizeof(struct ec_tk_space));
+	struct ec_tk_option *tk = (struct ec_tk_option *)gen_tk;
+
+	return ec_tk_complete(tk->child, str);
 }
 
-static int ec_tk_space_testcase(void)
+static void ec_tk_option_free_priv(struct ec_tk *gen_tk)
+{
+	struct ec_tk_option *tk = (struct ec_tk_option *)gen_tk;
+
+	ec_tk_free(tk->child);
+}
+
+static struct ec_tk_ops ec_tk_option_ops = {
+	.parse = ec_tk_option_parse,
+	.complete = ec_tk_option_complete,
+	.free_priv = ec_tk_option_free_priv,
+};
+
+struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *child)
+{
+	struct ec_tk_option *tk = NULL;
+
+	if (child == NULL)
+		return NULL;
+
+	tk = (struct ec_tk_option *)ec_tk_new(id, &ec_tk_option_ops,
+		sizeof(*tk));
+	if (tk == NULL)
+		return NULL;
+
+	tk->child = child;
+
+	return &tk->gen;
+}
+
+static int ec_tk_option_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_space_new(NULL);
+	tk = ec_tk_option_new(NULL, ec_tk_str_new(NULL, "foo"));
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " ", " ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "	", "	");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "  foo", "  ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo ", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, "bar", "");
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_space_new(NULL);
+	tk = ec_tk_option_new(NULL, ec_tk_str_new(NULL, "foo"));
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, " ", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "b", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "",
+		"foo", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	return ret;
 }
 
-static struct ec_test ec_tk_space_test = {
-	.name = "tk_space",
-	.test = ec_tk_space_testcase,
+static struct ec_test ec_tk_option_test = {
+	.name = "tk_option",
+	.test = ec_tk_option_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_space_test);
+EC_REGISTER_TEST(ec_tk_option_test);
