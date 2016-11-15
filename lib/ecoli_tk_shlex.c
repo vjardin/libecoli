@@ -176,6 +176,40 @@ static char **tokenize(const char *str, int add_empty)
 	return NULL;
 }
 
+/* XXX broken: how to support that:
+   shlex(
+     str("toto"),
+     many(str("titi")),
+   )
+
+   that would match:
+     toto
+     toto titi
+     toto titi titi ...
+
+     --> maybe we should not try to create/match the spaces automatically
+
+     it would become:
+
+   shlex(
+     option(space()),   auto?
+     str("toto"),
+     many(
+       space(),
+       str("titi coin"),
+     ),
+     option(space()),   auto?
+   )
+
+   -> the goal of shlex would only be to unquote
+   -> the creation of auto-spaces would be in another token shcmd
+
+   cmd = shcmd_new()
+   shcmd_add_tk("ip", tk_ip_new())
+   shcmd_set_syntax("show <ip>")
+
+
+ */
 static struct ec_parsed_tk *ec_tk_shlex_parse(const struct ec_tk *gen_tk,
 	const char *str)
 {
