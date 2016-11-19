@@ -28,15 +28,7 @@
 #ifndef ECOLI_TK_SEQ_
 #define ECOLI_TK_SEQ_
 
-#include <sys/queue.h>
-
 #include <ecoli_tk.h>
-
-struct ec_tk_seq {
-	struct ec_tk gen;
-	struct ec_tk **table;
-	unsigned int len;
-};
 
 struct ec_tk *ec_tk_seq_new(const char *id);
 

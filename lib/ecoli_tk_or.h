@@ -28,15 +28,7 @@
 #ifndef ECOLI_TK_OR_
 #define ECOLI_TK_OR_
 
-#include <sys/queue.h>
-
 #include <ecoli_tk.h>
-
-struct ec_tk_or {
-	struct ec_tk gen;
-	struct ec_tk **table;
-	unsigned int len;
-};
 
 struct ec_tk *ec_tk_or_new(const char *id);
 

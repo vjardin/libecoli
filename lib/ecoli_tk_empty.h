@@ -28,12 +28,6 @@
 #ifndef ECOLI_TK_EMPTY_
 #define ECOLI_TK_EMPTY_
 
-#include <ecoli_tk.h>
-
-struct ec_tk_empty {
-	struct ec_tk gen;
-};
-
 struct ec_tk *ec_tk_empty_new(const char *id);
 
 #endif

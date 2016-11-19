@@ -33,6 +33,7 @@
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
@@ -43,70 +44,19 @@ void ec_test_register(struct ec_test *test)
 	TAILQ_INSERT_TAIL(&test_list, test, next);
 }
 
-int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
-	const char *expected)
+int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...)
 {
 	struct ec_parsed_tk *p;
+	struct ec_strvec *vec = NULL;
 	const char *s;
-	int ret = -1;
-
-	p = ec_tk_parse(tk, input);
-	s = ec_parsed_tk_to_string(p);
-	if (s == NULL && expected == NULL)
-		ret = 0;
-	else if (s != NULL && expected != NULL &&
-		!strcmp(s, expected))
-		ret = 0;
-
-	if (expected == NULL && ret != 0)
-		ec_log(EC_LOG_ERR, "tk should not match but matches <%s>\n", s);
-	if (expected != NULL && ret != 0)
-		ec_log(EC_LOG_ERR, "tk should match <%s> but matches <%s>\n",
-			expected, s);
-
-	ec_parsed_tk_free(p);
-
-	return ret;
-}
-
-int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
-	const char *expected)
-{
-	struct ec_completed_tk *c;
-	const char *s;
-	int ret = -1;
-
-	assert(expected != NULL);
-
-	c = ec_tk_complete(tk, input);
-	s = ec_completed_tk_smallest_start(c);
-	if (!strcmp(s, expected))
-		ret = 0;
-
-	if (ret != 0)
-		ec_log(EC_LOG_ERR,
-			"should complete with <%s> but completes with <%s>\n",
-			expected, s);
-
-	ec_completed_tk_free(c);
-
-	return ret;
-}
-
-int ec_test_check_tk_complete_list(const struct ec_tk *tk,
-	const char *input, ...)
-{
-	struct ec_completed_tk *c = NULL;
-	struct ec_completed_tk_elt *elt;
-	const char *s;
-	int ret = -1;
-	unsigned int count = 0;
+	int ret = -1, match;
 	va_list ap;
 
-	va_start(ap, input);
+	va_start(ap, expected);
 
-	c = ec_tk_complete(tk, input);
-	if (c == NULL)
+	/* build a string vector */
+	vec = ec_strvec_new();
+	if (vec == NULL)
 		goto out;
 
 	for (s = va_arg(ap, const char *);
@@ -115,30 +65,111 @@ int ec_test_check_tk_complete_list(const struct ec_tk *tk,
 		if (s == NULL)
 			goto out;
 
+		if (ec_strvec_add(vec, s) < 0)
+			goto out;
+	}
+
+	p = ec_tk_parse_tokens(tk, vec);
+	/* XXX only for debug */
+	ec_parsed_tk_dump(stdout, p);
+	if (p == NULL) {
+		ec_log(EC_LOG_ERR, "parsed_tk is NULL\n");
+	}
+	if (ec_parsed_tk_matches(p))
+		match = ec_parsed_tk_len(p);
+	else
+		match = -1;
+	if (expected == match) {
+		ret = 0;
+	} else {
+		ec_log(EC_LOG_ERR,
+			"tk parsed len (%d) does not match expected (%d)\n",
+			match, expected);
+	}
+
+	ec_parsed_tk_free(p);
+
+out:
+	ec_strvec_free(vec);
+	va_end(ap);
+	return ret;
+}
+
+int ec_test_check_tk_complete(const struct ec_tk *tk, ...)
+{
+	struct ec_completed_tk *c = NULL;
+	struct ec_completed_tk_elt *elt;
+	struct ec_strvec *vec = NULL;
+	const char *s, *expected;
+	int ret = 0;
+	unsigned int count = 0;
+	va_list ap;
+
+	va_start(ap, tk);
+
+	/* build a string vector */
+	vec = ec_strvec_new();
+	if (vec == NULL)
+		goto out;
+
+	for (s = va_arg(ap, const char *);
+	     s != EC_TK_ENDLIST;
+	     s = va_arg(ap, const char *)) {
+		if (s == NULL)
+			goto out;
+
+		if (ec_strvec_add(vec, s) < 0)
+			goto out;
+	}
+
+	c = ec_tk_complete_tokens(tk, vec);
+	if (c == NULL) {
+		ret = -1;
+		goto out;
+	}
+
+	for (s = va_arg(ap, const char *);
+	     s != EC_TK_ENDLIST;
+	     s = va_arg(ap, const char *)) {
+		if (s == NULL) {
+			ret = -1;
+			goto out;
+		}
+
 		count++;
 		TAILQ_FOREACH(elt, &c->elts, next) {
-			if (strcmp(elt->add, s) == 0)
+			/* only check matching completions */
+			if (elt->add != NULL && strcmp(elt->add, s) == 0)
 				break;
 		}
 
 		if (elt == NULL) {
 			ec_log(EC_LOG_ERR,
 				"completion <%s> not in list\n", s);
-			goto out;
+			ret = -1;
 		}
 	}
 
-	if (count != ec_completed_tk_count(c)) {
+	if (count != ec_completed_tk_count_match(c)) {
 		ec_log(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_tk_count(c));
+			count, ec_completed_tk_count_match(c));
 		ec_completed_tk_dump(stdout, c);
-		goto out;
+		ret = -1;
 	}
 
-	ret = 0;
+
+	expected = va_arg(ap, const char *);
+	s = ec_completed_tk_smallest_start(c);
+	if (strcmp(s, expected)) {
+		ret = -1;
+		ec_log(EC_LOG_ERR,
+			"should complete with <%s> but completes with <%s>\n",
+			expected, s);
+	}
 
 out:
+	ec_strvec_free(vec);
 	ec_completed_tk_free(c);
 	va_end(ap);
 	return ret;
@@ -150,6 +181,8 @@ int ec_test_all(void)
 	int ret = 0;
 
 	TAILQ_FOREACH(test, &test_list, next) {
+		ec_log(EC_LOG_INFO, "== starting test %-20s\n", test->name);
+
 		if (test->test() == 0) {
 			ec_log(EC_LOG_INFO, "== test %-20s success\n",
 				test->name);

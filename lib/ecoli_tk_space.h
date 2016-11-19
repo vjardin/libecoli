@@ -30,10 +30,6 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk_space {
-	struct ec_tk gen;
-};
-
 struct ec_tk *ec_tk_space_new(const char *id);
 
 #endif

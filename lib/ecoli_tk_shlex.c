@@ -36,261 +36,287 @@
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
+#include <ecoli_tk_seq.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_tk_option.h>
 #include <ecoli_tk_shlex.h>
 
-static int isend(char c)
-{
-	if (c == '\0' || c == '#' || c == '\n' || c == '\r')
-		return 1;
-	return 0;
-}
+struct ec_tk_shlex {
+	struct ec_tk gen;
+	struct ec_tk *child;
+};
 
-/* Remove quotes and stop when we reach the end of token. Return the
- * number of "eaten" bytes from the source buffer, or a negative value
- * on error */
-/* XXX support simple quotes, try to be posix-compatible */
-int get_token(const char *src, char **p_dst)
+static size_t eat_spaces(const char *str)
 {
-	unsigned s = 0, d = 0, dstlen;
-	int quoted = 0;
-	char *dst;
-
-	dstlen = strlen(src) + 1;
-	dst = ec_malloc(dstlen);
-	if (dst == NULL)
-		return -ENOMEM;
+	size_t i = 0;
 
 	/* skip spaces */
-	while (isblank(src[s]))
-		s++;
+	while (isblank(str[i]))
+		i++;
 
-	/* empty token */
-	if (isend(src[s])) {
-		ec_free(dst);
-		return -ENOENT;
+	return i;
+}
+
+/*
+ * Allocate a new string which is a copy of the input string with quotes
+ * removed. If quotes are not closed properly, set missing_quote to the
+ * missing quote char.
+ */
+static char *unquote_str(const char *str, size_t n, int allow_missing_quote,
+	char *missing_quote)
+{
+	unsigned s = 1, d = 0;
+	char quote = str[0];
+	char *dst;
+	int closed = 0;
+
+	dst = ec_malloc(n);
+	if (dst == NULL) {
+		errno = ENOMEM;
+		return NULL;
 	}
 
 	/* copy token and remove quotes */
-	while (src[s] != '\0') {
-		if (d >= dstlen) {
-			ec_free(dst);
-			return -EMSGSIZE;
-		}
-
-		if ((isblank(src[s]) || isend(src[s])) && quoted == 0)
-			break;
-
-		if (src[s] == '\\' && src[s+1] == '"') {
-			dst[d++] = '"';
+	while (s < n && d < n && str[s] != '\0') {
+		if (str[s] == '\\' && str[s+1] == quote) {
+			dst[d++] = quote;
 			s += 2;
 			continue;
 		}
-		if (src[s] == '\\' && src[s+1] == '\\') {
+		if (str[s] == '\\' && str[s+1] == '\\') {
 			dst[d++] = '\\';
 			s += 2;
 			continue;
 		}
-		if (src[s] == '"') {
+		if (str[s] == quote) {
 			s++;
-			quoted = !quoted;
-			continue;
-		}
-		dst[d++] = src[s++];
-	}
-
-	/* not enough room in dst buffer */
-	if (d >= dstlen) {
-		ec_free(dst);
-		return -EMSGSIZE;
-	}
-
-	/* end of string during quote */
-	if (quoted) {
-		ec_free(dst);
-		return -EINVAL;
-	}
-
-	dst[d++] = '\0';
-	*p_dst = dst;
-	return s;
-}
-
-static int safe_realloc(void *arg, size_t size)
-{
-	void **pptr = arg;
-	void *new_ptr = ec_realloc(*pptr, size);
-
-	if (new_ptr == NULL)
-		return -1;
-	*pptr = new_ptr;
-	return 0;
-}
-
-static char **tokenize(const char *str, int add_empty)
-{
-	char **table = NULL, *token;
-	unsigned i, count = 1, off = 0;
-	int ret;
-
-	if (safe_realloc(&table, sizeof(char *)) < 0)
-		return NULL;
-
-	table[0] = NULL;
-
-	while (1) {
-		ret = get_token(str + off, &token);
-		if (ret == -ENOENT)
+			closed = 1;
 			break;
-		else if (ret < 0)
-			goto fail;
-
-		off += ret;
-		count++;
-		if (safe_realloc(&table, sizeof(char *) * count) < 0)
-			goto fail;
-		table[count - 2] = token;
-		table[count - 1] = NULL;
+		}
+		dst[d++] = str[s++];
 	}
 
-	if (add_empty && (off != strlen(str) || strlen(str) == 0)) {
-		token = ec_strdup("");
-		if (token == NULL)
-			goto fail;
-
-		count++;
-		if (safe_realloc(&table, sizeof(char *) * count) < 0)
-			goto fail;
-		table[count - 2] = token;
-		table[count - 1] = NULL;
+	/* not enough room in dst buffer (should not happen) */
+	if (d >= n) {
+		ec_free(dst);
+		errno = EMSGSIZE;
+		return NULL;
 	}
 
-	return table;
+	/* quote not closed */
+	if (closed == 0) {
+		if (missing_quote != NULL)
+			*missing_quote = str[0];
+		if (allow_missing_quote == 0) {
+			ec_free(dst);
+			errno = EINVAL;
+			return NULL;
+		}
+	}
+	dst[d++] = '\0';
+
+	return dst;
+}
+
+static size_t eat_quoted_str(const char *str)
+{
+	size_t i = 0;
+	char quote = str[0];
+
+	while (str[i] != '\0') {
+		if (str[i] != '\\' && str[i+1] == quote)
+			return i + 2;
+		i++;
+	}
+
+	/* unclosed quote, will be detected later */
+	return i;
+}
+
+static size_t eat_str(const char *str)
+{
+	size_t i = 0;
+
+	/* skip spaces */
+	while (!isblank(str[i]) && str[i] != '\0')
+		i++;
+
+	return i;
+}
+
+static struct ec_strvec *tokenize(const char *str, int completion,
+	int allow_missing_quote, char *missing_quote)
+{
+	struct ec_strvec *strvec = NULL;
+	size_t off = 0, len, suboff, sublen;
+	char *word = NULL, *concat = NULL, *tmp;
+	int last_is_space = 1;
+
+//	printf("str=%s\n", str);
+
+	strvec = ec_strvec_new();
+	if (strvec == NULL)
+		goto fail;
+
+	while (str[off] != '\0') {
+		len = eat_spaces(&str[off]);
+		if (len > 0)
+			last_is_space = 1;
+//		printf("space=%zd\n", len);
+		off += len;
+
+		len = 0;
+		suboff = off;
+		while (str[suboff] != '\0') {
+			last_is_space = 0;
+			if (str[suboff] == '"' || str[suboff] == '\'') {
+				sublen = eat_quoted_str(&str[suboff]);
+//				printf("sublen=%zd\n", sublen);
+				word = unquote_str(&str[suboff], sublen,
+					allow_missing_quote, missing_quote);
+			} else {
+				sublen = eat_str(&str[suboff]);
+//				printf("sublen=%zd\n", sublen);
+				if (sublen == 0)
+					break;
+				word = ec_strndup(&str[suboff], sublen);
+			}
+
+			if (word == NULL)
+				goto fail;
+//			printf("word=%s\n", word);
+
+			len += sublen;
+			suboff += sublen;
+
+			if (concat == NULL) {
+				concat = word;
+				word = NULL;
+			} else {
+				tmp = ec_realloc(concat, len + 1);
+				if (tmp == NULL)
+					goto fail;
+				concat = tmp;
+				strcat(concat, word);
+				ec_free(word);
+				word = NULL;
+			}
+		}
+
+		if (concat != NULL) {
+			if (ec_strvec_add(strvec, concat) < 0)
+				goto fail;
+			ec_free(concat);
+			concat = NULL;
+		}
+
+//		printf("str off=%zd len=%zd\n", off, len);
+		off += len;
+	}
+
+	/* in completion mode, append an empty token if the string ends
+	 * with space */
+	if (completion && last_is_space) {
+		if (ec_strvec_add(strvec, "") < 0)
+			goto fail;
+	}
+
+	return strvec;
 
  fail:
-	for (i = 0; i < count; i++)
-		ec_free(table[i]);
-	ec_free(table);
+	ec_free(word);
+	ec_free(concat);
+	ec_strvec_free(strvec);
 	return NULL;
 }
 
-/* XXX broken: how to support that:
-   shlex(
-     str("toto"),
-     many(str("titi")),
-   )
-
-   that would match:
-     toto
-     toto titi
-     toto titi titi ...
-
-     --> maybe we should not try to create/match the spaces automatically
-
-     it would become:
-
-   shlex(
-     option(space()),   auto?
-     str("toto"),
-     many(
-       space(),
-       str("titi coin"),
-     ),
-     option(space()),   auto?
-   )
-
-   -> the goal of shlex would only be to unquote
-   -> the creation of auto-spaces would be in another token shcmd
-
-   cmd = shcmd_new()
-   shcmd_add_tk("ip", tk_ip_new())
-   shcmd_set_syntax("show <ip>")
-
-
- */
 static struct ec_parsed_tk *ec_tk_shlex_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
-	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
-	unsigned int i;
-	char **tokens, **t;
+	struct ec_strvec *new_vec = NULL, *match_strvec;
+	struct ec_parsed_tk *parsed_tk = NULL, *child_parsed_tk;
+	const char *str;
 
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
 		return NULL;
 
-	tokens = tokenize(str, 0);
-	if (tokens == NULL)
+	if (ec_strvec_len(strvec) == 0)
+		return parsed_tk;
+
+	str = ec_strvec_val(strvec, 0);
+	new_vec = tokenize(str, 0, 0, NULL);
+	if (new_vec == NULL)
 		goto fail;
 
-	t = &tokens[0];
-	for (i = 0, t = &tokens[0]; i < tk->len; i++, t++) {
-		if (*t == NULL)
-			goto fail;
-
-		child_parsed_tk = ec_tk_parse(tk->table[i], *t);
-		if (child_parsed_tk == NULL)
-			goto fail;
-
-		ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
-		if (strlen(child_parsed_tk->str) == 0)
-			t--;
-		else if (strlen(child_parsed_tk->str) != strlen(*t))
-			goto fail;
-	}
-
-	/* check it was the last token */
-	if (*t != NULL)
+	child_parsed_tk = ec_tk_parse_tokens(tk->child, new_vec);
+	if (child_parsed_tk == NULL)
 		goto fail;
 
-	if (tokens != NULL) {
-		for (t = &tokens[0]; *t != NULL; t++)
-			ec_free(*t);
-		ec_free(tokens);
-		tokens = NULL;
+	if (!ec_parsed_tk_matches(child_parsed_tk) ||
+			ec_parsed_tk_len(child_parsed_tk) !=
+				ec_strvec_len(new_vec)) {
+		ec_strvec_free(new_vec);
+		ec_parsed_tk_free(child_parsed_tk);
+		return parsed_tk;
 	}
+	ec_strvec_free(new_vec);
+	new_vec = NULL;
 
-	parsed_tk->str = ec_strdup(str);
+	ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
+	match_strvec = ec_strvec_ndup(strvec, 1);
+	if (match_strvec == NULL)
+		goto fail;
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
 
  fail:
-	if (tokens != NULL) {
-		for (t = &tokens[0]; *t != NULL; t++)
-			ec_free(*t);
-		ec_free(tokens);
-	}
+	ec_strvec_free(new_vec);
 	ec_parsed_tk_free(parsed_tk);
 
 	return NULL;
 }
 
 static struct ec_completed_tk *ec_tk_shlex_complete(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
 	struct ec_completed_tk *completed_tk, *child_completed_tk = NULL;
-	struct ec_parsed_tk *child_parsed_tk;
-	unsigned int i;
-	char **tokens, **t;
+	struct ec_strvec *new_vec = NULL;
+	const char *str;
+	char missing_quote;
 
-	tokens = tokenize(str, 1);
-	if (tokens == NULL)
-		goto fail;
-
-	printf("complete <%s>\n", str);
-	for (t = &tokens[0]; *t != NULL; t++)
-		printf("  token <%s> %p\n", *t, *t);
-
-	t = &tokens[0];
-
+//	printf("==================\n");
 	completed_tk = ec_completed_tk_new();
 	if (completed_tk == NULL)
 		return NULL;
 
+	if (ec_strvec_len(strvec) != 1)
+		return completed_tk;
+
+	str = ec_strvec_val(strvec, 0);
+	new_vec = tokenize(str, 1, 1, &missing_quote);
+	if (new_vec == NULL)
+		goto fail;
+
+//	ec_strvec_dump(new_vec, stdout);
+
+	child_completed_tk = ec_tk_complete_tokens(tk->child, new_vec);
+	if (child_completed_tk == NULL)
+		goto fail;
+
+	ec_strvec_free(new_vec);
+	new_vec = NULL;
+	ec_completed_tk_merge(completed_tk, child_completed_tk);
+
+	return completed_tk;
+
+
+#if 0
 	for (i = 0, t = &tokens[0]; i < tk->len; i++, t++) {
 		if (*(t + 1) != NULL) {
 			child_parsed_tk = ec_tk_parse(tk->table[i], *t);
@@ -329,99 +355,45 @@ static struct ec_completed_tk *ec_tk_shlex_complete(const struct ec_tk *gen_tk,
 	}
 
 	ec_completed_tk_dump(stdout, completed_tk);
-
-	return completed_tk;
+#endif
 
  fail:
-	if (tokens != NULL) {
-		for (t = &tokens[0]; *t != NULL; t++)
-			ec_free(*t);
-		ec_free(tokens);
-	}
+	ec_strvec_free(new_vec);
 	ec_completed_tk_free(completed_tk);
-
 	return NULL;
 }
 
 static void ec_tk_shlex_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
-	unsigned int i;
 
-	for (i = 0; i < tk->len; i++)
-		ec_tk_free(tk->table[i]);
-	ec_free(tk->table);
+	ec_tk_free(tk->child);
 }
 
 static struct ec_tk_ops ec_tk_shlex_ops = {
+	.typename = "shlex",
 	.parse = ec_tk_shlex_parse,
 	.complete = ec_tk_shlex_complete,
 	.free_priv = ec_tk_shlex_free_priv,
 };
 
-struct ec_tk *ec_tk_shlex_new(const char *id)
+struct ec_tk *ec_tk_shlex_new(const char *id, struct ec_tk *child)
 {
 	struct ec_tk_shlex *tk = NULL;
 
-	tk = (struct ec_tk_shlex *)ec_tk_new(id, &ec_tk_shlex_ops, sizeof(*tk));
-	if (tk == NULL)
+	if (child == NULL)
 		return NULL;
 
-	tk->table = NULL;
-	tk->len = 0;
-
-	return &tk->gen;
-}
-
-struct ec_tk *ec_tk_shlex_new_list(const char *id, ...)
-{
-	struct ec_tk_shlex *tk = NULL;
-	struct ec_tk *child;
-	va_list ap;
-
-	va_start(ap, id);
-
-	tk = (struct ec_tk_shlex *)ec_tk_shlex_new(id);
-	if (tk == NULL)
-		goto fail;
-
-	for (child = va_arg(ap, struct ec_tk *);
-	     child != EC_TK_ENDLIST;
-	     child = va_arg(ap, struct ec_tk *)) {
-		if (child == NULL)
-			goto fail;
-
-		ec_tk_shlex_add(&tk->gen, child);
+	tk = (struct ec_tk_shlex *)ec_tk_new(id, &ec_tk_shlex_ops,
+		sizeof(*tk));
+	if (tk == NULL) {
+		ec_tk_free(child);
+		return NULL;
 	}
 
-	va_end(ap);
+	tk->child = child;
+
 	return &tk->gen;
-
-fail:
-	ec_tk_free(&tk->gen); /* will also free children */
-	va_end(ap);
-	return NULL;
-}
-
-int ec_tk_shlex_add(struct ec_tk *gen_tk, struct ec_tk *child)
-{
-	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
-	struct ec_tk **table;
-
-	// XXX check tk type
-
-	assert(tk != NULL);
-	assert(child != NULL);
-
-	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
-	if (table == NULL)
-		return -1;
-
-	tk->table = table;
-	table[tk->len] = child;
-	tk->len ++;
-
-	return 0;
 }
 
 static int ec_tk_shlex_testcase(void)
@@ -429,52 +401,93 @@ static int ec_tk_shlex_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_shlex_new_list(NULL,
-		ec_tk_str_new(NULL, "foo"),
-		ec_tk_option_new(NULL, ec_tk_str_new(NULL, "toto")),
-		ec_tk_str_new(NULL, "bar"),
-		EC_TK_ENDLIST);
+	tk = ec_tk_shlex_new(NULL,
+		ec_tk_seq_new_list(NULL,
+			ec_tk_str_new(NULL, "foo"),
+			ec_tk_option_new(NULL,
+				ec_tk_str_new(NULL, "toto")
+			),
+			ec_tk_str_new(NULL, "bar"),
+			EC_TK_ENDLIST
+		)
+	);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo bar", "foo bar");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " \"foo\" \"bar\"",
-		" \"foo\" \"bar\"");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo toto bar", "foo toto bar");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foo   bar ", " foo   bar ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo bar xxx", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo barxxx", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " \"foo \" \"bar\"", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  foo   bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'foo' \"bar\"", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'f'oo 'toto' bar",
+		EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_shlex_new_list(NULL,
-		ec_tk_str_new(NULL, "foo"),
-		ec_tk_option_new(NULL, ec_tk_str_new(NULL, "toto")),
-		ec_tk_str_new(NULL, "bar"),
-		ec_tk_str_new(NULL, "titi"),
-		EC_TK_ENDLIST);
+	tk = ec_tk_shlex_new(NULL,
+		ec_tk_seq_new_list(NULL,
+			ec_tk_str_new(NULL, "foo"),
+			ec_tk_option_new(NULL,
+				ec_tk_str_new(NULL, "toto")
+			),
+			ec_tk_str_new(NULL, "bar"),
+			ec_tk_str_new(NULL, "titi"),
+			EC_TK_ENDLIST
+		)
+	);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, " ", "foo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "foo ",
-		"bar", "toto", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo t", "oto");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo b", "ar");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo bar", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo bar ", "titi");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo toto bar ", "titi");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo barx", "");
-	ec_tk_free(tk);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		"foo", EC_TK_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		" ", EC_TK_ENDLIST,
+		"foo", EC_TK_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"f", EC_TK_ENDLIST,
+		"oo", EC_TK_ENDLIST,
+		"oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", EC_TK_ENDLIST,
+		"", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo ", EC_TK_ENDLIST,
+		"bar", "toto", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo t", EC_TK_ENDLIST,
+		"oto", EC_TK_ENDLIST,
+		"oto");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo b", EC_TK_ENDLIST,
+		"ar", EC_TK_ENDLIST,
+		"ar");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo bar", EC_TK_ENDLIST,
+		"", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo bar ", EC_TK_ENDLIST,
+		"titi", EC_TK_ENDLIST,
+		"titi");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo toto bar ", EC_TK_ENDLIST,
+		"titi", EC_TK_ENDLIST,
+		"titi");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"x", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo barx", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 
+	ec_tk_free(tk);
 	return ret;
 }
 

@@ -80,7 +80,7 @@ void *__ec_calloc(size_t nmemb, size_t size, const char *file,
 	if (ptr == NULL)
 		return NULL;
 
-	memset(ptr, 0, size);
+	memset(ptr, 0, total);
 	return ptr;
 }
 

@@ -25,11 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_TK_STR_
-#define ECOLI_TK_STR_
+#ifndef ECOLI_TK_MANY_
+#define ECOLI_TK_MANY_
 
-#include <ecoli_tk.h>
-
-struct ec_tk *ec_tk_str_new(const char *id, const char *str);
+/*
+ * if min == max == 0, there is no limit
+ */
+struct ec_tk *ec_tk_many_new(const char *id, struct ec_tk *child,
+	unsigned int min, unsigned int max);
 
 #endif

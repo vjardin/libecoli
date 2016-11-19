@@ -32,52 +32,78 @@
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
 
+struct ec_tk_str {
+	struct ec_tk gen;
+	char *string;
+	unsigned len;
+};
+
 static struct ec_parsed_tk *ec_tk_str_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
-	struct ec_parsed_tk *parsed_tk;
+	struct ec_strvec *match_strvec;
+	struct ec_parsed_tk *parsed_tk = NULL;
+	const char *str;
 
-	if (strncmp(str, tk->string, tk->len) != 0)
-		return NULL;
-
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
-	parsed_tk->str = ec_strndup(str, tk->len);
+	if (ec_strvec_len(strvec) == 0)
+		return parsed_tk;
+
+	str = ec_strvec_val(strvec, 0);
+	if (strcmp(str, tk->string) != 0)
+		return parsed_tk;
+
+	match_strvec = ec_strvec_ndup(strvec, 1);
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
+
+ fail:
+	ec_parsed_tk_free(parsed_tk);
+	return NULL;
 }
 
 static struct ec_completed_tk *ec_tk_str_complete(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
 	struct ec_completed_tk *completed_tk;
 	struct ec_completed_tk_elt *completed_tk_elt;
-	size_t n;
+	const char *str, *add;
+	size_t n = 0;
 
 	completed_tk = ec_completed_tk_new();
 	if (completed_tk == NULL)
 		return NULL;
 
-	/* check the string has the same beginning than the token */
-	for (n = 0; n < tk->len; n++) {
-		if (str[n] != tk->string[n])
-			break;
+	if (ec_strvec_len(strvec) > 1)
+		return completed_tk;
+
+	if (ec_strvec_len(strvec) == 1) {
+		str = ec_strvec_val(strvec, 0);
+		for (n = 0; n < tk->len; n++) {
+			if (str[n] != tk->string[n])
+				break;
+		}
+
+		if (str[n] != '\0')
+			add = NULL;
+		else
+			add = tk->string + n;
 	}
 
-	if (str[n] != '\0')
-		return completed_tk;
-	if (tk->string[n] == '\0')
-		return completed_tk;
-
-	completed_tk_elt = ec_completed_tk_elt_new(gen_tk, tk->string + n,
-		tk->string);
+	completed_tk_elt = ec_completed_tk_elt_new(gen_tk, add);
 	if (completed_tk_elt == NULL) {
 		ec_completed_tk_free(completed_tk);
 		return NULL;
@@ -95,7 +121,8 @@ static void ec_tk_str_free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->string);
 }
 
-static struct ec_tk_ops ec_tk_str_ops = {
+static const struct ec_tk_ops ec_tk_str_ops = {
+	.typename = "str",
 	.parse = ec_tk_str_parse,
 	.complete = ec_tk_str_complete,
 	.free_priv = ec_tk_str_free_priv,
@@ -135,11 +162,11 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foobar", "foo");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foobar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	tk = ec_tk_str_new(NULL, "Здравствуйте");
@@ -147,10 +174,11 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "Здравствуйте", "Здравствуйте");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "Здравствуйте John!", "Здравствуйте");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "Здравствуйте", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "Здравствуйте",
+		"John!", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* an empty token string always matches */
@@ -159,8 +187,9 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "", "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
@@ -169,10 +198,22 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		"foo", EC_TK_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"f", EC_TK_ENDLIST,
+		"oo", EC_TK_ENDLIST,
+		"oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", EC_TK_ENDLIST,
+		"", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"x", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;

@@ -30,11 +30,6 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk_option {
-	struct ec_tk gen;
-	struct ec_tk *child;
-};
-
 struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *tk);
 
 #endif

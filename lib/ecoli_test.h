@@ -67,38 +67,27 @@ void ec_test_register(struct ec_test *test);
 
 int ec_test_all(void);
 
-int ec_test_check_tk_parse(const struct ec_tk *tk, const char *input,
-	const char *expected);
+/* expected == -1 means no match */
+int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...);
 
 #define TEST_ERR()							\
 	ec_log(EC_LOG_ERR, "%s:%d: error: test failed\n",		\
 		__FILE__, __LINE__);					\
 
-#define EC_TEST_CHECK_TK_PARSE(tk, input, expected) ({			\
-	int ret = ec_test_check_tk_parse(tk, input, expected);		\
-	if (ret)							\
+#define EC_TEST_CHECK_TK_PARSE(tk, input, expected...) ({		\
+	int ret_ = ec_test_check_tk_parse(tk, input, expected);		\
+	if (ret_)							\
 		TEST_ERR();						\
-	ret;								\
+	ret_;								\
 })
 
-int ec_test_check_tk_complete(const struct ec_tk *tk, const char *input,
-	const char *expected);
+int ec_test_check_tk_complete(const struct ec_tk *tk, ...);
 
-#define EC_TEST_CHECK_TK_COMPLETE(tk, input, expected) ({		\
-	int ret = ec_test_check_tk_complete(tk, input, expected);	\
-	if (ret)							\
+#define EC_TEST_CHECK_TK_COMPLETE(tk, args...) ({			\
+	int ret_ = ec_test_check_tk_complete(tk, args);			\
+	if (ret_)							\
 		TEST_ERR();						\
-	ret;								\
-})
-
-int ec_test_check_tk_complete_list(const struct ec_tk *tk,
-	const char *input, ...);
-
-#define EC_TEST_CHECK_TK_COMPLETE_LIST(tk, input, expected...) ({	\
-	int ret = ec_test_check_tk_complete_list(tk, input, expected);	\
-	if (ret)							\
-		TEST_ERR();						\
-	ret;								\
+	ret_;								\
 })
 
 #endif

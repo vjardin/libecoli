@@ -29,6 +29,8 @@
 #define ECOLI_MALLOC_
 
 #include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef void *(*ec_malloc_t)(size_t size, const char *file, unsigned int line);
 typedef void (*ec_free_t)(void *ptr, const char *file, unsigned int line);

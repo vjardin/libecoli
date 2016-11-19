@@ -28,21 +28,8 @@
 #ifndef ECOLI_TK_SHLEX_
 #define ECOLI_TK_SHLEX_
 
-#include <sys/queue.h>
-
 #include <ecoli_tk.h>
 
-struct ec_tk_shlex {
-	struct ec_tk gen;
-	struct ec_tk **table;
-	unsigned int len;
-};
-
-struct ec_tk *ec_tk_shlex_new(const char *id);
-
-/* list must be terminated with EC_TK_ENDLIST */
-struct ec_tk *ec_tk_shlex_new_list(const char *id, ...);
-
-int ec_tk_shlex_add(struct ec_tk *tk, struct ec_tk *child);
+struct ec_tk *ec_tk_shlex_new(const char *id, struct ec_tk *child);
 
 #endif

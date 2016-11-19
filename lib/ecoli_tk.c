@@ -29,8 +29,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
@@ -72,27 +74,53 @@ void ec_tk_free(struct ec_tk *tk)
 
 struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str)
 {
+	struct ec_strvec *strvec = NULL;
 	struct ec_parsed_tk *parsed_tk;
 
-	/* by default, it does not match anything */
-	if (tk->ops->parse == NULL)
-		return NULL;
+	errno = ENOMEM;
+	strvec = ec_strvec_new();
+	if (strvec == NULL)
+		goto fail;
 
-	parsed_tk = tk->ops->parse(tk, str);
+	if (ec_strvec_add(strvec, str) < 0)
+		goto fail;
+
+	parsed_tk = ec_tk_parse_tokens(tk, strvec);
+	if (parsed_tk == NULL)
+		goto fail;
+
+	ec_strvec_free(strvec);
+	return parsed_tk;
+
+ fail:
+	ec_strvec_free(strvec);
+	return NULL;
+}
+
+struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *tk,
+	const struct ec_strvec *strvec)
+{
+	struct ec_parsed_tk *parsed_tk;
+
+	if (tk->ops->parse == NULL) {
+		errno = ENOTSUP;
+		return NULL;
+	}
+
+	parsed_tk = tk->ops->parse(tk, strvec);
 
 	return parsed_tk;
 }
 
 
-struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk)
+struct ec_parsed_tk *ec_parsed_tk_new(void)
 {
-	struct ec_parsed_tk *parsed_tk;
+	struct ec_parsed_tk *parsed_tk = NULL;
 
 	parsed_tk = ec_calloc(1, sizeof(*parsed_tk));
 	if (parsed_tk == NULL)
 		goto fail;
 
-	parsed_tk->tk = tk;
 	TAILQ_INIT(&parsed_tk->children);
 
 	return parsed_tk;
@@ -101,7 +129,14 @@ struct ec_parsed_tk *ec_parsed_tk_new(const struct ec_tk *tk)
 	return NULL;
 }
 
-void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk)
+void ec_parsed_tk_set_match(struct ec_parsed_tk *parsed_tk,
+	const struct ec_tk *tk, struct ec_strvec *strvec)
+{
+	parsed_tk->tk = tk;
+	parsed_tk->strvec = strvec;
+}
+
+void ec_parsed_tk_free_children(struct ec_parsed_tk *parsed_tk)
 {
 	struct ec_parsed_tk *child;
 
@@ -113,22 +148,37 @@ void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk)
 		TAILQ_REMOVE(&parsed_tk->children, child, next);
 		ec_parsed_tk_free(child);
 	}
-	ec_free(parsed_tk->str);
+}
+
+void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk)
+{
+	if (parsed_tk == NULL)
+		return;
+
+	ec_parsed_tk_free_children(parsed_tk);
+	ec_strvec_free(parsed_tk->strvec);
 	ec_free(parsed_tk);
 }
 
-static void __ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk,
-	size_t indent)
+static void __ec_parsed_tk_dump(FILE *out,
+	const struct ec_parsed_tk *parsed_tk, size_t indent)
 {
 	struct ec_parsed_tk *child;
 	size_t i;
-	const char *s;
+	const char *s, *id = "None", *typename = "None";
 
 	/* XXX enhance */
 	for (i = 0; i < indent; i++)
 		fprintf(out, " ");
+
 	s = ec_parsed_tk_to_string(parsed_tk);
-	fprintf(out, "id=%s, s=<%s>\n", parsed_tk->tk->id, s);
+	if (parsed_tk->tk != NULL) {
+		if (parsed_tk->tk->id != NULL)
+			id = parsed_tk->tk->id;
+		typename = parsed_tk->tk->ops->typename;
+	}
+
+	fprintf(out, "tk_type=%s, id=%s, s=<%s>\n", typename, id, s);
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next)
 		__ec_parsed_tk_dump(out, child, indent + 2);
@@ -137,6 +187,10 @@ static void __ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk,
 void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk)
 {
 	if (parsed_tk == NULL) {
+		fprintf(out, "parsed_tk is NULL, error in parse\n");
+		return;
+	}
+	if (!ec_parsed_tk_matches(parsed_tk)) {
 		fprintf(out, "no match\n");
 		return;
 	}
@@ -158,7 +212,9 @@ struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
 	if (parsed_tk == NULL)
 		return NULL;
 
-	if (parsed_tk->tk->id != NULL && !strcmp(parsed_tk->tk->id, id))
+	if (parsed_tk->tk != NULL &&
+			parsed_tk->tk->id != NULL &&
+			!strcmp(parsed_tk->tk->id, id))
 		return parsed_tk;
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next) {
@@ -170,12 +226,34 @@ struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
 	return NULL;
 }
 
+/* XXX return NUL if it matches several tokens?
+   or add a parameter to join() the tokens ? */
 const char *ec_parsed_tk_to_string(const struct ec_parsed_tk *parsed_tk)
 {
-	if (parsed_tk == NULL)
+	if (parsed_tk == NULL || parsed_tk->strvec == NULL)
 		return NULL;
 
-	return parsed_tk->str;
+	return ec_strvec_val(parsed_tk->strvec, 0);
+}
+
+/* number of parsed tokens */
+size_t ec_parsed_tk_len(const struct ec_parsed_tk *parsed_tk)
+{
+	if (parsed_tk == NULL || parsed_tk->strvec == NULL)
+		return 0;
+
+	return ec_strvec_len(parsed_tk->strvec);
+}
+
+size_t ec_parsed_tk_matches(const struct ec_parsed_tk *parsed_tk)
+{
+	if (parsed_tk == NULL)
+		return 0;
+
+	if (parsed_tk->tk == NULL && TAILQ_EMPTY(&parsed_tk->children))
+		return 0;
+
+	return 1;
 }
 
 struct ec_completed_tk *ec_completed_tk_new(void)
@@ -187,13 +265,13 @@ struct ec_completed_tk *ec_completed_tk_new(void)
 		return NULL;
 
 	TAILQ_INIT(&completed_tk->elts);
-	completed_tk->count = 0;
+	completed_tk->count_match = 0;
 
 	return completed_tk;
 }
 
 struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
-	const char *add, const char *full)
+	const char *add)
 {
 	struct ec_completed_tk_elt *elt = NULL;
 
@@ -205,13 +283,6 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 	if (add != NULL) {
 		elt->add = ec_strdup(add);
 		if (elt->add == NULL) {
-			ec_completed_tk_elt_free(elt);
-			return NULL;
-		}
-	}
-	if (full != NULL) {
-		elt->full = ec_strdup(full);
-		if (elt->full == NULL) {
 			ec_completed_tk_elt_free(elt);
 			return NULL;
 		}
@@ -228,14 +299,57 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
 struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
 	const char *str)
 {
+	struct ec_strvec *strvec = NULL;
 	struct ec_completed_tk *completed_tk;
 
-	if (tk->ops->complete == NULL)
-		return ec_completed_tk_new();
+	errno = ENOMEM;
+	strvec = ec_strvec_new();
+	if (strvec == NULL)
+		goto fail;
 
-	completed_tk = tk->ops->complete(tk, str);
+	if (ec_strvec_add(strvec, str) < 0)
+		goto fail;
+
+	completed_tk = ec_tk_complete_tokens(tk, strvec);
+	if (completed_tk == NULL)
+		goto fail;
+
+	ec_strvec_free(strvec);
+	return completed_tk;
+
+ fail:
+	ec_strvec_free(strvec);
+	return NULL;
+}
+
+/* default completion function: return a no-match element */
+struct ec_completed_tk *ec_tk_default_complete(const struct ec_tk *gen_tk,
+	const struct ec_strvec *strvec)
+{
+	struct ec_completed_tk *completed_tk;
+	struct ec_completed_tk_elt *completed_tk_elt;
+
+	(void)strvec;
+
+	completed_tk = ec_completed_tk_new();
+	if (completed_tk == NULL)
+		return NULL;
+
+	completed_tk_elt = ec_completed_tk_elt_new(gen_tk, NULL);
+	if (completed_tk_elt == NULL) {
+		ec_completed_tk_free(completed_tk);
+		return NULL;
+	}
+
+	ec_completed_tk_add_elt(completed_tk, completed_tk_elt);
 
 	return completed_tk;
+}
+
+struct ec_completed_tk *ec_tk_complete_tokens(const struct ec_tk *tk,
+	const struct ec_strvec *strvec)
+{
+	return tk->ops->complete(tk, strvec);
 }
 
 /* count the number of identical chars at the beginning of 2 strings */
@@ -256,6 +370,8 @@ void ec_completed_tk_add_elt(
 
 	TAILQ_INSERT_TAIL(&completed_tk->elts, elt, next);
 	completed_tk->count++;
+	if (elt->add != NULL)
+		completed_tk->count_match++;
 	if (elt->add != NULL) {
 		if (completed_tk->smallest_start == NULL) {
 			completed_tk->smallest_start = ec_strdup(elt->add);
@@ -270,7 +386,6 @@ void ec_completed_tk_add_elt(
 void ec_completed_tk_elt_free(struct ec_completed_tk_elt *elt)
 {
 	ec_free(elt->add);
-	ec_free(elt->full);
 	ec_free(elt);
 }
 
@@ -316,12 +431,13 @@ void ec_completed_tk_dump(FILE *out, const struct ec_completed_tk *completed_tk)
 		return;
 	}
 
-	fprintf(out, "completion: count=%u smallest_start=<%s>\n",
-		completed_tk->count, completed_tk->smallest_start);
+	fprintf(out, "completion: count=%u match=%u smallest_start=<%s>\n",
+		completed_tk->count, completed_tk->count_match,
+		completed_tk->smallest_start);
 
 	TAILQ_FOREACH(elt, &completed_tk->elts, next) {
-		fprintf(out, "add=<%s>, full=<%s>, tk=%p\n",
-			elt->add, elt->full, elt->tk);
+		fprintf(out, "add=<%s>, tk=%p, tk_type=%s\n",
+			elt->add, elt->tk, elt->tk->ops->typename);
 	}
 }
 
@@ -334,33 +450,62 @@ const char *ec_completed_tk_smallest_start(
 	return completed_tk->smallest_start;
 }
 
-unsigned int ec_completed_tk_count(const struct ec_completed_tk *completed_tk)
+unsigned int ec_completed_tk_count_match(
+	const struct ec_completed_tk *completed_tk)
 {
 	if (completed_tk == NULL)
 		return 0;
 
-	return completed_tk->count;
+	return completed_tk->count_match;
 }
 
-void ec_completed_tk_iter_start(struct ec_completed_tk *completed_tk)
+struct ec_completed_tk_iter *
+ec_completed_tk_iter_new(struct ec_completed_tk *completed_tk,
+	enum ec_completed_tk_filter_flags flags)
 {
-	if (completed_tk == NULL)
-		return;
+	struct ec_completed_tk_iter *iter;
 
-	completed_tk->cur = NULL;
+	iter = ec_calloc(1, sizeof(*iter));
+	if (iter == NULL)
+		return NULL;
+
+	iter->completed_tk = completed_tk;
+	iter->flags = flags;
+	iter->cur = NULL;
+
+	return iter;
 }
 
 const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
-	struct ec_completed_tk *completed_tk)
+	struct ec_completed_tk_iter *iter)
 {
-	if (completed_tk == NULL)
+	if (iter->completed_tk == NULL)
 		return NULL;
 
-	if (completed_tk->cur == NULL) {
-		completed_tk->cur = TAILQ_FIRST(&completed_tk->elts);
-	} else {
-		completed_tk->cur = TAILQ_NEXT(completed_tk->cur, next);
-	}
+	do {
+		if (iter->cur == NULL) {
+			iter->cur = TAILQ_FIRST(&iter->completed_tk->elts);
+		} else {
+			iter->cur = TAILQ_NEXT(iter->cur, next);
+		}
 
-	return completed_tk->cur;
+		if (iter->cur == NULL)
+			break;
+
+		if (iter->cur->add == NULL &&
+				(iter->flags & ITER_NO_MATCH))
+			break;
+
+		if (iter->cur->add != NULL &&
+				(iter->flags & ITER_MATCH))
+			break;
+
+	} while (iter->cur != NULL);
+
+	return iter->cur;
+}
+
+void ec_completed_tk_iter_free(struct ec_completed_tk_iter *iter)
+{
+	ec_free(iter);
 }

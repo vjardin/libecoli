@@ -25,11 +25,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_TK_STR_
-#define ECOLI_TK_STR_
+#ifndef ECOLI_STRVEC_
+#define ECOLI_STRVEC_
 
-#include <ecoli_tk.h>
+#include <stdio.h>
 
-struct ec_tk *ec_tk_str_new(const char *id, const char *str);
+struct ec_strvec {
+	size_t len;
+	char **vec;
+};
+
+struct ec_strvec *ec_strvec_new(void);
+int ec_strvec_add(struct ec_strvec *strvec, const char *s);
+struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec);
+struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t len);
+void ec_strvec_free(struct ec_strvec *strvec);
+size_t ec_strvec_len(const struct ec_strvec *strvec);
+char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
+int ec_strvec_slice(struct ec_strvec *strvec, const struct ec_strvec *from,
+	size_t off);
+void ec_strvec_dump(const struct ec_strvec *strvec, FILE *out);
 
 #endif

@@ -34,33 +34,54 @@
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_tk_option.h>
 #include <ecoli_tk_seq.h>
 
+struct ec_tk_seq {
+	struct ec_tk gen;
+	struct ec_tk **table;
+	unsigned int len;
+};
+
 static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
+	struct ec_strvec *match_strvec;
+	struct ec_strvec childvec;
 	size_t len = 0;
 	unsigned int i;
 
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
 	for (i = 0; i < tk->len; i++) {
-		child_parsed_tk = ec_tk_parse(tk->table[i], str + len);
-		if (child_parsed_tk == NULL)
+		if (ec_strvec_slice(&childvec, strvec, len) < 0)
 			goto fail;
 
-		len += strlen(child_parsed_tk->str);
+		child_parsed_tk = ec_tk_parse_tokens(tk->table[i], &childvec);
+		if (child_parsed_tk == NULL)
+			goto fail;
+		if (!ec_parsed_tk_matches(child_parsed_tk)) {
+			ec_parsed_tk_free(child_parsed_tk);
+			ec_parsed_tk_free_children(parsed_tk);
+			return parsed_tk;
+		}
+
 		ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
+		len += ec_parsed_tk_len(child_parsed_tk);
 	}
 
-	parsed_tk->str = ec_strndup(str, len);
+	match_strvec = ec_strvec_ndup(strvec, len);
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
 
@@ -70,10 +91,11 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 }
 
 static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_completed_tk *completed_tk, *child_completed_tk;
+	struct ec_strvec childvec;
 	struct ec_parsed_tk *parsed_tk;
 	size_t len = 0;
 	unsigned int i;
@@ -85,23 +107,35 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 	if (tk->len == 0)
 		return completed_tk;
 
-	for (i = 0; i < tk->len; i++) {
-		child_completed_tk = ec_tk_complete(tk->table[i], str + len);
+	for (i = 0; i < tk->len && len < ec_strvec_len(strvec); i++) {
+		if (ec_strvec_slice(&childvec, strvec, len) < 0)
+			goto fail;
+
+		child_completed_tk = ec_tk_complete_tokens(tk->table[i],
+			&childvec);
 		if (child_completed_tk == NULL) {
 			ec_completed_tk_free(completed_tk);
 			return NULL;
 		}
 		ec_completed_tk_merge(completed_tk, child_completed_tk);
 
-		parsed_tk = ec_tk_parse(tk->table[i], str + len);
+		parsed_tk = ec_tk_parse_tokens(tk->table[i], &childvec);
 		if (parsed_tk == NULL)
+			goto fail;
+		if (!ec_parsed_tk_matches(parsed_tk)) {
+			ec_parsed_tk_free(parsed_tk);
 			break;
+		}
 
-		len += strlen(parsed_tk->str);
+		len += ec_strvec_len(parsed_tk->strvec);
 		ec_parsed_tk_free(parsed_tk);
 	}
 
 	return completed_tk;
+
+fail:
+	/* XXX */
+	return NULL;
 }
 
 static void ec_tk_seq_free_priv(struct ec_tk *gen_tk)
@@ -115,6 +149,7 @@ static void ec_tk_seq_free_priv(struct ec_tk *gen_tk)
 }
 
 static struct ec_tk_ops ec_tk_seq_ops = {
+	.typename = "seq",
 	.parse = ec_tk_seq_parse,
 	.complete = ec_tk_seq_complete,
 	.free_priv = ec_tk_seq_free_priv,
@@ -139,6 +174,7 @@ struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
 	struct ec_tk_seq *tk = NULL;
 	struct ec_tk *child;
 	va_list ap;
+	int fail = 0;
 
 	va_start(ap, id);
 
@@ -149,11 +185,14 @@ struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
 	for (child = va_arg(ap, struct ec_tk *);
 	     child != EC_TK_ENDLIST;
 	     child = va_arg(ap, struct ec_tk *)) {
-		if (child == NULL)
-			goto fail;
+		/* on error, don't quit the loop to avoid leaks */
 
-		ec_tk_seq_add(&tk->gen, child);
+		if (child == NULL || ec_tk_seq_add(&tk->gen, child) < 0)
+			fail = 1;
 	}
+
+	if (fail == 1)
+		goto fail;
 
 	va_end(ap);
 	return &tk->gen;
@@ -198,11 +237,14 @@ static int ec_tk_seq_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foobar", "foobar");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foobarxxx", "foobar");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foobar", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "bar", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", "toto",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foox", "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", "barx", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "bar", "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", "foo", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
@@ -215,16 +257,42 @@ static int ec_tk_seq_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "foo",
-		"bar", "toto", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foot", "oto");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foob", "ar");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobar", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foobarx", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		"foo", EC_TK_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"f", EC_TK_ENDLIST,
+		"oo", EC_TK_ENDLIST,
+		"oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", EC_TK_ENDLIST,
+		"", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", "", EC_TK_ENDLIST,
+		"bar", "toto", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", "t", EC_TK_ENDLIST,
+		"oto", EC_TK_ENDLIST,
+		"oto");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", "b", EC_TK_ENDLIST,
+		"ar", EC_TK_ENDLIST,
+		"ar");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", "bar", EC_TK_ENDLIST,
+		"", EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"x", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foobarx", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;

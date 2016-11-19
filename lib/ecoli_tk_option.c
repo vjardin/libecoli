@@ -33,39 +33,58 @@
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_option.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_test.h>
 
+struct ec_tk_option {
+	struct ec_tk gen;
+	struct ec_tk *child;
+};
+
 static struct ec_parsed_tk *ec_tk_option_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_option *tk = (struct ec_tk_option *)gen_tk;
-	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
+	struct ec_parsed_tk *parsed_tk = NULL, *child_parsed_tk;
+	struct ec_strvec *match_strvec;
 
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
-	child_parsed_tk = ec_tk_parse(tk->child, str);
-	if (child_parsed_tk != NULL) {
+	child_parsed_tk = ec_tk_parse_tokens(tk->child, strvec);
+	if (child_parsed_tk == NULL)
+		goto fail;
+
+	if (ec_parsed_tk_matches(child_parsed_tk)) {
 		ec_parsed_tk_add_child(parsed_tk, child_parsed_tk);
-		parsed_tk->str = ec_strndup(child_parsed_tk->str,
-			strlen(child_parsed_tk->str));
+		match_strvec = ec_strvec_dup(child_parsed_tk->strvec);
 	} else {
-		parsed_tk->str = ec_strdup("");
+		ec_parsed_tk_free(child_parsed_tk);
+		match_strvec = ec_strvec_new();
 	}
 
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
+
 	return parsed_tk;
+
+ fail:
+	ec_parsed_tk_free(parsed_tk);
+	return NULL;
 }
 
 static struct ec_completed_tk *ec_tk_option_complete(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_option *tk = (struct ec_tk_option *)gen_tk;
 
-	return ec_tk_complete(tk->child, str);
+	return ec_tk_complete_tokens(tk->child, strvec);
 }
 
 static void ec_tk_option_free_priv(struct ec_tk *gen_tk)
@@ -76,6 +95,7 @@ static void ec_tk_option_free_priv(struct ec_tk *gen_tk)
 }
 
 static struct ec_tk_ops ec_tk_option_ops = {
+	.typename = "option",
 	.parse = ec_tk_option_parse,
 	.complete = ec_tk_option_complete,
 	.free_priv = ec_tk_option_free_priv,
@@ -90,8 +110,10 @@ struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *child)
 
 	tk = (struct ec_tk_option *)ec_tk_new(id, &ec_tk_option_ops,
 		sizeof(*tk));
-	if (tk == NULL)
+	if (tk == NULL) {
+		ec_tk_free(child);
 		return NULL;
+	}
 
 	tk->child = child;
 
@@ -108,9 +130,10 @@ static int ec_tk_option_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "foo");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "bar", "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
@@ -119,11 +142,18 @@ static int ec_tk_option_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "foo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "f", "oo");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "b", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE_LIST(tk, "",
-		"foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		"foo", EC_TK_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"f", EC_TK_ENDLIST,
+		"oo", EC_TK_ENDLIST,
+		"oo");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"b", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;

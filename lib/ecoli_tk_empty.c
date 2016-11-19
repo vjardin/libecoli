@@ -32,31 +32,49 @@
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_empty.h>
 
+struct ec_tk_empty {
+	struct ec_tk gen;
+};
+
 static struct ec_parsed_tk *ec_tk_empty_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_parsed_tk *parsed_tk;
+	struct ec_strvec *match_strvec;
 
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	(void)strvec;
+
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
-	(void)str;
-	parsed_tk->str = ec_strdup("");
+	match_strvec = ec_strvec_new();
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
+
+ fail:
+	ec_parsed_tk_free(parsed_tk);
+	return NULL;
 }
 
 static struct ec_tk_ops ec_tk_empty_ops = {
+	.typename = "empty",
 	.parse = ec_tk_empty_parse,
+	.complete = ec_tk_default_complete,
 };
 
 struct ec_tk *ec_tk_empty_new(const char *id)
 {
-	return ec_tk_new(id, &ec_tk_empty_ops, sizeof(struct ec_tk_empty));
+	return ec_tk_new(id, &ec_tk_empty_ops,
+		sizeof(struct ec_tk_empty));
 }
 
 static int ec_tk_empty_testcase(void)
@@ -69,9 +87,9 @@ static int ec_tk_empty_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " foo", "");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "", "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo", "bar", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* never completes */
@@ -80,8 +98,14 @@ static int ec_tk_empty_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;

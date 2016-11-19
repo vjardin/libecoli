@@ -29,31 +29,68 @@
 #include <stdio.h>
 #include <assert.h>
 #include <getopt.h>
+#include <execinfo.h>
 
+#include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
 
+#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
+		((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
+static int log_level = EC_LOG_INFO;
+static int alloc_fail_proba = 0;
+
 static const char ec_short_options[] =
-	"h" /* help */
+	"h"  /* help */
+	"l:" /* log-level */
+	"r:" /* random-alloc-fail */
 	;
 
-enum {
-	/* long options */
-	EC_OPT_LONG_MIN_NUM = 256,
 #define EC_OPT_HELP "help"
-	EC_OPT_HELP_NUM,
-};
+#define EC_OPT_LOG_LEVEL "log-level"
+#define EC_OPT_RANDOM_ALLOC_FAIL "random-alloc-fail"
 
 static const struct option ec_long_options[] = {
-	{EC_OPT_HELP, 1, NULL, EC_OPT_HELP_NUM},
+	{EC_OPT_HELP, 1, NULL, 'h'},
+	{EC_OPT_LOG_LEVEL, 1, NULL, 'l'},
+	{EC_OPT_RANDOM_ALLOC_FAIL, 1, NULL, 'r'},
 	{NULL, 0, NULL, 0}
 };
 
 static void usage(const char *prgname)
 {
 	printf("%s [options]\n"
-		   "  --"EC_OPT_HELP": show this help\n"
+		"  -h\n"
+		"  --"EC_OPT_HELP"\n"
+		"      Show this help.\n"
+		"  -l <level>\n"
+		"  --"EC_OPT_LOG_LEVEL"=<level>\n"
+		"      Set log level (0 = no log, 6 = verbose).\n"
+		"  -r <probability>\n"
+		"  --"EC_OPT_RANDOM_ALLOC_FAIL"=<probability>\n"
+		"      Cause malloc to fail randomly. This helps to debug\n"
+		"      leaks or crashes in error cases. The probability is\n"
+		"      between 0 and 100.\n"
 		, prgname);
+}
+
+static int
+parse_int(const char *s, int min, int max, int *ret, unsigned int base)
+{
+	char *end = NULL;
+	long long n;
+
+	n = strtoll(s, &end, base);
+	if ((s[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+	if (n < min)
+		return -1;
+	if (n > max)
+		return -1;
+
+	*ret = n;
+	return 0;
 }
 
 static void parse_args(int argc, char **argv)
@@ -65,9 +102,26 @@ static void parse_args(int argc, char **argv)
 
 		switch (opt) {
 		case 'h': /* help */
-		case EC_OPT_HELP_NUM:
 			usage(argv[0]);
 			exit(0);
+
+		case 'l': /* log-level */
+			if (parse_int(optarg, EC_LOG_EMERG,
+					EC_LOG_DEBUG, &log_level, 10) < 0) {
+				printf("Invalid log value\n");
+				usage(argv[0]);
+				exit(1);
+			}
+			break;
+
+		case 'r': /* random-alloc-fail */
+			if (parse_int(optarg, 0, 100, &alloc_fail_proba,
+					10) < 0) {
+				printf("Invalid probability value\n");
+				usage(argv[0]);
+				exit(1);
+			}
+			break;
 
 		default:
 			usage(argv[0]);
@@ -80,11 +134,14 @@ TAILQ_HEAD(debug_alloc_hdr_list, debug_alloc_hdr);
 static struct debug_alloc_hdr_list debug_alloc_hdr_list =
 	TAILQ_HEAD_INITIALIZER(debug_alloc_hdr_list);
 
+#define STACK_SZ 16
 struct debug_alloc_hdr {
 	TAILQ_ENTRY(debug_alloc_hdr) next;
 	const char *file;
 	unsigned int line;
 	size_t size;
+	void *stack[STACK_SZ];
+	int stacklen;
 	unsigned int cookie;
 };
 
@@ -99,22 +156,28 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	size_t new_size = size + sizeof(*hdr) + sizeof(*ftr);
 	void *ret;
 
-	hdr = malloc(new_size);
+
+	if (alloc_fail_proba != 0 && (random() % 100) < alloc_fail_proba)
+		hdr = NULL;
+	else
+		hdr = malloc(new_size);
+
 	if (hdr == NULL) {
 		ret = NULL;
 	} else {
 		hdr->file = file;
 		hdr->line = line;
 		hdr->size = size;
+		hdr->stacklen = backtrace(hdr->stack, COUNT_OF(hdr->stack));
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
 		ret = hdr + 1;
 		ftr = (struct debug_alloc_ftr *)(
 			(char *)hdr + size + sizeof(*hdr));
-		ftr->cookie = 0x12345678;
+		ftr->cookie = 0x87654321;
 	}
 
-	ec_log(EC_LOG_INFO, "%s:%d: info: malloc(%zd) -> %p\n",
+	ec_log(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p\n",
 		file, line, size, ret);
 
 	return ret;
@@ -128,7 +191,7 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	(void)file;
 	(void)line;
 
-	ec_log(EC_LOG_INFO, "%s:%d: info: free(%p)\n", file, line, ptr);
+	ec_log(EC_LOG_DEBUG, "%s:%d: info: free(%p)\n", file, line, ptr);
 
 	if (ptr == NULL)
 		return;
@@ -141,7 +204,7 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	}
 
 	ftr = (ptr + hdr->size);
-	if (ftr->cookie != 0x12345678) {
+	if (ftr->cookie != 0x87654321) {
 		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad end cookie\n",
 			file, line, ptr);
 		abort();
@@ -162,7 +225,8 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	free(hdr);
 }
 
-void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
+static void *debug_realloc(void *ptr, size_t size, const char *file,
+	unsigned int line)
 {
 	struct debug_alloc_hdr *hdr, *h;
 	struct debug_alloc_ftr *ftr;
@@ -179,7 +243,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		}
 
 		ftr = (ptr + hdr->size);
-		if (ftr->cookie != 0x12345678) {
+		if (ftr->cookie != 0x87654321) {
 			ec_log(EC_LOG_ERR,
 				"%s:%d: error: realloc(%p): bad end cookie\n",
 				file, line, ptr);
@@ -217,37 +281,71 @@ void *debug_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 		hdr->file = file;
 		hdr->line = line;
 		hdr->size = size;
+		hdr->stacklen = backtrace(hdr->stack, COUNT_OF(hdr->stack));
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
 		ftr = (struct debug_alloc_ftr *)(
 			(char *)hdr + size + sizeof(*hdr));
-		ftr->cookie = 0x12345678;
+		ftr->cookie = 0x87654321;
 	}
 
-	ec_log(EC_LOG_INFO, "%s:%d: info: realloc(%p, %zd) -> %p\n",
+	ec_log(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p\n",
 		file, line, ptr, size, ret);
 
 	return ret;
 }
 
-void debug_alloc_dump(void)
+static int debug_alloc_dump_leaks(void)
 {
 	struct debug_alloc_hdr *hdr;
+	int i;
+	char **buffer;
+
+	if (TAILQ_EMPTY(&debug_alloc_hdr_list))
+		return 0;
 
 	TAILQ_FOREACH(hdr, &debug_alloc_hdr_list, next) {
-		ec_log(EC_LOG_ERR, "%s:%d: error: memory leak size=%zd ptr=%p\n",
+		ec_log(EC_LOG_ERR,
+			"%s:%d: error: memory leak size=%zd ptr=%p\n",
 			hdr->file, hdr->line, hdr->size, hdr + 1);
+		buffer = backtrace_symbols(hdr->stack, hdr->stacklen);
+		if (buffer == NULL) {
+			for (i = 0; i < hdr->stacklen; i++)
+				ec_log(EC_LOG_ERR, "  %p\n", hdr->stack[i]);
+		} else {
+			for (i = 0; i < hdr->stacklen; i++)
+				ec_log(EC_LOG_ERR, "  %s\n",
+					buffer ? buffer[i] : "unknown");
+		}
+		free(buffer);
 	}
+
+	ec_log(EC_LOG_ERR,
+		"  missing static syms, use: addr2line -f -e <prog> <addr>\n");
+
+	return -1;
+}
+
+static int debug_log(unsigned int level, void *opaque, const char *str)
+{
+	(void)opaque;
+
+	if (level > (unsigned int)log_level)
+		return 0;
+
+	return printf("%s", str);
 }
 
 int main(int argc, char **argv)
 {
-	int ret;
+	int ret, leaks;
 
 	parse_args(argc, argv);
 
-	TAILQ_INIT(&debug_alloc_hdr_list);
+	ec_log_register(debug_log, NULL);
+
 	/* register a new malloc to track memleaks */
+	TAILQ_INIT(&debug_alloc_hdr_list);
 	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
 		ec_log(EC_LOG_ERR, "cannot register new malloc\n");
 		return -1;
@@ -256,10 +354,17 @@ int main(int argc, char **argv)
 	ret = ec_test_all();
 
 	ec_malloc_unregister();
-	debug_alloc_dump();
+	leaks = debug_alloc_dump_leaks();
 
-	if (ret != 0)
+	if (alloc_fail_proba == 0 && ret != 0) {
 		printf("tests failed\n");
+		return 1;
+	} else if (alloc_fail_proba != 0 && leaks != 0) {
+		printf("tests failed (memory leak)\n");
+		return 1;
+	}
+
+	printf("\ntests ok\n");
 
 	return 0;
 }

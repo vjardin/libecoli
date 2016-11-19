@@ -34,11 +34,19 @@
 
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_int.h>
 #include <ecoli_test.h>
 
-static size_t parse_llint(struct ec_tk_int *tk, const char *str,
+struct ec_tk_int {
+	struct ec_tk gen;
+	long long int min;
+	long long int max;
+	unsigned int base;
+};
+
+static int parse_llint(struct ec_tk_int *tk, const char *str,
 	long long *val)
 {
 	char *endptr;
@@ -46,44 +54,57 @@ static size_t parse_llint(struct ec_tk_int *tk, const char *str,
 	errno = 0;
 	*val = strtoll(str, &endptr, tk->base);
 
-	/* starts with a space */
-	if (isspace(str[0]))
-		return 0;
-
 	/* out of range */
 	if ((errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN)) ||
 			(errno != 0 && *val == 0))
-		return 0;
+		return -1;
 
 	if (*val < tk->min || *val > tk->max)
-		return 0;
+		return -1;
 
-	return endptr - str;
+	if (*endptr != 0)
+		return -1;
+
+	return 0;
 }
 
 static struct ec_parsed_tk *ec_tk_int_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
 	struct ec_tk_int *tk = (struct ec_tk_int *)gen_tk;
 	struct ec_parsed_tk *parsed_tk;
+	struct ec_strvec *match_strvec;
+	const char *str;
 	long long val;
-	size_t len;
 
-	len = parse_llint(tk, str, &val);
-	if (len == 0)
-		return NULL;
-
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
-	parsed_tk->str = ec_strndup(str, len);
+	if (ec_strvec_len(strvec) == 0)
+		return parsed_tk;
+
+	str = ec_strvec_val(strvec, 0);
+	if (parse_llint(tk, str, &val) < 0)
+		return parsed_tk;
+
+	match_strvec = ec_strvec_ndup(strvec, 1);
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
+
+ fail:
+	ec_parsed_tk_free(parsed_tk);
+	return NULL;
 }
 
 static struct ec_tk_ops ec_tk_int_ops = {
+	.typename = "int",
 	.parse = ec_tk_int_parse,
+	.complete = ec_tk_default_complete,
 };
 
 struct ec_tk *ec_tk_int_new(const char *id, long long int min,
@@ -127,12 +148,12 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "256", "256");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0x100", "0x100");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-1", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0x101", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " 1", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "256", "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x100", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " 1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x101", EC_TK_ENDLIST);
 
 	p = ec_tk_parse(tk, "0");
 	s = ec_parsed_tk_to_string(p);
@@ -160,13 +181,11 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-1", "-1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "7fffffffffffffff",
-		"7fffffffffffffff");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0x7fffffffffffffff",
-		"0x7fffffffffffffff");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-2", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "7fffffffffffffff", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x7fffffffffffffff", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-2", EC_TK_ENDLIST);
 
 	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
@@ -184,12 +203,12 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0", "0");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-1", "-1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "-9223372036854775808",
-		"-9223372036854775808");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "0x0", "0");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "1", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-9223372036854775808",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x0", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "1", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
@@ -198,9 +217,18 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "x", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "1", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"x", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"1", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;

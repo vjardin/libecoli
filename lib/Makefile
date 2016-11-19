@@ -33,13 +33,15 @@ O ?= build/
 CFLAGS  = -g -O0 -Wall -Werror -W -fPIC
 CFLAGS += -I.
 
-srcs := ecoli_tk.c ecoli_tk_str.c ecoli_tk_seq.c
+srcs := ecoli_tk.c ecoli_malloc.c ecoli_log.c ecoli_strvec.c
+srcs += ecoli_tk_str.c ecoli_tk_seq.c
 srcs += ecoli_tk_space.c ecoli_tk_or.c ecoli_test.c
 srcs += ecoli_tk_empty.c ecoli_tk_int.c
-srcs += ecoli_malloc.c ecoli_log.c ecoli_tk_option.c
+srcs += ecoli_tk_option.c ecoli_tk_many.c
 srcs += ecoli_tk_shlex.c
 shlib-y-$(O)libecoli.so := $(srcs)
 
+ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(srcs) main.c
 
 ldflags-$(O)readline = -lreadline

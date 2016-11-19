@@ -33,32 +33,52 @@
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
+#include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_space.h>
 
+struct ec_tk_space {
+	struct ec_tk gen;
+};
+
 static struct ec_parsed_tk *ec_tk_space_parse(const struct ec_tk *gen_tk,
-	const char *str)
+	const struct ec_strvec *strvec)
 {
-	struct ec_parsed_tk *parsed_tk;
+	struct ec_parsed_tk *parsed_tk = NULL;
+	struct ec_strvec *match_strvec;
+	const char *str;
 	size_t len = 0;
 
-	if (!isspace(str[0]))
-		return NULL;
-
-	parsed_tk = ec_parsed_tk_new(gen_tk);
+	parsed_tk = ec_parsed_tk_new();
 	if (parsed_tk == NULL)
-		return NULL;
+		goto fail;
 
+	if (ec_strvec_len(strvec) == 0)
+		return parsed_tk;
+
+	str = ec_strvec_val(strvec, 0);
 	while (isspace(str[len]))
 		len++;
+	if (len == 0 || len != strlen(str))
+		return parsed_tk;
 
-	parsed_tk->str = ec_strndup(str, len);
+	match_strvec = ec_strvec_ndup(strvec, 1);
+	if (match_strvec == NULL)
+		goto fail;
+
+	ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 
 	return parsed_tk;
+
+ fail:
+	ec_parsed_tk_free(parsed_tk);
+	return NULL;
 }
 
 static struct ec_tk_ops ec_tk_space_ops = {
+	.typename = "space",
 	.parse = ec_tk_space_parse,
+	.complete = ec_tk_default_complete,
 };
 
 struct ec_tk *ec_tk_space_new(const char *id)
@@ -76,11 +96,11 @@ static int ec_tk_space_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, " ", " ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "	", "	");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "  foo", "  ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo", NULL);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, "foo ", NULL);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ", "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo ", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
 	/* test completion */
@@ -89,9 +109,18 @@ static int ec_tk_space_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, " ", "");
-	ret |= EC_TEST_CHECK_TK_COMPLETE(tk, "foo", "");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		" ", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		"foo", EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ec_tk_free(tk);
 
 	return ret;
