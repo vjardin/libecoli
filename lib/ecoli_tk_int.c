@@ -157,22 +157,12 @@ static int ec_tk_int_testcase(void)
 
 	p = ec_tk_parse(tk, "0");
 	s = ec_parsed_tk_to_string(p);
-	if (s == NULL) {
-		TEST_ERR();
-	} else {
-		if (ec_tk_int_getval(tk, s) != 0)
-			TEST_ERR();
-	}
+	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 0);
 	ec_parsed_tk_free(p);
 
 	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
-	if (s == NULL) {
-		TEST_ERR();
-	} else {
-		if (ec_tk_int_getval(tk, s) != 10)
-			TEST_ERR();
-	}
+	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 10);
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 
@@ -189,12 +179,7 @@ static int ec_tk_int_testcase(void)
 
 	p = ec_tk_parse(tk, "10");
 	s = ec_parsed_tk_to_string(p);
-	if (s == NULL) {
-		TEST_ERR();
-	} else {
-		if (ec_tk_int_getval(tk, s) != 16)
-			TEST_ERR();
-	}
+	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 16);
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 

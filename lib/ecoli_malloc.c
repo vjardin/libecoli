@@ -59,9 +59,19 @@ void *__ec_malloc(size_t size, const char *file, unsigned int line)
 	return ec_malloc_handler.malloc(size, file, line);
 }
 
+void *ec_malloc2(size_t size)
+{
+	return __ec_malloc(size, __FILE__, __LINE__);
+}
+
 void __ec_free(void *ptr, const char *file, unsigned int line)
 {
 	ec_malloc_handler.free(ptr, file, line);
+}
+
+void ec_free2(void *ptr)
+{
+	__ec_free(ptr, __FILE__, __LINE__);
 }
 
 void *__ec_calloc(size_t nmemb, size_t size, const char *file,

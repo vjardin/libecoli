@@ -70,14 +70,20 @@ int ec_test_all(void);
 /* expected == -1 means no match */
 int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...);
 
-#define TEST_ERR()							\
-	ec_log(EC_LOG_ERR, "%s:%d: error: test failed\n",		\
-		__FILE__, __LINE__);					\
+#define EC_TEST_ERR(fmt, ...)						\
+	ec_log(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
+		__FILE__, __LINE__, ##__VA_ARGS__);			\
+
+#define EC_TEST_ASSERT(cond, args...)					\
+	do {								\
+		if (!(cond))						\
+			EC_TEST_ERR("assertion failure: " #cond);	\
+	} while (0)
 
 #define EC_TEST_CHECK_TK_PARSE(tk, input, expected...) ({		\
 	int ret_ = ec_test_check_tk_parse(tk, input, expected);		\
 	if (ret_)							\
-		TEST_ERR();						\
+		EC_TEST_ERR("parse test failed");			\
 	ret_;								\
 })
 
@@ -86,7 +92,7 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, ...);
 #define EC_TEST_CHECK_TK_COMPLETE(tk, args...) ({			\
 	int ret_ = ec_test_check_tk_complete(tk, args);			\
 	if (ret_)							\
-		TEST_ERR();						\
+		EC_TEST_ERR("complete test failed");			\
 	ret_;								\
 })
 

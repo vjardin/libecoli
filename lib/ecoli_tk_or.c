@@ -191,6 +191,9 @@ int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	table[tk->len] = child;
 	tk->len ++;
 
+	child->parent = gen_tk;
+	TAILQ_INSERT_TAIL(&gen_tk->children, child, next);
+
 	return 0;
 }
 

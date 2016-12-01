@@ -114,6 +114,13 @@ static struct ec_completed_tk *ec_tk_str_complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 }
 
+static const char *ec_tk_str_desc(const struct ec_tk *gen_tk)
+{
+	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
+
+	return tk->string;
+}
+
 static void ec_tk_str_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
@@ -125,6 +132,7 @@ static const struct ec_tk_ops ec_tk_str_ops = {
 	.typename = "str",
 	.parse = ec_tk_str_parse,
 	.complete = ec_tk_str_complete,
+	.desc = ec_tk_str_desc,
 	.free_priv = ec_tk_str_free_priv,
 };
 

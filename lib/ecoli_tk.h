@@ -37,29 +37,49 @@
 struct ec_tk;
 struct ec_parsed_tk;
 struct ec_strvec;
+struct ec_keyval;
 
 typedef struct ec_parsed_tk *(*ec_tk_parse_t)(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 typedef struct ec_completed_tk *(*ec_tk_complete_t)(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
+typedef const char * (*ec_tk_desc_t)(const struct ec_tk *);
 typedef void (*ec_tk_free_priv_t)(struct ec_tk *);
 
 struct ec_tk_ops {
 	const char *typename;
 	ec_tk_parse_t parse;
 	ec_tk_complete_t complete;
+	ec_tk_desc_t desc;
 	ec_tk_free_priv_t free_priv;
 };
+
+TAILQ_HEAD(ec_tk_list, ec_tk);
 
 struct ec_tk {
 	const struct ec_tk_ops *ops;
 	char *id;
+	char *desc;
+	struct ec_keyval *attrs;
+	/* XXX ensure parent and child are properly set in all nodes */
+	struct ec_tk *parent;
+
+	TAILQ_ENTRY(ec_tk) next;
+	struct ec_tk_list children;
 };
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 	size_t priv_size);
 void ec_tk_free(struct ec_tk *tk);
 
+/* XXX add more accessors */
+struct ec_keyval *ec_tk_attrs(const struct ec_tk *tk);
+struct ec_tk *ec_tk_parent(const struct ec_tk *tk);
+const char *ec_tk_id(const struct ec_tk *tk);
+
+struct ec_tk *ec_tk_find(struct ec_tk *tk, const char *id);
+
+/* XXX split this file ? */
 
 TAILQ_HEAD(ec_parsed_tk_list, ec_parsed_tk);
 
@@ -84,12 +104,12 @@ void ec_parsed_tk_set_match(struct ec_parsed_tk *parsed_tk,
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
 */
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *token, const char *str);
+struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str);
 
 /* mostly internal to tokens */
 /* XXX it should not reset cache
  * ... not sure... it is used by tests */
-struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *token,
+struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
@@ -125,9 +145,9 @@ struct ec_completed_tk {
  * return a completed_tk object filled with elts
  * return NULL on error (nomem?)
  */
-struct ec_completed_tk *ec_tk_complete(const struct ec_tk *token,
+struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
 	const char *str);
-struct ec_completed_tk *ec_tk_complete_tokens(const struct ec_tk *token,
+struct ec_completed_tk *ec_tk_complete_tokens(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 struct ec_completed_tk *ec_completed_tk_new(void);
 struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
@@ -147,13 +167,14 @@ struct ec_completed_tk *ec_tk_default_complete(const struct ec_tk *gen_tk,
 const char *ec_completed_tk_smallest_start(
 	const struct ec_completed_tk *completed_tk);
 
-unsigned int ec_completed_tk_count_match(
-	const struct ec_completed_tk *completed_tk);
-
 enum ec_completed_tk_filter_flags {
-	ITER_MATCH = 1,
-	ITER_NO_MATCH,
+	EC_MATCH = 1,
+	EC_NO_MATCH = 2,
 };
+
+unsigned int ec_completed_tk_count(
+	const struct ec_completed_tk *completed_tk,
+	enum ec_completed_tk_filter_flags flags);
 
 struct ec_completed_tk_iter {
 	enum ec_completed_tk_filter_flags flags;
@@ -169,4 +190,8 @@ const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
 	struct ec_completed_tk_iter *iter);
 
 void ec_completed_tk_iter_free(struct ec_completed_tk_iter *iter);
+
+
+const char *ec_tk_desc(const struct ec_tk *tk);
+
 #endif

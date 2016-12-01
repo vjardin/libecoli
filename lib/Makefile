@@ -34,6 +34,7 @@ CFLAGS  = -g -O0 -Wall -Werror -W -fPIC
 CFLAGS += -I.
 
 srcs := ecoli_tk.c ecoli_malloc.c ecoli_log.c ecoli_strvec.c
+srcs += ecoli_keyval.c
 srcs += ecoli_tk_str.c ecoli_tk_seq.c
 srcs += ecoli_tk_space.c ecoli_tk_or.c ecoli_test.c
 srcs += ecoli_tk_empty.c ecoli_tk_int.c
@@ -44,7 +45,7 @@ shlib-y-$(O)libecoli.so := $(srcs)
 ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(srcs) main.c
 
-ldflags-$(O)readline = -lreadline
+ldflags-$(O)readline = -lreadline -ltermcap
 exe-y-$(O)readline = $(srcs) main-readline.c
 
 include $(ECOLI)/mk/ecoli-post.mk

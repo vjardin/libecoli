@@ -150,3 +150,5 @@ void ec_strvec_dump(const struct ec_strvec *strvec, FILE *out)
 	for (i = 0; i < ec_strvec_len(strvec); i++)
 		fprintf(out, "  %zd: %s\n", i, strvec->vec[i]);
 }
+
+/* XXX test case */

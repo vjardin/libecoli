@@ -150,10 +150,10 @@ int ec_test_check_tk_complete(const struct ec_tk *tk, ...)
 		}
 	}
 
-	if (count != ec_completed_tk_count_match(c)) {
+	if (count != ec_completed_tk_count(c, EC_MATCH)) {
 		ec_log(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_tk_count_match(c));
+			count, ec_completed_tk_count(c, EC_MATCH));
 		ec_completed_tk_dump(stdout, c);
 		ret = -1;
 	}

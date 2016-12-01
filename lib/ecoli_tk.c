@@ -33,12 +33,14 @@
 
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
+#include <ecoli_keyval.h>
 #include <ecoli_tk.h>
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 	size_t size)
 {
 	struct ec_tk *tk = NULL;
+	char buf[256]; // XXX
 
 	assert(size >= sizeof(*tk));
 
@@ -46,17 +48,30 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 	if (tk == NULL)
 		goto fail;
 
+	TAILQ_INIT(&tk->children);
+	tk->ops = ops;
+
 	if (id != NULL) {
 		tk->id = ec_strdup(id);
 		if (tk->id == NULL)
 			goto fail;
 	}
 
-	tk->ops = ops;
+	snprintf(buf, sizeof(buf), "<%s>", ops->typename);
+	tk->desc = ec_strdup(buf); // XXX ec_asprintf ?
+	if (tk->desc == NULL)
+		goto fail;
+
+	tk->attrs = ec_keyval_new();
+	if (tk->attrs == NULL)
+		goto fail;
 
 	return tk;
 
  fail:
+	ec_free(tk->attrs);
+	ec_free(tk->desc);
+	ec_free(tk->id);
 	ec_tk_free(tk);
 	return NULL;
 }
@@ -69,7 +84,41 @@ void ec_tk_free(struct ec_tk *tk)
 	if (tk->ops != NULL && tk->ops->free_priv != NULL)
 		tk->ops->free_priv(tk);
 	ec_free(tk->id);
+	ec_free(tk->desc);
+	ec_free(tk->attrs);
 	ec_free(tk);
+}
+
+struct ec_tk *ec_tk_find(struct ec_tk *tk, const char *id)
+{
+	struct ec_tk *child, *ret;
+	const char *tk_id = ec_tk_id(tk);
+
+	if (id != NULL && tk_id != NULL && !strcmp(tk_id, id))
+		return tk;
+
+	TAILQ_FOREACH(child, &tk->children, next) {
+		ret = ec_tk_find(child, id);
+		if (ret != NULL)
+			return ret;
+	}
+
+	return NULL;
+}
+
+struct ec_keyval *ec_tk_attrs(const struct ec_tk *tk)
+{
+	return tk->attrs;
+}
+
+const char *ec_tk_id(const struct ec_tk *tk)
+{
+	return tk->id;
+}
+
+struct ec_tk *ec_tk_parent(const struct ec_tk *tk)
+{
+	return tk->parent;
 }
 
 struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str)
@@ -178,6 +227,7 @@ static void __ec_parsed_tk_dump(FILE *out,
 		typename = parsed_tk->tk->ops->typename;
 	}
 
+	/* XXX we only display the first token */
 	fprintf(out, "tk_type=%s, id=%s, s=<%s>\n", typename, id, s);
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next)
@@ -450,13 +500,21 @@ const char *ec_completed_tk_smallest_start(
 	return completed_tk->smallest_start;
 }
 
-unsigned int ec_completed_tk_count_match(
-	const struct ec_completed_tk *completed_tk)
+unsigned int ec_completed_tk_count(
+	const struct ec_completed_tk *completed_tk,
+	enum ec_completed_tk_filter_flags flags)
 {
-	if (completed_tk == NULL)
-		return 0;
+	unsigned int count = 0;
 
-	return completed_tk->count_match;
+	if (completed_tk == NULL)
+		return count;
+
+	if (flags & EC_MATCH)
+		count += completed_tk->count_match;
+	if (flags & EC_NO_MATCH)
+		count += (completed_tk->count - completed_tk->count_match); //XXX
+
+	return count;
 }
 
 struct ec_completed_tk_iter *
@@ -493,11 +551,11 @@ const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
 			break;
 
 		if (iter->cur->add == NULL &&
-				(iter->flags & ITER_NO_MATCH))
+				(iter->flags & EC_NO_MATCH))
 			break;
 
 		if (iter->cur->add != NULL &&
-				(iter->flags & ITER_MATCH))
+				(iter->flags & EC_MATCH))
 			break;
 
 	} while (iter->cur != NULL);
@@ -508,4 +566,12 @@ const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
 void ec_completed_tk_iter_free(struct ec_completed_tk_iter *iter)
 {
 	ec_free(iter);
+}
+
+const char *ec_tk_desc(const struct ec_tk *tk)
+{
+	if (tk->ops->desc != NULL)
+		return tk->ops->desc(tk);
+
+	return tk->desc;
 }

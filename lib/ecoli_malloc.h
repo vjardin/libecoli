@@ -59,6 +59,10 @@ char *__ec_strdup(const char *s, const char *file, unsigned int line);
 char *__ec_strndup(const char *s, size_t n, const char *file,
 	unsigned int line);
 
+/* XXX rename into ec_malloc, and change macro to uppercase */
+void *ec_malloc2(size_t size);
+void ec_free2(void *ptr);
+
 /* we use macros here to ensure the file/line stay correct when
  * debugging the standard malloc with valgrind */
 
