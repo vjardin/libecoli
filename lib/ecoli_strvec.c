@@ -26,10 +26,22 @@
  */
 
 #include <sys/types.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
+
+struct ec_strvec_elt {
+	unsigned int refcnt;
+	char *str;
+};
+
+struct ec_strvec {
+	size_t len;
+	struct ec_strvec_elt **vec;
+};
 
 struct ec_strvec *ec_strvec_new(void)
 {
@@ -44,23 +56,33 @@ struct ec_strvec *ec_strvec_new(void)
 
 int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 {
-	char **new_vec;
+	struct ec_strvec_elt *elt, **new_vec;
 
 	new_vec = ec_realloc(strvec->vec,
 		sizeof(*strvec->vec) * (strvec->len + 1));
 	if (new_vec == NULL)
-		return -1;
+		return -ENOMEM;
 
 	strvec->vec = new_vec;
-	strvec->vec[strvec->len] = ec_strdup(s);
-	if (strvec->vec[strvec->len] == NULL)
-		return -1;
 
+	elt = ec_malloc(sizeof(*elt));
+	if (elt == NULL)
+		return -ENOMEM;
+
+	elt->str = ec_strdup(s);
+	if (elt->str == NULL) {
+		ec_free(elt);
+		return -ENOMEM;
+	}
+	elt->refcnt = 1;
+
+	new_vec[strvec->len] = elt;
 	strvec->len++;
 	return 0;
 }
 
-struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t len)
+struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t off,
+	size_t len)
 {
 	struct ec_strvec *copy = NULL;
 	size_t i, veclen;
@@ -69,20 +91,22 @@ struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t len)
 	if (copy == NULL)
 		goto fail;
 
+	veclen = ec_strvec_len(strvec);
+	if (off >= veclen)
+		len = 0;
+	else if (off + len > veclen)
+		len -= (veclen - off);
+
 	if (len == 0)
 		return copy;
 
-	veclen = ec_strvec_len(strvec);
-	if (len > veclen)
-		len = veclen;
 	copy->vec = ec_calloc(len, sizeof(*copy->vec));
 	if (copy->vec == NULL)
 		goto fail;
 
 	for (i = 0; i < len; i++) {
-		copy->vec[i] = ec_strdup(strvec->vec[i]);
-		if (copy->vec[i] == NULL)
-			goto fail;
+		copy->vec[i] = strvec->vec[i + off];
+		copy->vec[i]->refcnt++;
 		copy->len++;
 	}
 
@@ -95,18 +119,25 @@ fail:
 
 struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec)
 {
-	return ec_strvec_ndup(strvec, ec_strvec_len(strvec));
+	return ec_strvec_ndup(strvec, 0, ec_strvec_len(strvec));
 }
 
 void ec_strvec_free(struct ec_strvec *strvec)
 {
+	struct ec_strvec_elt *elt;
 	size_t i;
 
 	if (strvec == NULL)
 		return;
 
-	for (i = 0; i < ec_strvec_len(strvec); i++)
-		ec_free(ec_strvec_val(strvec, i));
+	for (i = 0; i < ec_strvec_len(strvec); i++) {
+		elt = strvec->vec[i];
+		elt->refcnt--;
+		if (elt->refcnt == 0) {
+			ec_free(elt->str);
+			ec_free(elt);
+		}
+	}
 
 	ec_free(strvec->vec);
 	ec_free(strvec);
@@ -122,22 +153,10 @@ char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
 	if (strvec == NULL || idx >= strvec->len)
 		return NULL;
 
-	return strvec->vec[idx];
+	return strvec->vec[idx]->str;
 }
 
-int ec_strvec_slice(struct ec_strvec *strvec, const struct ec_strvec *from,
-	size_t off)
-{
-	if (off > from->len)
-		return -1;
-
-	strvec->len = from->len - off;
-	strvec->vec = &from->vec[off];
-
-	return 0;
-}
-
-void ec_strvec_dump(const struct ec_strvec *strvec, FILE *out)
+void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 {
 	size_t i;
 
@@ -148,7 +167,8 @@ void ec_strvec_dump(const struct ec_strvec *strvec, FILE *out)
 
 	fprintf(out, "strvec:\n");
 	for (i = 0; i < ec_strvec_len(strvec); i++)
-		fprintf(out, "  %zd: %s\n", i, strvec->vec[i]);
+		fprintf(out, "  %zd: %s (refcnt=%d)\n", i,
+			strvec->vec[i]->str, strvec->vec[i]->refcnt);
 }
 
 /* XXX test case */

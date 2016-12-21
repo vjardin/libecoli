@@ -53,7 +53,7 @@ static struct ec_parsed_tk *ec_tk_many_parse(const struct ec_tk *gen_tk,
 	struct ec_tk_many *tk = (struct ec_tk_many *)gen_tk;
 	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
 	struct ec_strvec *match_strvec;
-	struct ec_strvec childvec;
+	struct ec_strvec *childvec = NULL;
 	size_t off = 0, len, count;
 
 	parsed_tk = ec_parsed_tk_new();
@@ -61,12 +61,17 @@ static struct ec_parsed_tk *ec_tk_many_parse(const struct ec_tk *gen_tk,
 		goto fail;
 
 	for (count = 0; tk->max == 0 || count < tk->max; count++) {
-		if (ec_strvec_slice(&childvec, strvec, off) < 0)
+		childvec = ec_strvec_ndup(strvec, off,
+			ec_strvec_len(strvec) - off);
+		if (childvec == NULL)
 			goto fail;
 
-		child_parsed_tk = ec_tk_parse_tokens(tk->child, &childvec);
+		child_parsed_tk = ec_tk_parse_tokens(tk->child, childvec);
 		if (child_parsed_tk == NULL)
 			goto fail;
+
+		ec_strvec_free(childvec);
+		childvec = NULL;
 
 		if (!ec_parsed_tk_matches(child_parsed_tk)) {
 			ec_parsed_tk_free(child_parsed_tk);
@@ -90,7 +95,7 @@ static struct ec_parsed_tk *ec_tk_many_parse(const struct ec_tk *gen_tk,
 		return parsed_tk;
 	}
 
-	match_strvec = ec_strvec_ndup(strvec, off);
+	match_strvec = ec_strvec_ndup(strvec, 0, off);
 	if (match_strvec == NULL)
 		goto fail;
 
@@ -98,7 +103,8 @@ static struct ec_parsed_tk *ec_tk_many_parse(const struct ec_tk *gen_tk,
 
 	return parsed_tk;
 
- fail:
+fail:
+	ec_strvec_free(childvec);
 	ec_parsed_tk_free(parsed_tk);
 	return NULL;
 }
@@ -109,7 +115,7 @@ static struct ec_completed_tk *ec_tk_many_complete(const struct ec_tk *gen_tk,
 {
 	struct ec_tk_many *tk = (struct ec_tk_many *)gen_tk;
 	struct ec_completed_tk *completed_tk, *child_completed_tk;
-	struct ec_strvec childvec;
+	struct ec_strvec *childvec;
 	struct ec_parsed_tk *parsed_tk;
 	size_t len = 0;
 	unsigned int i;
@@ -122,20 +128,25 @@ static struct ec_completed_tk *ec_tk_many_complete(const struct ec_tk *gen_tk,
 		return completed_tk;
 
 	for (i = 0; i < tk->len; i++) {
-		if (ec_strvec_slice(&childvec, strvec, len) < 0)
-			return completed_tk; /* XXX fail ? */
+		childvec = ec_strvec_ndup(strvec, len,
+			ec_strvec_len(strvec) - len);
+		if (childvec == NULL)
+			goto fail; // XXX fail ?
 
 		child_completed_tk = ec_tk_complete_tokens(tk->table[i],
-			&childvec);
-		if (child_completed_tk == NULL) {
-			ec_completed_tk_free(completed_tk);
-			return NULL;
-		}
+			childvec);
+		if (child_completed_tk == NULL)
+			goto fail;
+
 		ec_completed_tk_merge(completed_tk, child_completed_tk);
 
-		parsed_tk = ec_tk_parse_tokens(tk->table[i], &childvec);
+		parsed_tk = ec_tk_parse_tokens(tk->table[i], childvec);
 		if (parsed_tk == NULL)
 			goto fail;
+
+		ec_strvec_free(childvec);
+		childvec = NULL;
+
 		if (!ec_parsed_tk_matches(parsed_tk)) {
 			ec_parsed_tk_free(parsed_tk);
 			break;
@@ -148,7 +159,8 @@ static struct ec_completed_tk *ec_tk_many_complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 
 fail:
-	/* XXX */
+	ec_strvec_free(childvec);
+	ec_completed_tk_free(completed_tk);
 	return NULL;
 }
 #endif

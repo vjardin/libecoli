@@ -63,6 +63,7 @@ struct ec_tk {
 	struct ec_keyval *attrs;
 	/* XXX ensure parent and child are properly set in all nodes */
 	struct ec_tk *parent;
+	unsigned int refcnt;
 
 	TAILQ_ENTRY(ec_tk) next;
 	struct ec_tk_list children;
@@ -94,6 +95,12 @@ struct ec_parsed_tk {
 };
 
 struct ec_parsed_tk *ec_parsed_tk_new(void);
+void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk);
+struct ec_tk *ec_tk_clone(struct ec_tk *tk);
+void ec_parsed_tk_free_children(struct ec_parsed_tk *parsed_tk);
+
+const struct ec_strvec *ec_parsed_tk_strvec(
+	const struct ec_parsed_tk *parsed_tk);
 
 void ec_parsed_tk_set_match(struct ec_parsed_tk *parsed_tk,
 	const struct ec_tk *tk, struct ec_strvec *strvec);
@@ -114,9 +121,7 @@ struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *tk,
 
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
 	struct ec_parsed_tk *child);
-void ec_parsed_tk_free_children(struct ec_parsed_tk *parsed_tk);
 void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk);
-void ec_parsed_tk_free(struct ec_parsed_tk *parsed_tk);
 
 struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
 	const char *id);

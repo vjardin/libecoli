@@ -52,7 +52,7 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_parsed_tk *parsed_tk, *child_parsed_tk;
 	struct ec_strvec *match_strvec;
-	struct ec_strvec childvec;
+	struct ec_strvec *childvec = NULL;
 	size_t len = 0;
 	unsigned int i;
 
@@ -61,12 +61,18 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 		goto fail;
 
 	for (i = 0; i < tk->len; i++) {
-		if (ec_strvec_slice(&childvec, strvec, len) < 0)
+		childvec = ec_strvec_ndup(strvec, len,
+			ec_strvec_len(strvec) - len);
+		if (childvec == NULL)
 			goto fail;
 
-		child_parsed_tk = ec_tk_parse_tokens(tk->table[i], &childvec);
+		child_parsed_tk = ec_tk_parse_tokens(tk->table[i], childvec);
 		if (child_parsed_tk == NULL)
 			goto fail;
+
+		ec_strvec_free(childvec);
+		childvec = NULL;
+
 		if (!ec_parsed_tk_matches(child_parsed_tk)) {
 			ec_parsed_tk_free(child_parsed_tk);
 			ec_parsed_tk_free_children(parsed_tk);
@@ -77,7 +83,7 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 		len += ec_parsed_tk_len(child_parsed_tk);
 	}
 
-	match_strvec = ec_strvec_ndup(strvec, len);
+	match_strvec = ec_strvec_ndup(strvec, 0, len);
 	if (match_strvec == NULL)
 		goto fail;
 
@@ -85,7 +91,8 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 
 	return parsed_tk;
 
- fail:
+fail:
+	ec_strvec_free(childvec);
 	ec_parsed_tk_free(parsed_tk);
 	return NULL;
 }
@@ -95,7 +102,7 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
 	struct ec_completed_tk *completed_tk, *child_completed_tk;
-	struct ec_strvec childvec;
+	struct ec_strvec *childvec = NULL;
 	struct ec_parsed_tk *parsed_tk;
 	size_t len = 0;
 	unsigned int i;
@@ -108,20 +115,25 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 		return completed_tk;
 
 	for (i = 0; i < tk->len && len < ec_strvec_len(strvec); i++) {
-		if (ec_strvec_slice(&childvec, strvec, len) < 0)
+		childvec = ec_strvec_ndup(strvec, len,
+			ec_strvec_len(strvec) - len);
+		if (childvec == NULL)
 			goto fail;
 
 		child_completed_tk = ec_tk_complete_tokens(tk->table[i],
-			&childvec);
-		if (child_completed_tk == NULL) {
-			ec_completed_tk_free(completed_tk);
-			return NULL;
-		}
+			childvec);
+		if (child_completed_tk == NULL)
+			goto fail;
+
 		ec_completed_tk_merge(completed_tk, child_completed_tk);
 
-		parsed_tk = ec_tk_parse_tokens(tk->table[i], &childvec);
+		parsed_tk = ec_tk_parse_tokens(tk->table[i], childvec);
 		if (parsed_tk == NULL)
 			goto fail;
+
+		ec_strvec_free(childvec);
+		childvec = NULL;
+
 		if (!ec_parsed_tk_matches(parsed_tk)) {
 			ec_parsed_tk_free(parsed_tk);
 			break;
@@ -134,7 +146,8 @@ static struct ec_completed_tk *ec_tk_seq_complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 
 fail:
-	/* XXX */
+	ec_strvec_free(childvec);
+	ec_completed_tk_free(completed_tk);
 	return NULL;
 }
 
@@ -180,15 +193,18 @@ struct ec_tk *ec_tk_seq_new_list(const char *id, ...)
 
 	tk = (struct ec_tk_seq *)ec_tk_seq_new(id);
 	if (tk == NULL)
-		goto fail;
+		fail = 1;
 
 	for (child = va_arg(ap, struct ec_tk *);
 	     child != EC_TK_ENDLIST;
 	     child = va_arg(ap, struct ec_tk *)) {
-		/* on error, don't quit the loop to avoid leaks */
 
-		if (child == NULL || ec_tk_seq_add(&tk->gen, child) < 0)
+		/* on error, don't quit the loop to avoid leaks */
+		if (fail == 1 || child == NULL ||
+				ec_tk_seq_add(&tk->gen, child) < 0) {
 			fail = 1;
+			ec_tk_free(child);
+		}
 	}
 
 	if (fail == 1)
@@ -219,10 +235,10 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 
 	tk->table = table;
 	table[tk->len] = child;
-	tk->len ++;
+	tk->len++;
 
 	child->parent = gen_tk;
-	TAILQ_INSERT_TAIL(&gen_tk->children, child, next);
+	TAILQ_INSERT_TAIL(&gen_tk->children, child, next); // XXX really needed?
 
 	return 0;
 }

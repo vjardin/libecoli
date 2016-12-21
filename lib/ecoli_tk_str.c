@@ -61,7 +61,7 @@ static struct ec_parsed_tk *ec_tk_str_parse(const struct ec_tk *gen_tk,
 	if (strcmp(str, tk->string) != 0)
 		return parsed_tk;
 
-	match_strvec = ec_strvec_ndup(strvec, 1);
+	match_strvec = ec_strvec_ndup(strvec, 0, 1);
 	if (match_strvec == NULL)
 		goto fail;
 
@@ -138,25 +138,27 @@ static const struct ec_tk_ops ec_tk_str_ops = {
 
 struct ec_tk *ec_tk_str_new(const char *id, const char *str)
 {
+	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_str *tk = NULL;
 	char *s = NULL;
 
-	tk = (struct ec_tk_str *)ec_tk_new(id, &ec_tk_str_ops, sizeof(*tk));
-	if (tk == NULL)
+	gen_tk = ec_tk_new(id, &ec_tk_str_ops, sizeof(*tk));
+	if (gen_tk == NULL)
 		goto fail;
 
 	s = ec_strdup(str);
 	if (s == NULL)
 		goto fail;
 
+	tk = (struct ec_tk_str *)gen_tk;
 	tk->string = s;
 	tk->len = strlen(s);
 
-	return &tk->gen;
+	return gen_tk;
 
 fail:
 	ec_free(s);
-	ec_free(tk);
+	ec_tk_free(gen_tk);
 	return NULL;
 }
 

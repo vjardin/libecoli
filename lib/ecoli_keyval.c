@@ -35,15 +35,15 @@
 #include <ecoli_test.h>
 #include <ecoli_keyval.h>
 
-struct ec_keyval {
-	size_t len;
-	struct ec_keyval_elt *vec;
-};
-
 struct ec_keyval_elt {
 	char *key;
 	void *val;
 	ec_keyval_elt_free_t free;
+};
+
+struct ec_keyval {
+	size_t len;
+	struct ec_keyval_elt *vec;
 };
 
 struct ec_keyval *ec_keyval_new(void)
@@ -118,8 +118,7 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 	ec_keyval_elt_free_t free_cb)
 {
-	struct ec_keyval_elt *new_vec;
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt *elt, *new_vec;
 
 	assert(keyval != NULL);
 	assert(key != NULL);
@@ -129,20 +128,25 @@ int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 	new_vec = ec_realloc(keyval->vec,
 		sizeof(*keyval->vec) * (keyval->len + 1));
 	if (new_vec == NULL)
-		return -ENOMEM;
+		goto fail;
 
 	keyval->vec = new_vec;
 
 	elt = &new_vec[keyval->len];
 	elt->key = ec_strdup(key);
 	if (elt->key == NULL)
-		return -ENOMEM;
+		goto fail;
 
 	elt->val = val;
 	elt->free = free_cb;
 	keyval->len++;
 
 	return 0;
+
+fail:
+	if (free_cb)
+		free_cb(val);
+	return -ENOMEM;
 }
 
 void ec_keyval_free(struct ec_keyval *keyval)

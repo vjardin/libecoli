@@ -157,10 +157,13 @@ struct ec_tk *ec_tk_or_new_list(const char *id, ...)
 	for (child = va_arg(ap, struct ec_tk *);
 	     child != EC_TK_ENDLIST;
 	     child = va_arg(ap, struct ec_tk *)) {
-		/* on error, don't quit the loop to avoid leaks */
 
-		if (child == NULL || ec_tk_or_add(&tk->gen, child) < 0)
+		/* on error, don't quit the loop to avoid leaks */
+		if (fail == 1 || child == NULL ||
+				ec_tk_or_add(&tk->gen, child) < 0) {
 			fail = 1;
+			ec_tk_free(child);
+		}
 	}
 
 	if (fail == 1)

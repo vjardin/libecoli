@@ -88,7 +88,7 @@ static struct ec_parsed_tk *ec_tk_int_parse(const struct ec_tk *gen_tk,
 	if (parse_llint(tk, str, &val) < 0)
 		return parsed_tk;
 
-	match_strvec = ec_strvec_ndup(strvec, 1);
+	match_strvec = ec_strvec_ndup(strvec, 0, 1);
 	if (match_strvec == NULL)
 		goto fail;
 
@@ -156,12 +156,12 @@ static int ec_tk_int_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x101", EC_TK_ENDLIST);
 
 	p = ec_tk_parse(tk, "0");
-	s = ec_parsed_tk_to_string(p);
+	s = ec_strvec_val(ec_parsed_tk_strvec(p), 0);
 	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 0);
 	ec_parsed_tk_free(p);
 
 	p = ec_tk_parse(tk, "10");
-	s = ec_parsed_tk_to_string(p);
+	s = ec_strvec_val(ec_parsed_tk_strvec(p), 0);
 	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 10);
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
@@ -178,7 +178,7 @@ static int ec_tk_int_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-2", EC_TK_ENDLIST);
 
 	p = ec_tk_parse(tk, "10");
-	s = ec_parsed_tk_to_string(p);
+	s = ec_strvec_val(ec_parsed_tk_strvec(p), 0);
 	EC_TEST_ASSERT(s != NULL && ec_tk_int_getval(tk, s) == 16);
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);

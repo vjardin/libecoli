@@ -50,6 +50,7 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 
 	TAILQ_INIT(&tk->children);
 	tk->ops = ops;
+	tk->refcnt = 1;
 
 	if (id != NULL) {
 		tk->id = ec_strdup(id);
@@ -69,9 +70,6 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 	return tk;
 
  fail:
-	ec_free(tk->attrs);
-	ec_free(tk->desc);
-	ec_free(tk->id);
 	ec_tk_free(tk);
 	return NULL;
 }
@@ -81,12 +79,22 @@ void ec_tk_free(struct ec_tk *tk)
 	if (tk == NULL)
 		return;
 
+	if (--tk->refcnt > 0)
+		return;
+
 	if (tk->ops != NULL && tk->ops->free_priv != NULL)
 		tk->ops->free_priv(tk);
 	ec_free(tk->id);
 	ec_free(tk->desc);
 	ec_free(tk->attrs);
 	ec_free(tk);
+}
+
+struct ec_tk *ec_tk_clone(struct ec_tk *tk)
+{
+	if (tk != NULL)
+		tk->refcnt++;
+	return tk;
 }
 
 struct ec_tk *ec_tk_find(struct ec_tk *tk, const char *id)
@@ -213,22 +221,27 @@ static void __ec_parsed_tk_dump(FILE *out,
 	const struct ec_parsed_tk *parsed_tk, size_t indent)
 {
 	struct ec_parsed_tk *child;
+	const struct ec_strvec *vec;
 	size_t i;
-	const char *s, *id = "None", *typename = "None";
+	const char *id = "None", *typename = "None";
 
 	/* XXX enhance */
 	for (i = 0; i < indent; i++)
 		fprintf(out, " ");
 
-	s = ec_parsed_tk_to_string(parsed_tk);
 	if (parsed_tk->tk != NULL) {
 		if (parsed_tk->tk->id != NULL)
 			id = parsed_tk->tk->id;
 		typename = parsed_tk->tk->ops->typename;
 	}
 
-	/* XXX we only display the first token */
-	fprintf(out, "tk_type=%s, id=%s, s=<%s>\n", typename, id, s);
+	fprintf(out, "tk_type=%s id=%s vec=[", typename, id);
+	vec = ec_parsed_tk_strvec(parsed_tk);
+	for (i = 0; i < ec_strvec_len(vec); i++)
+		fprintf(out, "%s<%s>",
+			i == 0 ? "" : ",",
+			ec_strvec_val(vec, i));
+	fprintf(out, "]\n");
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next)
 		__ec_parsed_tk_dump(out, child, indent + 2);
@@ -276,14 +289,13 @@ struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
 	return NULL;
 }
 
-/* XXX return NUL if it matches several tokens?
-   or add a parameter to join() the tokens ? */
-const char *ec_parsed_tk_to_string(const struct ec_parsed_tk *parsed_tk)
+const struct ec_strvec *ec_parsed_tk_strvec(
+	const struct ec_parsed_tk *parsed_tk)
 {
 	if (parsed_tk == NULL || parsed_tk->strvec == NULL)
 		return NULL;
 
-	return ec_strvec_val(parsed_tk->strvec, 0);
+	return parsed_tk->strvec;
 }
 
 /* number of parsed tokens */

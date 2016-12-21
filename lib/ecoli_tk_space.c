@@ -62,7 +62,7 @@ static struct ec_parsed_tk *ec_tk_space_parse(const struct ec_tk *gen_tk,
 	if (len == 0 || len != strlen(str))
 		return parsed_tk;
 
-	match_strvec = ec_strvec_ndup(strvec, 1);
+	match_strvec = ec_strvec_ndup(strvec, 0, 1);
 	if (match_strvec == NULL)
 		goto fail;
 

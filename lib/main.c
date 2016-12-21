@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <getopt.h>
+#include <limits.h>
 #include <execinfo.h>
 
 #include <ecoli_log.h>
@@ -40,21 +41,25 @@
 
 static int log_level = EC_LOG_INFO;
 static int alloc_fail_proba = 0;
+static int seed = 0;
 
 static const char ec_short_options[] =
 	"h"  /* help */
 	"l:" /* log-level */
 	"r:" /* random-alloc-fail */
+	"s:" /* seed */
 	;
 
 #define EC_OPT_HELP "help"
 #define EC_OPT_LOG_LEVEL "log-level"
 #define EC_OPT_RANDOM_ALLOC_FAIL "random-alloc-fail"
+#define EC_OPT_SEED "seed"
 
 static const struct option ec_long_options[] = {
 	{EC_OPT_HELP, 1, NULL, 'h'},
 	{EC_OPT_LOG_LEVEL, 1, NULL, 'l'},
 	{EC_OPT_RANDOM_ALLOC_FAIL, 1, NULL, 'r'},
+	{EC_OPT_SEED, 1, NULL, 's'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -72,6 +77,9 @@ static void usage(const char *prgname)
 		"      Cause malloc to fail randomly. This helps to debug\n"
 		"      leaks or crashes in error cases. The probability is\n"
 		"      between 0 and 100.\n"
+		"  -s <seed>\n"
+		"  --seed=<seed>\n"
+		"      Seeds the random number generator. Default is 0.\n"
 		, prgname);
 }
 
@@ -118,6 +126,14 @@ static void parse_args(int argc, char **argv)
 			if (parse_int(optarg, 0, 100, &alloc_fail_proba,
 					10) < 0) {
 				printf("Invalid probability value\n");
+				usage(argv[0]);
+				exit(1);
+			}
+			break;
+
+		case 's': /* seed */
+			if (parse_int(optarg, 0, INT_MAX, &seed, 10) < 0) {
+				printf("Invalid seed value\n");
 				usage(argv[0]);
 				exit(1);
 			}
@@ -341,6 +357,7 @@ int main(int argc, char **argv)
 	int ret, leaks;
 
 	parse_args(argc, argv);
+	srandom(seed);
 
 	ec_log_register(debug_log, NULL);
 
