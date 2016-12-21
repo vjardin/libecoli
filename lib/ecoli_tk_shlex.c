@@ -402,12 +402,12 @@ static int ec_tk_shlex_testcase(void)
 	int ret = 0;
 
 	tk = ec_tk_shlex_new(NULL,
-		ec_tk_seq_new_list(NULL,
-			ec_tk_str_new(NULL, "foo"),
+		ec_tk_seq(NULL,
+			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
-				ec_tk_str_new(NULL, "toto")
+				ec_tk_str(NULL, "toto")
 			),
-			ec_tk_str_new(NULL, "bar"),
+			ec_tk_str(NULL, "bar"),
 			EC_TK_ENDLIST
 		)
 	);
@@ -424,13 +424,13 @@ static int ec_tk_shlex_testcase(void)
 
 	/* test completion */
 	tk = ec_tk_shlex_new(NULL,
-		ec_tk_seq_new_list(NULL,
-			ec_tk_str_new(NULL, "foo"),
+		ec_tk_seq(NULL,
+			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
-				ec_tk_str_new(NULL, "toto")
+				ec_tk_str(NULL, "toto")
 			),
-			ec_tk_str_new(NULL, "bar"),
-			ec_tk_str_new(NULL, "titi"),
+			ec_tk_str(NULL, "bar"),
+			ec_tk_str(NULL, "titi"),
 			EC_TK_ENDLIST
 		)
 	);

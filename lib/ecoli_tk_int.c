@@ -107,18 +107,21 @@ static struct ec_tk_ops ec_tk_int_ops = {
 	.complete = ec_tk_default_complete,
 };
 
-struct ec_tk *ec_tk_int_new(const char *id, long long int min,
+struct ec_tk *ec_tk_int(const char *id, long long int min,
 	long long int max, unsigned int base)
 {
+	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_int *tk = NULL;
 
-	tk = (struct ec_tk_int *)ec_tk_new(id, &ec_tk_int_ops, sizeof(*tk));
-	if (tk == NULL)
+	gen_tk = ec_tk_new(id, &ec_tk_int_ops, sizeof(*tk));
+	if (gen_tk == NULL)
 		return NULL;
+	tk = (struct ec_tk_int *)gen_tk;
 
 	tk->min = min;
 	tk->max = max;
 	tk->base = base;
+	gen_tk->flags |= EC_TK_F_INITIALIZED;
 
 	return &tk->gen;
 }
@@ -143,7 +146,7 @@ static int ec_tk_int_testcase(void)
 	const char *s;
 	int ret = 0;
 
-	tk = ec_tk_int_new(NULL, 0, 256, 0);
+	tk = ec_tk_int(NULL, 0, 256, 0);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -166,7 +169,7 @@ static int ec_tk_int_testcase(void)
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 
-	tk = ec_tk_int_new(NULL, -1, LLONG_MAX, 16);
+	tk = ec_tk_int(NULL, -1, LLONG_MAX, 16);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -183,7 +186,7 @@ static int ec_tk_int_testcase(void)
 	ec_parsed_tk_free(p);
 	ec_tk_free(tk);
 
-	tk = ec_tk_int_new(NULL, LLONG_MIN, 0, 10);
+	tk = ec_tk_int(NULL, LLONG_MIN, 0, 10);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -197,7 +200,7 @@ static int ec_tk_int_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_int_new(NULL, 0, 10, 0);
+	tk = ec_tk_int(NULL, 0, 10, 0);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

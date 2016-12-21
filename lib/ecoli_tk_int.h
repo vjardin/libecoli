@@ -30,7 +30,7 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk *ec_tk_int_new(const char *id, long long int min,
+struct ec_tk *ec_tk_int(const char *id, long long int min,
 	long long int max, unsigned int base);
 long long ec_tk_int_getval(struct ec_tk *tk, const char *str);
 

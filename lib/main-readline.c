@@ -175,16 +175,16 @@ static int create_commands(void)
 	if (cmdlist == NULL)
 		goto fail;
 
-	cmd = ec_tk_seq_new_list(NULL,
-		ec_tk_str_new(NULL, "hello"),
-		ec_tk_or_new_list(NULL,
-			ec_tk_or_new_list("name",
-				ec_tk_str_new(NULL, "john"),
-				ec_tk_str_new(NULL, "johnny"),
-				ec_tk_str_new(NULL, "mike"),
+	cmd = ec_tk_seq(NULL,
+		ec_tk_str(NULL, "hello"),
+		ec_tk_or(NULL,
+			ec_tk_or("name",
+				ec_tk_str(NULL, "john"),
+				ec_tk_str(NULL, "johnny"),
+				ec_tk_str(NULL, "mike"),
 				EC_TK_ENDLIST
 			),
-			ec_tk_int_new("int", 0, 10, 10),
+			ec_tk_int("int", 0, 10, 10),
 			EC_TK_ENDLIST
 		),
 		EC_TK_ENDLIST
@@ -197,8 +197,8 @@ static int create_commands(void)
 	if (ec_tk_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
-	cmd = ec_tk_seq_new_list(NULL,
-		ec_tk_str_new(NULL, "bye"),
+	cmd = ec_tk_seq(NULL,
+		ec_tk_str(NULL, "bye"),
 		EC_TK_ENDLIST
 	);
 	ec_keyval_set(ec_tk_attrs(cmd), "help", "say bye to someone", NULL);

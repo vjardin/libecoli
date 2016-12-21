@@ -64,6 +64,8 @@ struct ec_tk {
 	/* XXX ensure parent and child are properly set in all nodes */
 	struct ec_tk *parent;
 	unsigned int refcnt;
+#define EC_TK_F_INITIALIZED 0x0001
+	unsigned int flags;
 
 	TAILQ_ENTRY(ec_tk) next;
 	struct ec_tk_list children;

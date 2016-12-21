@@ -30,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
@@ -141,7 +142,42 @@ struct ec_tk *ec_tk_or_new(const char *id)
 	return &tk->gen;
 }
 
-struct ec_tk *ec_tk_or_new_list(const char *id, ...)
+int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
+{
+	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
+	struct ec_tk **table;
+
+	assert(tk != NULL);
+	assert(child != NULL);
+
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+
+	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
+	if (table == NULL)
+		return -1;
+
+	tk->table = table;
+	table[tk->len] = child;
+	tk->len++;
+
+	child->parent = gen_tk;
+	TAILQ_INSERT_TAIL(&gen_tk->children, child, next);
+
+	return 0;
+}
+
+int ec_tk_or_start(struct ec_tk *gen_tk)
+{
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+
+	gen_tk->flags |= EC_TK_F_INITIALIZED;
+
+	return 0;
+}
+
+struct ec_tk *ec_tk_or(const char *id, ...)
 {
 	struct ec_tk_or *tk = NULL;
 	struct ec_tk *child;
@@ -152,7 +188,7 @@ struct ec_tk *ec_tk_or_new_list(const char *id, ...)
 
 	tk = (struct ec_tk_or *)ec_tk_or_new(id);
 	if (tk == NULL)
-		goto fail;
+		fail = 1;
 
 	for (child = va_arg(ap, struct ec_tk *);
 	     child != EC_TK_ENDLIST;
@@ -178,36 +214,14 @@ fail:
 	return NULL;
 }
 
-int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
-{
-	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
-	struct ec_tk **table;
-
-	assert(tk != NULL);
-	assert(child != NULL);
-
-	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
-	if (table == NULL)
-		return -1;
-
-	tk->table = table;
-	table[tk->len] = child;
-	tk->len ++;
-
-	child->parent = gen_tk;
-	TAILQ_INSERT_TAIL(&gen_tk->children, child, next);
-
-	return 0;
-}
-
 static int ec_tk_or_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_or_new_list(NULL,
-		ec_tk_str_new(NULL, "foo"),
-		ec_tk_str_new(NULL, "bar"),
+	tk = ec_tk_or(NULL,
+		ec_tk_str(NULL, "foo"),
+		ec_tk_str(NULL, "bar"),
 		EC_TK_ENDLIST);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
@@ -223,12 +237,12 @@ static int ec_tk_or_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_or_new_list(NULL,
-		ec_tk_str_new(NULL, "foo"),
-		ec_tk_str_new(NULL, "bar"),
-		ec_tk_str_new(NULL, "bar2"),
-		ec_tk_str_new(NULL, "toto"),
-		ec_tk_str_new(NULL, "titi"),
+	tk = ec_tk_or(NULL,
+		ec_tk_str(NULL, "foo"),
+		ec_tk_str(NULL, "bar"),
+		ec_tk_str(NULL, "bar2"),
+		ec_tk_str(NULL, "toto"),
+		ec_tk_str(NULL, "titi"),
 		EC_TK_ENDLIST);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");

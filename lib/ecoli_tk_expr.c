@@ -30,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <errno.h>
 
 #include <ecoli_malloc.h>
@@ -38,8 +39,10 @@
 #include <ecoli_strvec.h>
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
+#include <ecoli_tk_int.h>
 #include <ecoli_tk_seq.h>
 #include <ecoli_tk_many.h>
+#include <ecoli_tk_or.h>
 #include <ecoli_tk_expr.h>
 
 struct ec_tk_expr {
@@ -49,10 +52,16 @@ struct ec_tk_expr {
 
 	struct ec_tk **bin_ops;
 	unsigned int bin_ops_len;
+
 	struct ec_tk **pre_ops;
 	unsigned int pre_ops_len;
+
 	struct ec_tk **post_ops;
 	unsigned int post_ops_len;
+
+	struct ec_tk **open_ops;
+	struct ec_tk **close_ops;
+	unsigned int paren_len;
 };
 
 static struct ec_parsed_tk *ec_tk_expr_parse(const struct ec_tk *gen_tk,
@@ -119,9 +128,10 @@ int ec_tk_expr_add_bin_op(struct ec_tk *gen_tk, struct ec_tk *op)
 
 	// XXX check tk type
 
-	/* XXX use assert or check like this ? */
 	if (tk == NULL || op == NULL)
 		return -EINVAL;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
 
 	bin_ops = ec_realloc(tk->bin_ops,
 		(tk->bin_ops_len + 1) * sizeof(*tk->bin_ops));
@@ -142,9 +152,10 @@ int ec_tk_expr_add_pre_op(struct ec_tk *gen_tk, struct ec_tk *op)
 
 	// XXX check tk type
 
-	/* XXX use assert or check like this ? */
 	if (tk == NULL || op == NULL)
 		return -EINVAL;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
 
 	pre_ops = ec_realloc(tk->pre_ops,
 		(tk->pre_ops_len + 1) * sizeof(*tk->pre_ops));
@@ -165,9 +176,10 @@ int ec_tk_expr_add_post_op(struct ec_tk *gen_tk, struct ec_tk *op)
 
 	// XXX check tk type
 
-	/* XXX use assert or check like this ? */
 	if (tk == NULL || op == NULL)
 		return -EINVAL;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
 
 	post_ops = ec_realloc(tk->post_ops,
 		(tk->post_ops_len + 1) * sizeof(*tk->post_ops));
@@ -181,112 +193,199 @@ int ec_tk_expr_add_post_op(struct ec_tk *gen_tk, struct ec_tk *op)
 	return 0;
 }
 
-int ec_tk_expr_start(struct ec_tk *gen_tk)
+int ec_tk_expr_add_parenthesis(struct ec_tk *gen_tk,
+	struct ec_tk *open, struct ec_tk *close)
 {
 	struct ec_tk_expr *tk = (struct ec_tk_expr *)gen_tk;
+	struct ec_tk **open_ops, **close_ops;
 
-	if (tk->val_tk == NULL)
+	// XXX check tk type
+
+	if (tk == NULL || open == NULL || close == NULL)
 		return -EINVAL;
-	if (tk->bin_ops_len == 0 || tk->pre_ops_len == 0 ||
-			tk->post_ops_len == 0)
-		return -EINVAL;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+
+	open_ops = ec_realloc(tk->open_ops,
+		(tk->paren_len + 1) * sizeof(*tk->open_ops));
+	if (open_ops == NULL)
+		return -1;
+	close_ops = ec_realloc(tk->close_ops,
+		(tk->paren_len + 1) * sizeof(*tk->close_ops));
+	if (close_ops == NULL)
+		return -1;
+
+	tk->open_ops = open_ops;
+	tk->close_ops = close_ops;
+	open_ops[tk->paren_len] = open;
+	close_ops[tk->paren_len] = close;
+	tk->paren_len++;
 
 	return 0;
 }
 
-struct ec_tk *ec_tk_expr(const char *id, struct ec_tk *val_tk,
-	const char *bin_ops)
+int ec_tk_expr_start(struct ec_tk *gen_tk)
 {
-	struct ec_tk_expr *tk = NULL;
-	struct ec_tk *gen_tk = NULL, *child = NULL, *sub_expr = NULL;
-	char *op = NULL;
+	struct ec_tk_expr *tk = (struct ec_tk_expr *)gen_tk;
+	struct ec_tk *term = NULL, *prev = NULL, *expr = NULL,
+		*val = NULL, *pre_op = NULL, *post_op = NULL,
+		*post = NULL, *final = NULL, *next = NULL;
+	unsigned int i;
 
-	gen_tk = ec_tk_expr_new(id);
-	if (gen_tk == NULL)
+	if (tk->val_tk == NULL)
+		return -EINVAL;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+	if (tk->bin_ops_len == 0 && tk->pre_ops_len == 0 &&
+			tk->post_ops_len == 0)
+		return -EINVAL;
+
+	/* create the object, we will initialize it later: this is
+	 * needed because we have a circular dependency */
+	expr = ec_tk_seq_new("expr");
+
+	val = ec_tk_int("val", 0, UCHAR_MAX, 0);
+
+	/* prefix unary operators */
+	pre_op = ec_tk_or_new("pre-op");
+	for (i = 0; i < tk->pre_ops_len; i++) {
+		if (ec_tk_or_add(pre_op, ec_tk_clone(tk->pre_ops[i])) < 0)
+			goto fail;
+	}
+	if (ec_tk_or_start(pre_op) < 0)
 		goto fail;
-	tk = (struct ec_tk_expr *)gen_tk;
 
-	if (bin_ops == NULL || bin_ops[0] == '\0') {
-		child = val_tk;
-	} else {
-		/* recursively create an expr tk without the first operator */
-		sub_expr = ec_tk_expr(NULL,
-			ec_tk_clone(val_tk),
-			&bin_ops[1]);
-		if (sub_expr == NULL)
+	/* suffix unary operators */
+	post_op = ec_tk_or_new("post-op");
+	for (i = 0; i < tk->post_ops_len; i++) {
+		if (ec_tk_or_add(post_op, ec_tk_clone(tk->post_ops[i])) < 0)
 			goto fail;
+	}
+	if (ec_tk_or_start(post_op) < 0)
+		goto fail;
 
-		op = ec_strdup(bin_ops);
-		if (op == NULL)
+	term = ec_tk_or_new("term");
+	if (ec_tk_or_add(term, ec_tk_clone(val)) < 0)
+		goto fail;
+	if (ec_tk_or_add(term,
+		ec_tk_seq(NULL,
+			ec_tk_clone(pre_op),
+			ec_tk_clone(expr),
+			EC_TK_ENDLIST)) < 0)
+		goto fail;
+	for (i = 0; i < tk->paren_len; i++) {
+		if (ec_tk_or_add(term, ec_tk_seq(NULL,
+					ec_tk_clone(tk->open_ops[i]),
+					ec_tk_clone(expr),
+					ec_tk_clone(tk->close_ops[i]),
+					EC_TK_ENDLIST)) < 0)
 			goto fail;
-		op[1] = '\0';
+	}
 
-		/* we match:
-		 *   <subexpr> (<op> <subexpr>)*
-		 */
-		child = ec_tk_seq_new_list(NULL,
-			ec_tk_clone(sub_expr),
+	prev = term;
+	term = NULL;
+	for (i = 0; i < tk->bin_ops_len; i++) {
+		next = ec_tk_seq("next",
+			ec_tk_clone(prev),
 			ec_tk_many_new(NULL,
-				ec_tk_seq_new_list(NULL,
-					ec_tk_str_new(NULL, op),
-					ec_tk_clone(sub_expr),
+				ec_tk_seq(NULL,
+					ec_tk_clone(tk->bin_ops[i]),
+					ec_tk_clone(prev),
 					EC_TK_ENDLIST
 				),
 				0, 0
 			),
 			EC_TK_ENDLIST
 		);
-		ec_free(op);
-		op = NULL;
-
-		/* remove initial reference */
-		ec_tk_free(sub_expr);
-
-		if (child == NULL)
-			goto fail;
-
-		ec_tk_free(val_tk);
+		prev = next;
 	}
 
-	tk->child = child;
+	final = ec_tk_seq("final",
+		ec_tk_clone(next),
+		ec_tk_many_new(NULL, ec_tk_clone(post_op), 0, 0),
+		EC_TK_ENDLIST
+	);
 
-	return &tk->gen;
+	tk->child = final;
+
+	gen_tk->flags |= EC_TK_F_INITIALIZED;
+
+	return 0;
 
 fail:
-	ec_free(op);
-	ec_tk_free(child);
-	ec_tk_free(val_tk);
-	ec_tk_free(gen_tk);
-	return NULL;
+	ec_tk_free(val);
+	ec_tk_free(pre_op);
+	ec_tk_free(post_op);
+	ec_tk_free(term);
+	ec_tk_free(post);
+	return -1;
 }
 
 static int ec_tk_expr_testcase(void)
 {
-	struct ec_tk *tk, *tk2, *val_tk;
+	struct ec_tk *term, *factor, *expr, *tk, *val,
+		*pre_op, *post_op, *post, *final;
 	int ret = 0;
 
-	val_tk = ec_tk_str_new(NULL, "val");
-	tk = ec_tk_seq_new_list(NULL,
-		ec_tk_clone(val_tk),
+	// XXX check all APIs: pointers are "moved", they are freed by
+	// the callee
+
+	/* Example that generates an expression "manually". We keep it
+	 * here for reference. */
+
+	/* create the object, we will initialize it later: this is
+	 * needed because we have a circular dependency */
+	expr = ec_tk_seq_new("expr");
+
+	val = ec_tk_int("val", 0, UCHAR_MAX, 0);
+
+	/* reverse bits */
+	pre_op = ec_tk_or("pre-op",
+		ec_tk_str(NULL, "~"),
+		EC_TK_ENDLIST
+	);
+
+	/* factorial */
+	post_op = ec_tk_or("post-op",
+		ec_tk_str(NULL, "!"),
+		EC_TK_ENDLIST
+	);
+
+	term = ec_tk_or("term",
+		ec_tk_clone(val),
+		ec_tk_seq(NULL,
+			ec_tk_str(NULL, "("),
+			ec_tk_clone(expr),
+			ec_tk_str(NULL, ")"),
+			EC_TK_ENDLIST
+		),
+		ec_tk_seq(NULL,
+			ec_tk_clone(pre_op),
+			ec_tk_clone(expr),
+			EC_TK_ENDLIST
+		),
+		EC_TK_ENDLIST
+	);
+
+	factor = ec_tk_seq("factor",
+		ec_tk_clone(term),
 		ec_tk_many_new(NULL,
-			ec_tk_seq_new_list(NULL,
-				ec_tk_str_new(NULL, "*"),
-				ec_tk_clone(val_tk),
+			ec_tk_seq(NULL,
+				ec_tk_str(NULL, "+"),
+				ec_tk_clone(term),
 				EC_TK_ENDLIST
 			),
 			0, 0
 		),
 		EC_TK_ENDLIST
 	);
-	ec_tk_free(val_tk);
-	val_tk = NULL;
 
-	tk2 = ec_tk_seq_new_list(NULL,
-		ec_tk_clone(tk),
+	post = ec_tk_seq("post",
+		ec_tk_clone(factor),
 		ec_tk_many_new(NULL,
-			ec_tk_seq_new_list(NULL,
-				ec_tk_str_new(NULL, "+"),
-				ec_tk_clone(tk),
+			ec_tk_seq(NULL,
+				ec_tk_str(NULL, "*"),
+				ec_tk_clone(factor),
 				EC_TK_ENDLIST
 			),
 			0, 0
@@ -294,29 +393,62 @@ static int ec_tk_expr_testcase(void)
 		EC_TK_ENDLIST
 	);
 
+	final = ec_tk_seq("final",
+		ec_tk_clone(post),
+		ec_tk_many_new(NULL, ec_tk_clone(post_op), 0, 0),
+		EC_TK_ENDLIST
+	);
 
-//		"/*-+");
-	if (tk2 == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create tk\n");
+	/* free the initial references */
+	ec_tk_free(val);
+	ec_tk_free(pre_op);
+	ec_tk_free(post_op);
+	ec_tk_free(term);
+	ec_tk_free(factor);
+	ec_tk_free(post);
+
+	if (ec_tk_seq_add(expr, ec_tk_clone(final)) < 0) {
+		ec_tk_free(final);
+		ec_tk_free(expr);
 		return -1;
 	}
 
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "val", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "val", "*", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "val", "*", "val", EC_TK_ENDLIST);
+	ec_tk_free(final);
 
-	ret |= EC_TEST_CHECK_TK_PARSE(tk2, 1, "val", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk2, 1, "val", "*", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk2, 3, "val", "*", "val", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk2, 3, "val", "+", "val", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk2, 5, "val", "*", "val", "+", "val",
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", "*", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "*", "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "+", "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 5, "1", "*", "1", "+", "1",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(
+		expr, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 4, "1", "+", "~", "1",
 		EC_TK_ENDLIST);
 
-	ec_tk_free(tk);
-	ec_tk_free(tk2);
+	ec_tk_free(expr);
 
-	tk = ec_tk_expr(NULL, ec_tk_str_new(NULL, "val"), "*+");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "val", "*", "val", "+", "val",
+	tk = ec_tk_expr_new(NULL);
+	ec_tk_expr_set_val_tk(tk, ec_tk_int(NULL, 0, UCHAR_MAX, 0));
+	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "+"));
+	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "*"));
+	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "~"));
+	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "!"));
+	ec_tk_expr_add_parenthesis(tk, ec_tk_str(NULL, "("),
+		ec_tk_str(NULL, ")"));
+	ec_tk_expr_start(tk);
+
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", "*", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "*", "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "+", "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 5, "1", "*", "1", "+", "1",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(
+		expr, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")",
+		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(expr, 4, "1", "+", "~", "1",
 		EC_TK_ENDLIST);
 	ec_tk_free(tk);
 

@@ -207,7 +207,7 @@ static int ec_tk_many_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_many_new(NULL, ec_tk_str_new(NULL, "foo"), 0, 0);
+	tk = ec_tk_many_new(NULL, ec_tk_str(NULL, "foo"), 0, 0);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -219,7 +219,7 @@ static int ec_tk_many_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
-	tk = ec_tk_many_new(NULL, ec_tk_str_new(NULL, "foo"), 1, 0);
+	tk = ec_tk_many_new(NULL, ec_tk_str(NULL, "foo"), 1, 0);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -231,7 +231,7 @@ static int ec_tk_many_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
-	tk = ec_tk_many_new(NULL, ec_tk_str_new(NULL, "foo"), 1, 2);
+	tk = ec_tk_many_new(NULL, ec_tk_str(NULL, "foo"), 1, 2);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

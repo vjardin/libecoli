@@ -40,6 +40,8 @@ struct ec_tk *ec_tk_expr_new(const char *id);
 int ec_tk_expr_add_bin_op(struct ec_tk *gen_tk, struct ec_tk *op);
 int ec_tk_expr_add_pre_op(struct ec_tk *gen_tk, struct ec_tk *op);
 int ec_tk_expr_add_post_op(struct ec_tk *gen_tk, struct ec_tk *op);
+int ec_tk_expr_add_parenthesis(struct ec_tk *gen_tk,
+	struct ec_tk *open, struct ec_tk *close);
 
 
 #endif

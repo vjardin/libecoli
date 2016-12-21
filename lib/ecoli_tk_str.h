@@ -30,6 +30,10 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk *ec_tk_str_new(const char *id, const char *str);
+struct ec_tk *ec_tk_str(const char *id, const char *str);
+
+struct ec_tk *ec_tk_str_new(const char *id);
+int ec_tk_str_set_str(struct ec_tk *tk, const char *str);
+int ec_tk_str_start(struct ec_tk *tk);
 
 #endif

@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
@@ -136,28 +137,64 @@ static const struct ec_tk_ops ec_tk_str_ops = {
 	.free_priv = ec_tk_str_free_priv,
 };
 
-struct ec_tk *ec_tk_str_new(const char *id, const char *str)
+struct ec_tk *ec_tk_str_new(const char *id)
 {
 	struct ec_tk *gen_tk = NULL;
-	struct ec_tk_str *tk = NULL;
-	char *s = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_str_ops, sizeof(*tk));
+	gen_tk = ec_tk_new(id, &ec_tk_str_ops, sizeof(struct ec_tk_str));
+	if (gen_tk == NULL)
+		return NULL;
+
+	return gen_tk;
+}
+
+int ec_tk_str_set_str(struct ec_tk *gen_tk, const char *str)
+{
+	struct ec_tk_str *tk = (struct ec_tk_str *)gen_tk;
+
+	if (str == NULL)
+		return -EINVAL;
+	if (tk->string != NULL)
+		return -EEXIST;
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+
+	tk->string = ec_strdup(str);
+	if (tk->string == NULL)
+		return -ENOMEM;
+
+	tk->len = strlen(tk->string);
+
+	return 0;
+}
+
+int ec_tk_str_start(struct ec_tk *gen_tk)
+{
+	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+		return -EPERM;
+
+	gen_tk->flags |= EC_TK_F_INITIALIZED;
+
+	return 0;
+}
+
+struct ec_tk *ec_tk_str(const char *id, const char *str)
+{
+	struct ec_tk *gen_tk = NULL;
+
+	gen_tk = ec_tk_str_new(id);
 	if (gen_tk == NULL)
 		goto fail;
 
-	s = ec_strdup(str);
-	if (s == NULL)
+	if (ec_tk_str_set_str(gen_tk, str) < 0)
 		goto fail;
 
-	tk = (struct ec_tk_str *)gen_tk;
-	tk->string = s;
-	tk->len = strlen(s);
+	if (ec_tk_str_start(gen_tk) < 0)
+		goto fail;
 
 	return gen_tk;
 
 fail:
-	ec_free(s);
 	ec_tk_free(gen_tk);
 	return NULL;
 }
@@ -167,7 +204,7 @@ static int ec_tk_str_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_str_new(NULL, "foo");
+	tk = ec_tk_str(NULL, "foo");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -179,7 +216,7 @@ static int ec_tk_str_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
 	ec_tk_free(tk);
 
-	tk = ec_tk_str_new(NULL, "Здравствуйте");
+	tk = ec_tk_str(NULL, "Здравствуйте");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -192,7 +229,7 @@ static int ec_tk_str_testcase(void)
 	ec_tk_free(tk);
 
 	/* an empty token string always matches */
-	tk = ec_tk_str_new(NULL, "");
+	tk = ec_tk_str(NULL, "");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -203,7 +240,7 @@ static int ec_tk_str_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_str_new(NULL, "foo");
+	tk = ec_tk_str(NULL, "foo");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

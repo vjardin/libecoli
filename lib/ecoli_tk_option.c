@@ -125,7 +125,7 @@ static int ec_tk_option_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_option_new(NULL, ec_tk_str_new(NULL, "foo"));
+	tk = ec_tk_option_new(NULL, ec_tk_str(NULL, "foo"));
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -137,7 +137,7 @@ static int ec_tk_option_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_option_new(NULL, ec_tk_str_new(NULL, "foo"));
+	tk = ec_tk_option_new(NULL, ec_tk_str(NULL, "foo"));
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
