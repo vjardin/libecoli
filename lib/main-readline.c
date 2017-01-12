@@ -213,7 +213,6 @@ static int create_commands(void)
 
  fail:
 	fprintf(stderr, "cannot initialize tokens\n");
-	ec_tk_free(cmd);
 	ec_tk_free(cmdlist);
 	return -1;
 }

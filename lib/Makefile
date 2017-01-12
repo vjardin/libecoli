@@ -39,7 +39,7 @@ srcs += ecoli_tk_str.c ecoli_tk_seq.c
 srcs += ecoli_tk_space.c ecoli_tk_or.c ecoli_test.c
 srcs += ecoli_tk_empty.c ecoli_tk_int.c
 srcs += ecoli_tk_option.c ecoli_tk_many.c
-srcs += ecoli_tk_shlex.c ecoli_tk_expr.c
+srcs += ecoli_tk_shlex.c ecoli_tk_expr.c ecoli_tk_bypass.c
 shlib-y-$(O)libecoli.so := $(srcs)
 
 ldflags-$(O)test = -rdynamic

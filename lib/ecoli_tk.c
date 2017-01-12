@@ -79,6 +79,8 @@ void ec_tk_free(struct ec_tk *tk)
 	if (tk == NULL)
 		return;
 
+	assert(tk->refcnt > 0);
+
 	if (--tk->refcnt > 0)
 		return;
 

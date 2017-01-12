@@ -148,14 +148,20 @@ int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	struct ec_tk **table;
 
 	assert(tk != NULL);
-	assert(child != NULL);
 
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
+	if (child == NULL)
+		return -EINVAL;
+
+	if (gen_tk->flags & EC_TK_F_INITIALIZED) {
+		ec_tk_free(child);
 		return -EPERM;
+	}
 
 	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
-	if (table == NULL)
+	if (table == NULL) {
+		ec_tk_free(child);
 		return -1;
+	}
 
 	tk->table = table;
 	table[tk->len] = child;
