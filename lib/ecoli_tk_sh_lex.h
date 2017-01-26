@@ -30,6 +30,6 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk *ec_tk_shlex_new(const char *id, struct ec_tk *child);
+struct ec_tk *ec_tk_sh_lex_new(const char *id, struct ec_tk *child);
 
 #endif

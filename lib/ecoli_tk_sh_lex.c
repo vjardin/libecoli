@@ -41,9 +41,9 @@
 #include <ecoli_tk_seq.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_tk_option.h>
-#include <ecoli_tk_shlex.h>
+#include <ecoli_tk_sh_lex.h>
 
-struct ec_tk_shlex {
+struct ec_tk_sh_lex {
 	struct ec_tk gen;
 	struct ec_tk *child;
 };
@@ -233,10 +233,10 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 	return NULL;
 }
 
-static struct ec_parsed_tk *ec_tk_shlex_parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_sh_lex_parse(const struct ec_tk *gen_tk,
 	const struct ec_strvec *strvec)
 {
-	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
+	struct ec_tk_sh_lex *tk = (struct ec_tk_sh_lex *)gen_tk;
 	struct ec_strvec *new_vec = NULL, *match_strvec;
 	struct ec_parsed_tk *parsed_tk = NULL, *child_parsed_tk;
 	const char *str;
@@ -282,10 +282,10 @@ static struct ec_parsed_tk *ec_tk_shlex_parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static struct ec_completed_tk *ec_tk_shlex_complete(const struct ec_tk *gen_tk,
+static struct ec_completed_tk *ec_tk_sh_lex_complete(const struct ec_tk *gen_tk,
 	const struct ec_strvec *strvec)
 {
-	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
+	struct ec_tk_sh_lex *tk = (struct ec_tk_sh_lex *)gen_tk;
 	struct ec_completed_tk *completed_tk, *child_completed_tk = NULL;
 	struct ec_strvec *new_vec = NULL;
 	const char *str;
@@ -364,28 +364,28 @@ static struct ec_completed_tk *ec_tk_shlex_complete(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static void ec_tk_shlex_free_priv(struct ec_tk *gen_tk)
+static void ec_tk_sh_lex_free_priv(struct ec_tk *gen_tk)
 {
-	struct ec_tk_shlex *tk = (struct ec_tk_shlex *)gen_tk;
+	struct ec_tk_sh_lex *tk = (struct ec_tk_sh_lex *)gen_tk;
 
 	ec_tk_free(tk->child);
 }
 
-static struct ec_tk_ops ec_tk_shlex_ops = {
-	.typename = "shlex",
-	.parse = ec_tk_shlex_parse,
-	.complete = ec_tk_shlex_complete,
-	.free_priv = ec_tk_shlex_free_priv,
+static struct ec_tk_ops ec_tk_sh_lex_ops = {
+	.typename = "sh_lex",
+	.parse = ec_tk_sh_lex_parse,
+	.complete = ec_tk_sh_lex_complete,
+	.free_priv = ec_tk_sh_lex_free_priv,
 };
 
-struct ec_tk *ec_tk_shlex_new(const char *id, struct ec_tk *child)
+struct ec_tk *ec_tk_sh_lex_new(const char *id, struct ec_tk *child)
 {
-	struct ec_tk_shlex *tk = NULL;
+	struct ec_tk_sh_lex *tk = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_shlex *)ec_tk_new(id, &ec_tk_shlex_ops,
+	tk = (struct ec_tk_sh_lex *)ec_tk_new(id, &ec_tk_sh_lex_ops,
 		sizeof(*tk));
 	if (tk == NULL) {
 		ec_tk_free(child);
@@ -397,12 +397,12 @@ struct ec_tk *ec_tk_shlex_new(const char *id, struct ec_tk *child)
 	return &tk->gen;
 }
 
-static int ec_tk_shlex_testcase(void)
+static int ec_tk_sh_lex_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_shlex_new(NULL,
+	tk = ec_tk_sh_lex_new(NULL,
 		EC_TK_SEQ(NULL,
 			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
@@ -422,7 +422,7 @@ static int ec_tk_shlex_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_shlex_new(NULL,
+	tk = ec_tk_sh_lex_new(NULL,
 		EC_TK_SEQ(NULL,
 			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
@@ -489,9 +489,9 @@ static int ec_tk_shlex_testcase(void)
 	return ret;
 }
 
-static struct ec_test ec_tk_shlex_test = {
-	.name = "tk_shlex",
-	.test = ec_tk_shlex_testcase,
+static struct ec_test ec_tk_sh_lex_test = {
+	.name = "tk_sh_lex",
+	.test = ec_tk_sh_lex_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_shlex_test);
+EC_REGISTER_TEST(ec_tk_sh_lex_test);

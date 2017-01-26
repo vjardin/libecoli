@@ -247,6 +247,7 @@ static int ec_tk_re_lex_testcase(void)
 	ret |= ec_tk_re_lex_add(tk, "^[ 	]+", 0);
 	if (ret != 0) {
 		ec_log(EC_LOG_ERR, "cannot add regexp to token\n");
+		ec_tk_free(tk);
 		return -1;
 	}
 

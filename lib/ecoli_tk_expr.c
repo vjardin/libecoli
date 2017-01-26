@@ -44,7 +44,7 @@
 #include <ecoli_tk_many.h>
 #include <ecoli_tk_or.h>
 #include <ecoli_tk_expr.h>
-#include <ecoli_tk_bypass.h>
+#include <ecoli_tk_weakref.h>
 
 struct ec_tk_expr {
 	struct ec_tk gen;
@@ -84,7 +84,6 @@ static struct ec_completed_tk *ec_tk_expr_complete(const struct ec_tk *gen_tk,
 static void ec_tk_expr_free_priv(struct ec_tk *gen_tk)
 {
 	struct ec_tk_expr *tk = (struct ec_tk_expr *)gen_tk;
-	struct ec_tk *final;
 	unsigned int i;
 
 	ec_log(EC_LOG_DEBUG, "free %p %p %p\n", tk, tk->child, tk->val_tk);
@@ -106,12 +105,7 @@ static void ec_tk_expr_free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->open_ops);
 	ec_free(tk->close_ops);
 
-	/* break the graph loop, and free the nodes */
-	if (tk->child != NULL) {
-		final = ec_tk_bypass_pop(tk->child);
-		ec_tk_free(tk->child);
-		ec_tk_free(final);
-	}
+	ec_tk_free(tk->child);
 }
 
 static int ec_tk_expr_build(struct ec_tk *gen_tk)
@@ -119,7 +113,7 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	struct ec_tk_expr *tk = (struct ec_tk_expr *)gen_tk;
 	struct ec_tk *term = NULL, *expr = NULL, *next = NULL,
 		*pre_op = NULL, *post_op = NULL,
-		*post = NULL, *final = NULL;
+		*post = NULL, *weak = NULL;
 	unsigned int i;
 	int ret;
 
@@ -132,9 +126,9 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	/* create the object, we will initialize it later: this is
 	 * needed because we have a circular dependency */
 	ret = -ENOMEM;
-	expr = ec_tk_bypass_empty("expr");
-	if (expr == NULL)
-		goto fail;
+	weak = ec_tk_weakref_empty("weak");
+	if (weak == NULL)
+		return -1;
 
 	/* prefix unary operators */
 	pre_op = ec_tk_or("pre-op");
@@ -162,12 +156,12 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	if (ec_tk_or_add(term,
 		EC_TK_SEQ(NULL,
 			ec_tk_clone(pre_op),
-			ec_tk_clone(expr))) < 0)
+			ec_tk_clone(weak))) < 0)
 		goto fail;
 	for (i = 0; i < tk->paren_len; i++) {
 		if (ec_tk_or_add(term, EC_TK_SEQ(NULL,
 					ec_tk_clone(tk->open_ops[i]),
-					ec_tk_clone(expr),
+					ec_tk_clone(weak),
 					ec_tk_clone(tk->close_ops[i]))) < 0)
 			goto fail;
 	}
@@ -189,11 +183,11 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 			goto fail;
 	}
 
-	final = EC_TK_SEQ("final",
+	expr = EC_TK_SEQ("expr",
 		ec_tk_clone(term),
 		ec_tk_many(NULL, ec_tk_clone(post_op), 0, 0)
 	);
-	if (final == NULL)
+	if (expr == NULL)
 		goto fail;
 
 	/* free the initial references */
@@ -206,11 +200,11 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	ec_tk_free(post);
 	post = NULL;
 
-	if (ec_tk_bypass_set(expr, ec_tk_clone(final)) < 0)
+	/* no need to clone here, the node is not consumed */
+	if (ec_tk_weakref_set(weak, expr) < 0)
 		goto fail;
-
-	ec_tk_free(final);
-	final = NULL;
+	ec_tk_free(weak);
+	weak = NULL;
 
 	tk->child = expr;
 
@@ -222,7 +216,7 @@ fail:
 	ec_tk_free(pre_op);
 	ec_tk_free(post_op);
 	ec_tk_free(post);
-	ec_tk_free(final);
+	ec_tk_free(weak);
 
 	return ret;
 }
@@ -420,7 +414,7 @@ fail:
 static int ec_tk_expr_testcase_manual(void)
 {
 	struct ec_tk *term = NULL, *factor = NULL, *expr = NULL, *val = NULL,
-		*pre_op = NULL, *post_op = NULL, *post = NULL, *final = NULL;
+		*pre_op = NULL, *post_op = NULL, *post = NULL, *weak = NULL;
 	int ret = 0;
 
 	// XXX check all APIs: pointers are "moved", they are freed by
@@ -429,10 +423,8 @@ static int ec_tk_expr_testcase_manual(void)
 	/* Example that generates an expression "manually". We keep it
 	 * here for reference. */
 
-	/* create the object, we will initialize it later: this is
-	 * needed because we have a circular dependency */
-	expr = ec_tk_bypass_empty("expr");
-	if (expr == NULL)
+	weak = ec_tk_weakref_empty("weak");
+	if (weak == NULL)
 		return -1;
 
 	/* reverse bits */
@@ -450,12 +442,12 @@ static int ec_tk_expr_testcase_manual(void)
 		val,
 		EC_TK_SEQ(NULL,
 			ec_tk_str(NULL, "("),
-			ec_tk_clone(expr),
+			ec_tk_clone(weak),
 			ec_tk_str(NULL, ")")
 		),
 		EC_TK_SEQ(NULL,
 			ec_tk_clone(pre_op),
-			ec_tk_clone(expr)
+			ec_tk_clone(weak)
 		)
 	);
 	val = NULL;
@@ -482,7 +474,7 @@ static int ec_tk_expr_testcase_manual(void)
 		)
 	);
 
-	final = EC_TK_SEQ("final",
+	expr = EC_TK_SEQ("expr",
 		ec_tk_clone(post),
 		ec_tk_many(NULL, ec_tk_clone(post_op), 0, 0)
 	);
@@ -499,11 +491,11 @@ static int ec_tk_expr_testcase_manual(void)
 	ec_tk_free(post);
 	post = NULL;
 
-	if (ec_tk_bypass_set(expr, ec_tk_clone(final)) < 0)
+	/* no need to clone here, the node is not consumed */
+	if (ec_tk_weakref_set(weak, expr) < 0)
 		goto fail;
-
-	ec_tk_free(final);
-	final = NULL;
+	ec_tk_free(weak);
+	weak = NULL;
 
 	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1");
 	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", "*");
@@ -514,9 +506,7 @@ static int ec_tk_expr_testcase_manual(void)
 		expr, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")");
 	ret |= EC_TEST_CHECK_TK_PARSE(expr, 4, "1", "+", "~", "1");
 
-	final = ec_tk_bypass_pop(expr);
 	ec_tk_free(expr);
-	ec_tk_free(final);
 
 	return ret;
 
@@ -528,7 +518,7 @@ fail:
 	ec_tk_free(pre_op);
 	ec_tk_free(post_op);
 	ec_tk_free(post);
-	ec_tk_free(final);
+	ec_tk_free(weak);
 	return 0;
 }
 

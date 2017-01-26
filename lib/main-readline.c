@@ -40,7 +40,7 @@
 #include <ecoli_tk_seq.h>
 #include <ecoli_tk_space.h>
 #include <ecoli_tk_or.h>
-#include <ecoli_tk_shlex.h>
+#include <ecoli_tk_sh_lex.h>
 #include <ecoli_tk_int.h>
 
 static struct ec_tk *commands;
@@ -201,7 +201,7 @@ static int create_commands(void)
 	if (ec_tk_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
-	commands = ec_tk_shlex_new(NULL, cmdlist);
+	commands = ec_tk_sh_lex_new(NULL, cmdlist);
 	if (commands == NULL)
 		goto fail;
 

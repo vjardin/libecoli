@@ -39,49 +39,41 @@
 #include <ecoli_tk.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_tk_option.h>
-#include <ecoli_tk_bypass.h>
+#include <ecoli_tk_weakref.h>
 
-struct ec_tk_bypass {
+struct ec_tk_weakref {
 	struct ec_tk gen;
 	struct ec_tk *child;
 };
 
-static struct ec_parsed_tk *ec_tk_bypass_parse(const struct ec_tk *gen_tk,
+static struct ec_parsed_tk *ec_tk_weakref_parse(const struct ec_tk *gen_tk,
 	const struct ec_strvec *strvec)
 {
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
+	struct ec_tk_weakref *tk = (struct ec_tk_weakref *)gen_tk;
 
 	return ec_tk_parse_tokens(tk->child, strvec);
 }
 
-static struct ec_completed_tk *ec_tk_bypass_complete(const struct ec_tk *gen_tk,
+static struct ec_completed_tk *ec_tk_weakref_complete(const struct ec_tk *gen_tk,
 	const struct ec_strvec *strvec)
 {
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
+	struct ec_tk_weakref *tk = (struct ec_tk_weakref *)gen_tk;
 
 	return ec_tk_complete_tokens(tk->child, strvec);
 }
 
-static void ec_tk_bypass_free_priv(struct ec_tk *gen_tk)
-{
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
-
-	ec_tk_free(tk->child);
-}
-
-static struct ec_tk_ops ec_tk_bypass_ops = {
-	.typename = "bypass",
-	.parse = ec_tk_bypass_parse,
-	.complete = ec_tk_bypass_complete,
-	.free_priv = ec_tk_bypass_free_priv,
+static struct ec_tk_ops ec_tk_weakref_ops = {
+	.typename = "weakref",
+	.parse = ec_tk_weakref_parse,
+	.complete = ec_tk_weakref_complete,
 };
 
-struct ec_tk *ec_tk_bypass_empty(const char *id)
+struct ec_tk *ec_tk_weakref_empty(const char *id)
 {
-	struct ec_tk_bypass *tk = NULL;
+	struct ec_tk_weakref *tk = NULL;
 
-	tk = (struct ec_tk_bypass *)ec_tk_new(id,
-		&ec_tk_bypass_ops, sizeof(*tk));
+	tk = (struct ec_tk_weakref *)ec_tk_new(id,
+		&ec_tk_weakref_ops, sizeof(*tk));
 	if (tk == NULL)
 		return NULL;
 
@@ -90,9 +82,9 @@ struct ec_tk *ec_tk_bypass_empty(const char *id)
 	return &tk->gen;
 }
 
-int ec_tk_bypass_set(struct ec_tk *gen_tk, struct ec_tk *child)
+int ec_tk_weakref_set(struct ec_tk *gen_tk, struct ec_tk *child)
 {
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
+	struct ec_tk_weakref *tk = (struct ec_tk_weakref *)gen_tk;
 
 	// XXX check tk type
 
@@ -111,46 +103,30 @@ int ec_tk_bypass_set(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
-struct ec_tk *ec_tk_bypass_pop(struct ec_tk *gen_tk)
-{
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
-	struct ec_tk *child;
-
-	child = tk->child;
-	tk->child = NULL;
-
-	gen_tk->flags &= ~EC_TK_F_BUILT;
-	TAILQ_REMOVE(&gen_tk->children, child, next); // XXX really needed?
-
-	return child;
-}
-
-struct ec_tk *ec_tk_bypass(const char *id, struct ec_tk *child)
+struct ec_tk *ec_tk_weakref(const char *id, struct ec_tk *child)
 {
 	struct ec_tk *gen_tk = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	gen_tk = ec_tk_bypass_empty(id);
-	if (gen_tk == NULL) {
-		ec_tk_free(child);
+	gen_tk = ec_tk_weakref_empty(id);
+	if (gen_tk == NULL)
 		return NULL;
-	}
 
-	ec_tk_bypass_set(gen_tk, child);
+	ec_tk_weakref_set(gen_tk, child);
 
 	return gen_tk;
 }
 
-static int ec_tk_bypass_testcase(void)
+static int ec_tk_weakref_testcase(void)
 {
 	return 0;
 }
 
-static struct ec_test ec_tk_bypass_test = {
-	.name = "tk_bypass",
-	.test = ec_tk_bypass_testcase,
+static struct ec_test ec_tk_weakref_test = {
+	.name = "tk_weakref",
+	.test = ec_tk_weakref_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_bypass_test);
+EC_REGISTER_TEST(ec_tk_weakref_test);

@@ -37,7 +37,7 @@ srcs := ecoli_tk.c ecoli_malloc.c ecoli_log.c ecoli_strvec.c
 srcs += ecoli_keyval.c ecoli_test.c
 srcs += ecoli_tk_str.c ecoli_tk_seq.c ecoli_tk_space.c ecoli_tk_or.c
 srcs += ecoli_tk_empty.c ecoli_tk_int.c ecoli_tk_option.c ecoli_tk_many.c
-srcs += ecoli_tk_shlex.c ecoli_tk_expr.c ecoli_tk_bypass.c ecoli_tk_re_lex.c
+srcs += ecoli_tk_sh_lex.c ecoli_tk_expr.c ecoli_tk_weakref.c ecoli_tk_re_lex.c
 shlib-y-$(O)libecoli.so := $(srcs)
 
 ldflags-$(O)test = -rdynamic
