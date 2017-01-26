@@ -34,6 +34,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
+#include <ecoli_log.h>
 #include <ecoli_tk.h>
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
@@ -43,6 +44,8 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 	char buf[256]; // XXX
 
 	assert(size >= sizeof(*tk));
+
+	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n", ops->typename, id);
 
 	tk = ec_calloc(1, size);
 	if (tk == NULL)
@@ -131,7 +134,7 @@ struct ec_tk *ec_tk_parent(const struct ec_tk *tk)
 	return tk->parent;
 }
 
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str)
+struct ec_parsed_tk *ec_tk_parse(struct ec_tk *tk, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
 	struct ec_parsed_tk *parsed_tk;
@@ -156,10 +159,23 @@ struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str)
 	return NULL;
 }
 
-struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *tk,
+struct ec_parsed_tk *ec_tk_parse_tokens(struct ec_tk *tk,
 	const struct ec_strvec *strvec)
 {
 	struct ec_parsed_tk *parsed_tk;
+	int ret;
+
+	/* build the node if required */
+	if (tk->ops->build != NULL) {
+		if ((tk->flags & EC_TK_F_BUILT) == 0) {
+			ret = tk->ops->build(tk);
+			if (ret < 0) {
+				errno = -ret;
+				return NULL;
+			}
+		}
+	}
+	tk->flags |= EC_TK_F_BUILT;
 
 	if (tk->ops->parse == NULL) {
 		errno = ENOTSUP;

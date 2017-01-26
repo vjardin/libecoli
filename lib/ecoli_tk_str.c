@@ -156,24 +156,12 @@ int ec_tk_str_set_str(struct ec_tk *gen_tk, const char *str)
 		return -EINVAL;
 	if (tk->string != NULL)
 		return -EEXIST;
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
-		return -EPERM;
 
 	tk->string = ec_strdup(str);
 	if (tk->string == NULL)
 		return -ENOMEM;
 
 	tk->len = strlen(tk->string);
-
-	return 0;
-}
-
-int ec_tk_str_start(struct ec_tk *gen_tk)
-{
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
-		return -EPERM;
-
-	gen_tk->flags |= EC_TK_F_INITIALIZED;
 
 	return 0;
 }
@@ -187,9 +175,6 @@ struct ec_tk *ec_tk_str(const char *id, const char *str)
 		goto fail;
 
 	if (ec_tk_str_set_str(gen_tk, str) < 0)
-		goto fail;
-
-	if (ec_tk_str_start(gen_tk) < 0)
 		goto fail;
 
 	return gen_tk;
@@ -209,11 +194,11 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", "bar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foobar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", "bar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foobar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "");
 	ec_tk_free(tk);
 
 	tk = ec_tk_str(NULL, "Здравствуйте");
@@ -221,11 +206,11 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "Здравствуйте", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "Здравствуйте");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "Здравствуйте",
-		"John!", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
+		"John!");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "");
 	ec_tk_free(tk);
 
 	/* an empty token string always matches */
@@ -234,9 +219,9 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "", "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo");
 	ec_tk_free(tk);
 
 	/* test completion */

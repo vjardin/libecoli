@@ -87,9 +87,9 @@ static int ec_tk_empty_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo", "bar", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foo", "bar");
 	ec_tk_free(tk);
 
 	/* never completes */

@@ -39,6 +39,9 @@ struct ec_parsed_tk;
 struct ec_strvec;
 struct ec_keyval;
 
+/* return 0 on success, else -errno. */
+typedef int (*ec_tk_build_t)(struct ec_tk *tk);
+
 typedef struct ec_parsed_tk *(*ec_tk_parse_t)(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 typedef struct ec_completed_tk *(*ec_tk_complete_t)(const struct ec_tk *tk,
@@ -48,6 +51,7 @@ typedef void (*ec_tk_free_priv_t)(struct ec_tk *);
 
 struct ec_tk_ops {
 	const char *typename;
+	ec_tk_build_t build; /* (re)build the node, called by generic parse */
 	ec_tk_parse_t parse;
 	ec_tk_complete_t complete;
 	ec_tk_desc_t desc;
@@ -64,7 +68,7 @@ struct ec_tk {
 	/* XXX ensure parent and child are properly set in all nodes */
 	struct ec_tk *parent;
 	unsigned int refcnt;
-#define EC_TK_F_INITIALIZED 0x0001
+#define EC_TK_F_BUILT 0x0001 /** set if configuration is built */
 	unsigned int flags;
 
 	TAILQ_ENTRY(ec_tk) next;
@@ -113,12 +117,12 @@ void ec_parsed_tk_set_match(struct ec_parsed_tk *parsed_tk,
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
 */
-struct ec_parsed_tk *ec_tk_parse(const struct ec_tk *tk, const char *str);
+struct ec_parsed_tk *ec_tk_parse(struct ec_tk *tk, const char *str);
 
 /* mostly internal to tokens */
 /* XXX it should not reset cache
  * ... not sure... it is used by tests */
-struct ec_parsed_tk *ec_tk_parse_tokens(const struct ec_tk *tk,
+struct ec_parsed_tk *ec_tk_parse_tokens(struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,

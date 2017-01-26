@@ -34,12 +34,10 @@ CFLAGS  = -g -O0 -Wall -Werror -W -fPIC
 CFLAGS += -I.
 
 srcs := ecoli_tk.c ecoli_malloc.c ecoli_log.c ecoli_strvec.c
-srcs += ecoli_keyval.c
-srcs += ecoli_tk_str.c ecoli_tk_seq.c
-srcs += ecoli_tk_space.c ecoli_tk_or.c ecoli_test.c
-srcs += ecoli_tk_empty.c ecoli_tk_int.c
-srcs += ecoli_tk_option.c ecoli_tk_many.c
-srcs += ecoli_tk_shlex.c ecoli_tk_expr.c ecoli_tk_bypass.c
+srcs += ecoli_keyval.c ecoli_test.c
+srcs += ecoli_tk_str.c ecoli_tk_seq.c ecoli_tk_space.c ecoli_tk_or.c
+srcs += ecoli_tk_empty.c ecoli_tk_int.c ecoli_tk_option.c ecoli_tk_many.c
+srcs += ecoli_tk_shlex.c ecoli_tk_expr.c ecoli_tk_bypass.c ecoli_tk_re_lex.c
 shlib-y-$(O)libecoli.so := $(srcs)
 
 ldflags-$(O)test = -rdynamic

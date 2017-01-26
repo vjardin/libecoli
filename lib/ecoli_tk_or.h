@@ -30,16 +30,19 @@
 
 #include <ecoli_tk.h>
 
+#define EC_TK_OR(args...) __ec_tk_or(args, EC_TK_ENDLIST)
+
 /* list must be terminated with EC_TK_ENDLIST */
 /* all token given in the list will be freed when freeing this one */
-struct ec_tk *ec_tk_or(const char *id, ...);
+/* avoid using this function directly, prefer the macro EC_TK_OR() or
+ * ec_tk_or() + ec_tk_or_add() */
+struct ec_tk *__ec_tk_or(const char *id, ...);
 
-struct ec_tk *ec_tk_or_new(const char *id);
+struct ec_tk *ec_tk_or(const char *id);
 
 /* child is consumed */
 /* all token given in the list will be freed when freeing this one */
 int ec_tk_or_add(struct ec_tk *tk, struct ec_tk *child);
 
-int ec_tk_or_start(struct ec_tk *tk);
 
 #endif

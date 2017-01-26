@@ -96,11 +96,11 @@ static int ec_tk_space_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ", "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo ", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " ", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo ");
 	ec_tk_free(tk);
 
 	/* test completion */

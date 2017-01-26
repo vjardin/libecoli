@@ -121,7 +121,6 @@ struct ec_tk *ec_tk_int(const char *id, long long int min,
 	tk->min = min;
 	tk->max = max;
 	tk->base = base;
-	gen_tk->flags |= EC_TK_F_INITIALIZED;
 
 	return &tk->gen;
 }
@@ -151,12 +150,12 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "256", "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x100", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " 1", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-1", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x101", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "256", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x100");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, " 1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x101");
 
 	p = ec_tk_parse(tk, "0");
 	s = ec_strvec_val(ec_parsed_tk_strvec(p), 0);
@@ -174,11 +173,11 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "7fffffffffffffff", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x7fffffffffffffff", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-2", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "7fffffffffffffff");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0x7fffffffffffffff");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "-2");
 
 	p = ec_tk_parse(tk, "10");
 	s = ec_strvec_val(ec_parsed_tk_strvec(p), 0);
@@ -191,12 +190,11 @@ static int ec_tk_int_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-9223372036854775808",
-		EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x0", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "1", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "0");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "-9223372036854775808");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "0x0");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "1");
 	ec_tk_free(tk);
 
 	/* test completion */

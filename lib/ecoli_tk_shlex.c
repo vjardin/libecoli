@@ -212,6 +212,7 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 			concat = NULL;
 		}
 
+		/* XXX remove all printf comments */
 //		printf("str off=%zd len=%zd\n", off, len);
 		off += len;
 	}
@@ -402,36 +403,33 @@ static int ec_tk_shlex_testcase(void)
 	int ret = 0;
 
 	tk = ec_tk_shlex_new(NULL,
-		ec_tk_seq(NULL,
+		EC_TK_SEQ(NULL,
 			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
 				ec_tk_str(NULL, "toto")
 			),
-			ec_tk_str(NULL, "bar"),
-			EC_TK_ENDLIST
+			ec_tk_str(NULL, "bar")
 		)
 	);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo bar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  foo   bar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'foo' \"bar\"", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'f'oo 'toto' bar",
-		EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo bar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  foo   bar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'foo' \"bar\"");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "  'f'oo 'toto' bar");
 	ec_tk_free(tk);
 
 	/* test completion */
 	tk = ec_tk_shlex_new(NULL,
-		ec_tk_seq(NULL,
+		EC_TK_SEQ(NULL,
 			ec_tk_str(NULL, "foo"),
 			ec_tk_option_new(NULL,
 				ec_tk_str(NULL, "toto")
 			),
 			ec_tk_str(NULL, "bar"),
-			ec_tk_str(NULL, "titi"),
-			EC_TK_ENDLIST
+			ec_tk_str(NULL, "titi")
 		)
 	);
 	if (tk == NULL) {

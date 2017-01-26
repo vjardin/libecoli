@@ -44,7 +44,7 @@ void ec_test_register(struct ec_test *test)
 	TAILQ_INSERT_TAIL(&test_list, test, next);
 }
 
-int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...)
+int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
 {
 	struct ec_parsed_tk *p;
 	struct ec_strvec *vec = NULL;

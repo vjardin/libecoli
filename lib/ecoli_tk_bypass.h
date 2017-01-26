@@ -63,7 +63,7 @@
 
 struct ec_tk *ec_tk_bypass(const char *id, struct ec_tk *child);
 
-struct ec_tk *ec_tk_bypass_new(const char *id);
+struct ec_tk *ec_tk_bypass_empty(const char *id);
 
 /* child is consumed */
 /* all token given in the list will be freed when freeing this one */

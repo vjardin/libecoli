@@ -71,7 +71,7 @@ static void usage(const char *prgname)
 		"      Show this help.\n"
 		"  -l <level>\n"
 		"  --"EC_OPT_LOG_LEVEL"=<level>\n"
-		"      Set log level (0 = no log, 6 = verbose).\n"
+		"      Set log level (0 = no log, 7 = verbose).\n"
 		"  -r <probability>\n"
 		"  --"EC_OPT_RANDOM_ALLOC_FAIL"=<probability>\n"
 		"      Cause malloc to fail randomly. This helps to debug\n"

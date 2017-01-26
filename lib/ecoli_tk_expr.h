@@ -33,10 +33,7 @@
 /* XXX remove the _new for all other tokens */
 
 
-struct ec_tk *ec_tk_expr(const char *id, struct ec_tk *val_tk,
-	const char *bin_ops);
-
-struct ec_tk *ec_tk_expr_new(const char *id);
+struct ec_tk *ec_tk_expr(const char *id);
 int ec_tk_expr_add_bin_op(struct ec_tk *gen_tk, struct ec_tk *op);
 int ec_tk_expr_add_pre_op(struct ec_tk *gen_tk, struct ec_tk *op);
 int ec_tk_expr_add_post_op(struct ec_tk *gen_tk, struct ec_tk *op);

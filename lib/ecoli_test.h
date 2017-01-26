@@ -68,7 +68,7 @@ void ec_test_register(struct ec_test *test);
 int ec_test_all(void);
 
 /* expected == -1 means no match */
-int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...);
+int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...);
 
 #define EC_TEST_ERR(fmt, ...)						\
 	ec_log(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
@@ -80,8 +80,9 @@ int ec_test_check_tk_parse(const struct ec_tk *tk, int expected, ...);
 			EC_TEST_ERR("assertion failure: " #cond);	\
 	} while (0)
 
-#define EC_TEST_CHECK_TK_PARSE(tk, input, expected...) ({		\
-	int ret_ = ec_test_check_tk_parse(tk, input, expected);		\
+/* tk, input, [expected1, expected2, ...] */
+#define EC_TEST_CHECK_TK_PARSE(tk, args...) ({		\
+	int ret_ = ec_test_check_tk_parse(tk, args, EC_TK_ENDLIST);	\
 	if (ret_)							\
 		EC_TEST_ERR("parse test failed");			\
 	ret_;								\

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Olivier MATZ <zer0@droids-corp.org>
+ * Copyright (c) 2016-2017, Olivier MATZ <zer0@droids-corp.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,13 +25,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_TK_MANY_
-#define ECOLI_TK_MANY_
+#ifndef ECOLI_TK_RE_LEX_
+#define ECOLI_TK_RE_LEX_
 
-/*
- * if min == max == 0, there is no limit
- */
-struct ec_tk *ec_tk_many(const char *id, struct ec_tk *child,
-	unsigned int min, unsigned int max);
+#include <ecoli_tk.h>
+
+struct ec_tk *ec_tk_re_lex_new(const char *id, struct ec_tk *child);
 
 #endif

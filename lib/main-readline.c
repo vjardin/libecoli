@@ -171,23 +171,20 @@ static int create_commands(void)
 {
 	struct ec_tk *cmdlist = NULL, *cmd = NULL;
 
-	cmdlist = ec_tk_or_new(NULL);
+	cmdlist = ec_tk_or(NULL);
 	if (cmdlist == NULL)
 		goto fail;
 
-	cmd = ec_tk_seq(NULL,
+	cmd = EC_TK_SEQ(NULL,
 		ec_tk_str(NULL, "hello"),
-		ec_tk_or(NULL,
-			ec_tk_or("name",
+		EC_TK_OR(NULL,
+			EC_TK_OR("name",
 				ec_tk_str(NULL, "john"),
 				ec_tk_str(NULL, "johnny"),
-				ec_tk_str(NULL, "mike"),
-				EC_TK_ENDLIST
+				ec_tk_str(NULL, "mike")
 			),
-			ec_tk_int("int", 0, 10, 10),
-			EC_TK_ENDLIST
-		),
-		EC_TK_ENDLIST
+			ec_tk_int("int", 0, 10, 10)
+		)
 	);
 	ec_keyval_set(ec_tk_attrs(cmd), "help", "say hello to someone", NULL);
 	ec_keyval_set(ec_tk_attrs(ec_tk_find(cmd, "name")),
@@ -197,9 +194,8 @@ static int create_commands(void)
 	if (ec_tk_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
-	cmd = ec_tk_seq(NULL,
-		ec_tk_str(NULL, "bye"),
-		EC_TK_ENDLIST
+	cmd = EC_TK_SEQ(NULL,
+		ec_tk_str(NULL, "bye")
 	);
 	ec_keyval_set(ec_tk_attrs(cmd), "help", "say bye to someone", NULL);
 	if (ec_tk_or_add(cmdlist, cmd) < 0)

@@ -169,20 +169,6 @@ static struct ec_tk_ops ec_tk_seq_ops = {
 	.free_priv = ec_tk_seq_free_priv,
 };
 
-struct ec_tk *ec_tk_seq_new(const char *id)
-{
-	struct ec_tk_seq *tk = NULL;
-
-	tk = (struct ec_tk_seq *)ec_tk_new(id, &ec_tk_seq_ops, sizeof(*tk));
-	if (tk == NULL)
-		return NULL;
-
-	tk->table = NULL;
-	tk->len = 0;
-
-	return &tk->gen;
-}
-
 int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 {
 	struct ec_tk_seq *tk = (struct ec_tk_seq *)gen_tk;
@@ -195,10 +181,7 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	if (child == NULL)
 		return -EINVAL;
 
-	if (gen_tk->flags & EC_TK_F_INITIALIZED) {
-		ec_tk_free(child);
-		return -EPERM;
-	}
+	gen_tk->flags &= ~EC_TK_F_BUILT;
 
 	table = ec_realloc(tk->table, (tk->len + 1) * sizeof(*tk->table));
 	if (table == NULL) {
@@ -216,18 +199,25 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
-int ec_tk_seq_start(struct ec_tk *gen_tk)
+struct ec_tk *ec_tk_seq(const char *id)
 {
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
-		return -EPERM;
+	struct ec_tk *gen_tk = NULL;
+	struct ec_tk_seq *tk = NULL;
 
-	gen_tk->flags |= EC_TK_F_INITIALIZED;
+	gen_tk = ec_tk_new(id, &ec_tk_seq_ops, sizeof(*tk));
+	if (gen_tk == NULL)
+		return NULL;
 
-	return 0;
+	tk = (struct ec_tk_seq *)gen_tk;
+	tk->table = NULL;
+	tk->len = 0;
+
+	return gen_tk;
 }
 
-struct ec_tk *ec_tk_seq(const char *id, ...)
+struct ec_tk *__ec_tk_seq(const char *id, ...)
 {
+	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_seq *tk = NULL;
 	struct ec_tk *child;
 	va_list ap;
@@ -235,9 +225,10 @@ struct ec_tk *ec_tk_seq(const char *id, ...)
 
 	va_start(ap, id);
 
-	tk = (struct ec_tk_seq *)ec_tk_seq_new(id);
+	gen_tk = ec_tk_seq(id);
+	tk = (struct ec_tk_seq *)gen_tk;
 	if (tk == NULL)
-		fail = 1;
+		fail = 1;;
 
 	for (child = va_arg(ap, struct ec_tk *);
 	     child != EC_TK_ENDLIST;
@@ -255,10 +246,10 @@ struct ec_tk *ec_tk_seq(const char *id, ...)
 		goto fail;
 
 	va_end(ap);
-	return &tk->gen;
+	return gen_tk;
 
 fail:
-	ec_tk_free(&tk->gen); /* will also free children */
+	ec_tk_free(gen_tk); /* will also free children */
 	va_end(ap);
 	return NULL;
 }
@@ -268,30 +259,29 @@ static int ec_tk_seq_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_seq(NULL,
+	tk = EC_TK_SEQ(NULL,
 		ec_tk_str(NULL, "foo"),
-		ec_tk_str(NULL, "bar"),
-		EC_TK_ENDLIST);
+		ec_tk_str(NULL, "bar")
+	);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", "toto",
-		EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foox", "bar", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", "barx", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "bar", "foo", EC_TK_ENDLIST);
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", "foo", EC_TK_ENDLIST);
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", "toto");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foox", "bar");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo", "barx");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "bar", "foo");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "", "foo");
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_seq(NULL,
+	tk = EC_TK_SEQ(NULL,
 		ec_tk_str(NULL, "foo"),
 		ec_tk_option_new(NULL, ec_tk_str(NULL, "toto")),
-		ec_tk_str(NULL, "bar"),
-		EC_TK_ENDLIST);
+		ec_tk_str(NULL, "bar")
+	);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

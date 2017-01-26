@@ -76,7 +76,7 @@ static struct ec_tk_ops ec_tk_bypass_ops = {
 	.free_priv = ec_tk_bypass_free_priv,
 };
 
-struct ec_tk *ec_tk_bypass_new(const char *id)
+struct ec_tk *ec_tk_bypass_empty(const char *id)
 {
 	struct ec_tk_bypass *tk = NULL;
 
@@ -101,10 +101,7 @@ int ec_tk_bypass_set(struct ec_tk *gen_tk, struct ec_tk *child)
 	if (child == NULL)
 		return -EINVAL;
 
-	if (gen_tk->flags & EC_TK_F_INITIALIZED) {
-		ec_tk_free(child);
-		return -EPERM;
-	}
+	gen_tk->flags &= ~EC_TK_F_BUILT;
 
 	tk->child = child;
 
@@ -119,37 +116,13 @@ struct ec_tk *ec_tk_bypass_pop(struct ec_tk *gen_tk)
 	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
 	struct ec_tk *child;
 
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
-		return NULL;
-
 	child = tk->child;
 	tk->child = NULL;
 
+	gen_tk->flags &= ~EC_TK_F_BUILT;
+	TAILQ_REMOVE(&gen_tk->children, child, next); // XXX really needed?
+
 	return child;
-}
-
-int ec_tk_bypass_start(struct ec_tk *gen_tk)
-{
-	struct ec_tk_bypass *tk = (struct ec_tk_bypass *)gen_tk;
-
-	if (gen_tk->flags & EC_TK_F_INITIALIZED)
-		return -EPERM;
-	if (tk->child == NULL)
-		return -EINVAL;
-
-	gen_tk->flags |= EC_TK_F_INITIALIZED;
-
-	return 0;
-}
-
-int ec_tk_bypass_stop(struct ec_tk *gen_tk)
-{
-	if (!(gen_tk->flags & EC_TK_F_INITIALIZED))
-		return -EPERM;
-
-	gen_tk->flags &= (~EC_TK_F_INITIALIZED);
-
-	return 0;
 }
 
 struct ec_tk *ec_tk_bypass(const char *id, struct ec_tk *child)
@@ -159,14 +132,13 @@ struct ec_tk *ec_tk_bypass(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_tk = ec_tk_bypass_new(id);
+	gen_tk = ec_tk_bypass_empty(id);
 	if (gen_tk == NULL) {
 		ec_tk_free(child);
 		return NULL;
 	}
 
 	ec_tk_bypass_set(gen_tk, child);
-	ec_tk_bypass_start(gen_tk);
 
 	return gen_tk;
 }
