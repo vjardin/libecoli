@@ -153,7 +153,7 @@ static void ec_tk_re_lex_free_priv(struct ec_tk *gen_tk)
 static struct ec_tk_ops ec_tk_re_lex_ops = {
 	.typename = "re_lex",
 	.parse = ec_tk_re_lex_parse,
-	//.complete = ec_tk_re_lex_complete,
+	//.complete = ec_tk_re_lex_complete, //XXX
 	.free_priv = ec_tk_re_lex_free_priv,
 };
 
@@ -177,8 +177,8 @@ int ec_tk_re_lex_add(struct ec_tk *gen_tk, const char *pattern, int keep)
 	ret = regcomp(&table[tk->len].r, pattern, REG_EXTENDED);
 	if (ret != 0) {
 		ec_log(EC_LOG_ERR,
-			"Regular expression compilation failed: %d\n",
-			ret);
+			"Regular expression <%s> compilation failed: %d\n",
+			pattern, ret);
 		if (ret == REG_ESPACE)
 			ret = -ENOMEM;
 		else
@@ -238,7 +238,7 @@ static int ec_tk_re_lex_testcase(void)
 		return -1;
 	}
 
-	/* XXX add ^ automatically */
+	/* XXX add ^ automatically ? */
 	ret |= ec_tk_re_lex_add(tk, "^[a-zA-Z]+", 1);
 	ret |= ec_tk_re_lex_add(tk, "^[0-9]+", 1);
 	ret |= ec_tk_re_lex_add(tk, "^=", 1);

@@ -30,6 +30,8 @@
 
 #include <ecoli_tk.h>
 
-struct ec_tk *ec_tk_re_lex_new(const char *id, struct ec_tk *child);
+struct ec_tk *ec_tk_re_lex(const char *id, struct ec_tk *child);
+
+int ec_tk_re_lex_add(struct ec_tk *gen_tk, const char *pattern, int keep);
 
 #endif

@@ -65,6 +65,7 @@ static const struct option ec_long_options[] = {
 
 static void usage(const char *prgname)
 {
+	/* XXX add a parameter to test only one testcase */
 	printf("%s [options]\n"
 		"  -h\n"
 		"  --"EC_OPT_HELP"\n"

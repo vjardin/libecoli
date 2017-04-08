@@ -27,10 +27,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <limits.h>
 #include <errno.h>
 
 #include <ecoli_malloc.h>
@@ -38,13 +39,11 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_tk.h>
-#include <ecoli_tk_str.h>
-#include <ecoli_tk_int.h>
 #include <ecoli_tk_seq.h>
 #include <ecoli_tk_many.h>
 #include <ecoli_tk_or.h>
-#include <ecoli_tk_expr.h>
 #include <ecoli_tk_weakref.h>
+#include <ecoli_tk_expr.h>
 
 struct ec_tk_expr {
 	struct ec_tk gen;
@@ -148,23 +147,29 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 			goto fail;
 	}
 
-	term = ec_tk_or("term");
-	if (term == NULL)
+	post = ec_tk_or("post");
+	if (post == NULL)
 		goto fail;
-	if (ec_tk_or_add(term, ec_tk_clone(tk->val_tk)) < 0)
+	if (ec_tk_or_add(post, ec_tk_clone(tk->val_tk)) < 0)
 		goto fail;
-	if (ec_tk_or_add(term,
+	if (ec_tk_or_add(post,
 		EC_TK_SEQ(NULL,
 			ec_tk_clone(pre_op),
 			ec_tk_clone(weak))) < 0)
 		goto fail;
 	for (i = 0; i < tk->paren_len; i++) {
-		if (ec_tk_or_add(term, EC_TK_SEQ(NULL,
+		if (ec_tk_or_add(post, EC_TK_SEQ(NULL,
 					ec_tk_clone(tk->open_ops[i]),
 					ec_tk_clone(weak),
 					ec_tk_clone(tk->close_ops[i]))) < 0)
 			goto fail;
 	}
+	term = EC_TK_SEQ("term",
+		ec_tk_clone(post),
+		ec_tk_many(NULL, ec_tk_clone(post_op), 0, 0)
+	);
+	if (term == NULL)
+		goto fail;
 
 	for (i = 0; i < tk->bin_ops_len; i++) {
 		next = EC_TK_SEQ("next",
@@ -182,21 +187,14 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 		if (term == NULL)
 			goto fail;
 	}
-
-	expr = EC_TK_SEQ("expr",
-		ec_tk_clone(term),
-		ec_tk_many(NULL, ec_tk_clone(post_op), 0, 0)
-	);
-	if (expr == NULL)
-		goto fail;
+	expr = term;
+	term = NULL;
 
 	/* free the initial references */
 	ec_tk_free(pre_op);
 	pre_op = NULL;
 	ec_tk_free(post_op);
 	post_op = NULL;
-	ec_tk_free(term);
-	term = NULL;
 	ec_tk_free(post);
 	post = NULL;
 
@@ -411,153 +409,220 @@ fail:
 	return ret;
 }
 
-static int ec_tk_expr_testcase_manual(void)
+enum expr_tk_type {
+	NONE,
+	VAL,
+	BIN_OP,
+	PRE_OP,
+	POST_OP,
+	PAREN,
+};
+static enum expr_tk_type get_tk_type(const struct ec_tk *expr_gen_tk,
+	const struct ec_tk *check_tk)
 {
-	struct ec_tk *term = NULL, *factor = NULL, *expr = NULL, *val = NULL,
-		*pre_op = NULL, *post_op = NULL, *post = NULL, *weak = NULL;
-	int ret = 0;
+	struct ec_tk_expr *expr_tk = (struct ec_tk_expr *)expr_gen_tk;
+	size_t i;
 
-	// XXX check all APIs: pointers are "moved", they are freed by
-	// the callee
+	if (check_tk == expr_tk->val_tk)
+		return VAL;
 
-	/* Example that generates an expression "manually". We keep it
-	 * here for reference. */
+	for (i = 0; i < expr_tk->bin_ops_len; i++) {
+		if (check_tk == expr_tk->bin_ops[i])
+			return BIN_OP;
+	}
+	for (i = 0; i < expr_tk->pre_ops_len; i++) {
+		if (check_tk == expr_tk->pre_ops[i])
+			return PRE_OP;
+	}
+	for (i = 0; i < expr_tk->post_ops_len; i++) {
+		if (check_tk == expr_tk->post_ops[i])
+			return POST_OP;
+	}
 
-	weak = ec_tk_weakref_empty("weak");
-	if (weak == NULL)
-		return -1;
+	/* for (i = 0; i < expr_tk->paren_len; i++) { */
+	/* 	if (check_tk == expr_tk->open_ops[i]) */
+	/* 		return PAREN; */
+	/* } */
 
-	/* reverse bits */
-	pre_op = EC_TK_OR("pre-op",
-		ec_tk_str(NULL, "~")
-	);
+	return NONE;
+}
 
-	/* factorial */
-	post_op = EC_TK_OR("post-op",
-		ec_tk_str(NULL, "!")
-	);
+struct eval_state {
+	void *userctx;
+	bool has_lval;
+	struct ec_tk_expr_eval_result lval;
+	const struct ec_parsed_tk **op_stack;
+	size_t op_stack_size;
+	size_t op_stack_len;
+};
 
-	val = ec_tk_int("val", 0, UCHAR_MAX, 0);
-	term = EC_TK_OR("term",
-		val,
-		EC_TK_SEQ(NULL,
-			ec_tk_str(NULL, "("),
-			ec_tk_clone(weak),
-			ec_tk_str(NULL, ")")
-		),
-		EC_TK_SEQ(NULL,
-			ec_tk_clone(pre_op),
-			ec_tk_clone(weak)
-		)
-	);
-	val = NULL;
+static struct eval_state *eval_state_new(void *userctx)
+{
+	struct eval_state *state;
 
-	factor = EC_TK_SEQ("factor",
-		ec_tk_clone(term),
-		ec_tk_many(NULL,
-			EC_TK_SEQ(NULL,
-				ec_tk_str(NULL, "+"),
-				ec_tk_clone(term)
-			),
-			0, 0
-		)
-	);
+	state = ec_calloc(1, sizeof(*state));
+	state->userctx = userctx;
+	return state;
+}
 
-	post = EC_TK_SEQ("post",
-		ec_tk_clone(factor),
-		ec_tk_many(NULL,
-			EC_TK_SEQ(NULL,
-				ec_tk_str(NULL, "*"),
-				ec_tk_clone(factor)
-			),
-			0, 0
-		)
-	);
+static void eval_state_free(struct eval_state *state)
+{
+	if (state == NULL)
+		return;
+	ec_free(state->op_stack);
+	ec_free(state);
+}
 
-	expr = EC_TK_SEQ("expr",
-		ec_tk_clone(post),
-		ec_tk_many(NULL, ec_tk_clone(post_op), 0, 0)
-	);
+static int eval_state_add_val(struct eval_state *state,
+	const struct ec_tk_expr_eval_ops *ops,
+	const struct ec_tk *expr_gen_tk,
+	const struct ec_parsed_tk *parsed_tk)
+{
+	struct ec_tk_expr_eval_result val;
+	const struct ec_parsed_tk *op_parsed_tk;
+	enum expr_tk_type type;
 
-	/* free the initial references */
-	ec_tk_free(pre_op);
-	pre_op = NULL;
-	ec_tk_free(post_op);
-	post_op = NULL;
-	ec_tk_free(term);
-	term = NULL;
-	ec_tk_free(factor);
-	factor = NULL;
-	ec_tk_free(post);
-	post = NULL;
+	(void)ops;
+	(void)state;
+	printf("push val: ");
+	ec_parsed_tk_dump(stdout, parsed_tk);
 
-	/* no need to clone here, the node is not consumed */
-	if (ec_tk_weakref_set(weak, expr) < 0)
-		goto fail;
-	ec_tk_free(weak);
-	weak = NULL;
+	val = ops->eval_var(state->userctx, parsed_tk);
+	if (val.code != 0)
+		return val.code; // XXX free val?
 
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 1, "1", "*");
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "*", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 3, "1", "+", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 5, "1", "*", "1", "+", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(
-		expr, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")");
-	ret |= EC_TEST_CHECK_TK_PARSE(expr, 4, "1", "+", "~", "1");
+	/* first value, it is the left operand */
+	if (state->has_lval == 0) {
+		state->lval = val;
+		state->has_lval = 1;
+		return 0;
+	}
 
-	ec_tk_free(expr);
+	/* if we have a right operand without operator... fail */
+	if (state->op_stack_len == 0)
+		return -EINVAL; // XXX free val?
 
-	return ret;
+	while (state->op_stack_len > 0) {
+		state->op_stack_len--;
+		op_parsed_tk = state->op_stack[state->op_stack_len];
+		type = get_tk_type(expr_gen_tk, op_parsed_tk->tk);
+		if (type == PRE_OP) {
+			state->lval = ops->eval_pre_op(state->userctx,
+				val, op_parsed_tk);
+			if (val.code != 0)
+				return val.code; // XXX free val?
+		} else if (type == BIN_OP) {
+			state->lval = ops->eval_bin_op(state->userctx,
+				state->lval, op_parsed_tk, val);
+			if (state->lval.code != 0)
+				return state->lval.code; // XXX free val?
+			break;
+		} else {
+			// ?
+		}
+	}
 
-fail:
-	ec_tk_free(term);
-	ec_tk_free(factor);
-	ec_tk_free(expr);
-	ec_tk_free(val);
-	ec_tk_free(pre_op);
-	ec_tk_free(post_op);
-	ec_tk_free(post);
-	ec_tk_free(weak);
 	return 0;
 }
 
-static int ec_tk_expr_testcase(void)
+static int eval_state_add_op(struct eval_state *state,
+	const struct ec_tk_expr_eval_ops *ops,
+	const struct ec_tk *expr_gen_tk,
+	const struct ec_parsed_tk *parsed_tk)
 {
-	struct ec_tk *tk;
-	int ret;
+	enum expr_tk_type type;
 
-	ret = ec_tk_expr_testcase_manual();
-	if (ret < 0)
-		return ret;
+	(void)ops;
+	(void)state;
 
-	tk = ec_tk_expr(NULL);
-	if (tk == NULL)
-		return -1;
+	printf("push op: ");
+	ec_parsed_tk_dump(stdout, parsed_tk);
 
-	ec_tk_expr_set_val_tk(tk, ec_tk_int(NULL, 0, UCHAR_MAX, 0));
-	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "+"));
-	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "*"));
-	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "~"));
-	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "!"));
-	ec_tk_expr_add_parenthesis(tk, ec_tk_str(NULL, "("),
-		ec_tk_str(NULL, ")"));
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "1", "*");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "1", "*", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "1", "+", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "*", "1", "+", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(
-		tk, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 4, "1", "+", "~", "1");
-	ec_tk_free(tk);
+	type = get_tk_type(expr_gen_tk, parsed_tk->tk);
+	if (type == POST_OP) {
+		if (state->has_lval == 0)
+			return -EINVAL;
+		state->lval = ops->eval_post_op(state->userctx,
+			state->lval, parsed_tk);
+		if (state->lval.code != 0)
+			return state->lval.code;
+		return 0;
+	}
 
-	return ret;
+	if (state->op_stack_len >= state->op_stack_size) {
+		const struct ec_parsed_tk **op_stack;
+
+		op_stack = ec_realloc(state->op_stack,
+			(state->op_stack_len + 1) * sizeof(*op_stack));
+		if (op_stack == NULL)
+			return -ENOMEM;
+		state->op_stack = op_stack;
+		state->op_stack_size = state->op_stack_len + 1;
+	}
+
+	state->op_stack[state->op_stack_len] = parsed_tk;
+	state->op_stack_len++;
+
+	return 0;
 }
 
-static struct ec_test ec_tk_expr_test = {
-	.name = "tk_expr",
-	.test = ec_tk_expr_testcase,
-};
+static int eval_expression(struct eval_state *state,
+	const struct ec_tk_expr_eval_ops *ops,
+	const struct ec_tk *expr_gen_tk,
+	const struct ec_parsed_tk *parsed_tk)
 
-EC_REGISTER_TEST(ec_tk_expr_test);
+{
+	struct ec_parsed_tk *child;
+	enum expr_tk_type type;
+	int ret;
+
+	type = get_tk_type(expr_gen_tk, parsed_tk->tk);
+	if (type == VAL) {
+		ret = eval_state_add_val(state, ops, expr_gen_tk, parsed_tk);
+		if (ret < 0)
+			return ret;
+	} else if (type != NONE) {
+		ret = eval_state_add_op(state, ops, expr_gen_tk, parsed_tk);
+		if (ret < 0)
+			return ret;
+	}
+
+	TAILQ_FOREACH(child, &parsed_tk->children, next) {
+		ret = eval_expression(state, ops, expr_gen_tk, child);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+struct ec_tk_expr_eval_result ec_tk_expr_eval(const struct ec_tk *tk,
+	struct ec_parsed_tk *parsed, const struct ec_tk_expr_eval_ops *ops,
+	void *userctx)
+{
+	struct ec_tk_expr_eval_result res = { -EINVAL, NULL };
+	struct eval_state *state;
+	int ret;
+
+	if (ops == NULL)
+		return res;
+
+	ec_parsed_tk_dump(stdout, parsed);
+
+	res.code = -ENOMEM;
+	state = eval_state_new(&userctx);
+	if (state == NULL)
+		return res;
+
+	ret = eval_expression(state, ops, tk, parsed);
+// XXX check if op stack len is 0 ?
+	res = state->lval;
+	eval_state_free(state);
+
+	if (ret < 0 && res.code == 0)
+		res.code = ret;
+
+	return res;
+}
+
+/* the test case is in a separate file ecoli_tk_expr_test.c */

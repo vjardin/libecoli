@@ -243,14 +243,24 @@ static void __ec_parsed_tk_dump(FILE *out,
 	size_t i;
 	const char *id = "None", *typename = "None";
 
-	/* XXX enhance */
-	for (i = 0; i < indent; i++)
-		fprintf(out, " ");
-
 	if (parsed_tk->tk != NULL) {
 		if (parsed_tk->tk->id != NULL)
 			id = parsed_tk->tk->id;
 		typename = parsed_tk->tk->ops->typename;
+	}
+
+	/* XXX remove this debug hack */
+	if (!strcmp(typename, "str") || !strcmp(typename, "int"))
+		fprintf(out, ">>> ");
+	else
+		fprintf(out, "    ");
+
+	/* XXX enhance */
+	for (i = 0; i < indent; i++) {
+		if (i % 2)
+			fprintf(out, " ");
+		else
+			fprintf(out, "|");
 	}
 
 	fprintf(out, "tk_type=%s id=%s vec=[", typename, id);
@@ -267,6 +277,8 @@ static void __ec_parsed_tk_dump(FILE *out,
 
 void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk)
 {
+	fprintf(out, "------------------- dump:\n");
+
 	if (parsed_tk == NULL) {
 		fprintf(out, "parsed_tk is NULL, error in parse\n");
 		return;

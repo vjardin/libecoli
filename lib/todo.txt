@@ -1,0 +1,9 @@
+- evaluate expression tree in ec_tk_expr
+- cmd token
+- node regexp
+- node which always matches
+- yaml interface to create nodes
+- check XXX in code
+- example which parses arguments (argc/argv)
+- example that acts as bash completion (ip link ?)
+- calculator example (var assignation, expression evaluation)
