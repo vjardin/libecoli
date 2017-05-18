@@ -33,9 +33,11 @@
 #include <ecoli_log.h>
 #include <ecoli_tk.h>
 
-#define EC_REGISTER_TEST(t)						\
-	static void ec_init_##t(void);					\
-	static void __attribute__((constructor, used)) ec_init_##t(void) \
+// XXX check if already exists?
+#define EC_TEST_REGISTER(t)						\
+	static void ec_test_init_##t(void);				\
+	static void __attribute__((constructor, used))			\
+	ec_test_init_##t(void)						\
 	{								\
 		 ec_test_register(&t);					\
 	}
@@ -66,6 +68,7 @@ struct ec_test {
 void ec_test_register(struct ec_test *test);
 
 int ec_test_all(void);
+int ec_test_one(const char *name);
 
 /* expected == -1 means no match */
 int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...);
@@ -88,7 +91,7 @@ int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...);
 	ret_;								\
 })
 
-int ec_test_check_tk_complete(const struct ec_tk *tk, ...);
+int ec_test_check_tk_complete(struct ec_tk *tk, ...);
 
 #define EC_TEST_CHECK_TK_COMPLETE(tk, args...) ({			\
 	int ret_ = ec_test_check_tk_complete(tk, args);			\

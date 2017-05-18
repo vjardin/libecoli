@@ -62,18 +62,20 @@ static struct ec_completed_tk *ec_tk_weakref_complete(const struct ec_tk *gen_tk
 	return ec_tk_complete_tokens(tk->child, strvec);
 }
 
-static struct ec_tk_ops ec_tk_weakref_ops = {
-	.typename = "weakref",
+static struct ec_tk_type ec_tk_weakref_type = {
+	.name = "weakref",
 	.parse = ec_tk_weakref_parse,
 	.complete = ec_tk_weakref_complete,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_weakref_type);
 
 struct ec_tk *ec_tk_weakref_empty(const char *id)
 {
 	struct ec_tk_weakref *tk = NULL;
 
 	tk = (struct ec_tk_weakref *)ec_tk_new(id,
-		&ec_tk_weakref_ops, sizeof(*tk));
+		&ec_tk_weakref_type, sizeof(*tk));
 	if (tk == NULL)
 		return NULL;
 
@@ -129,4 +131,4 @@ static struct ec_test ec_tk_weakref_test = {
 	.test = ec_tk_weakref_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_weakref_test);
+EC_TEST_REGISTER(ec_tk_weakref_test);

@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
@@ -41,11 +42,11 @@ struct my_eval_result {
 	int val;
 };
 
-static struct ec_tk_expr_eval_result
-ec_tk_expr_test_eval_var(void *userctx, const struct ec_parsed_tk *var)
+static int
+ec_tk_expr_test_eval_var(void **result, void *userctx,
+	const struct ec_parsed_tk *var)
 {
 	const struct ec_strvec *vec;
-	struct ec_tk_expr_eval_result res = { .code = -EINVAL, .parsed = NULL };
 	struct my_eval_result *eval;
 
 	(void)userctx;
@@ -53,122 +54,120 @@ ec_tk_expr_test_eval_var(void *userctx, const struct ec_parsed_tk *var)
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_tk_strvec(var);
 	if (ec_strvec_len(vec) != 1)
-		return res;
+		return -EINVAL;
 
-	res.code = -ENOMEM;
 	eval = ec_malloc(sizeof(*eval));
 	if (eval == NULL)
-		return res;
+		return -ENOMEM;
 
 	eval->val = atoi(ec_strvec_val(vec, 0)); // XXX use strtol
 	printf("eval var %d\n", eval->val);
-	res.code = 0;
-	res.parsed = eval;
+	*result = eval;
 
-	return res;
+	return 0;
 }
 
-static struct ec_tk_expr_eval_result
-ec_tk_expr_test_eval_pre_op(void *userctx,
-	struct ec_tk_expr_eval_result operand,
+static int
+ec_tk_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 	const struct ec_parsed_tk *operator)
 {
 	const struct ec_strvec *vec;
-	struct ec_tk_expr_eval_result res = { .code = -EINVAL, .parsed = NULL };
-	struct my_eval_result *eval = operand.parsed;;
+	struct my_eval_result *eval = operand;;
 
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_tk_strvec(operator);
-	if (ec_strvec_len(vec) != 1) {
-		ec_free(eval);
-		return res;
-	}
+	if (ec_strvec_len(vec) != 1)
+		return -EINVAL;
 
-	if (!strcmp(ec_strvec_val(vec, 0), "~")) {
+	if (!strcmp(ec_strvec_val(vec, 0), "!"))
 		eval->val = !eval->val;
-	} else {
-		ec_free(eval);
-		return res;
-	}
+	else
+		return -EINVAL;
 
 	printf("eval pre_op %d\n", eval->val);
-	res.code = 0;
-	res.parsed = eval;
+	*result = eval;
 
-	return res;
+	return 0;
 }
 
-static struct ec_tk_expr_eval_result
-ec_tk_expr_test_eval_post_op(void *userctx,
-	struct ec_tk_expr_eval_result operand,
+static int
+ec_tk_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 	const struct ec_parsed_tk *operator)
 {
 	const struct ec_strvec *vec;
-	struct ec_tk_expr_eval_result res = { .code = -EINVAL, .parsed = NULL };
-	struct my_eval_result *eval = operand.parsed;;
+	struct my_eval_result *eval = operand;;
 
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_tk_strvec(operator);
-	if (ec_strvec_len(vec) != 1) {
-		ec_free(eval);
-		return res;
-	}
+	if (ec_strvec_len(vec) != 1)
+		return -EINVAL;
 
-	if (!strcmp(ec_strvec_val(vec, 0), "!")) {
+	if (!strcmp(ec_strvec_val(vec, 0), "^"))
 		eval->val = eval->val * eval->val;
-	} else {
-		ec_free(eval);
-		return res;
-	}
+	else
+		return -EINVAL;
 
 	printf("eval post_op %d\n", eval->val);
-	res.code = 0;
-	res.parsed = eval;
+	*result = eval;
 
-	return res;
+	return 0;
 }
 
-static struct ec_tk_expr_eval_result
-ec_tk_expr_test_eval_bin_op(void *userctx,
-	struct ec_tk_expr_eval_result operand1,
-	const struct ec_parsed_tk *operator,
-	struct ec_tk_expr_eval_result operand2)
+static int
+ec_tk_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
+	const struct ec_parsed_tk *operator, void *operand2)
 
 {
 	const struct ec_strvec *vec;
-	struct ec_tk_expr_eval_result res = { .code = -EINVAL, .parsed = NULL };
-	struct my_eval_result *eval1 = operand1.parsed;;
-	struct my_eval_result *eval2 = operand2.parsed;;
+	struct my_eval_result *eval1 = operand1;;
+	struct my_eval_result *eval2 = operand2;;
 
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_tk_strvec(operator);
-	if (ec_strvec_len(vec) != 1) {
-		ec_free(eval1);
-		ec_free(eval2);
-		return res;
-	}
+	if (ec_strvec_len(vec) != 1)
+		return -EINVAL;
 
-	if (!strcmp(ec_strvec_val(vec, 0), "+")) {
+	if (!strcmp(ec_strvec_val(vec, 0), "+"))
 		eval1->val = eval1->val + eval2->val;
-	} else if (!strcmp(ec_strvec_val(vec, 0), "*")) {
+	else if (!strcmp(ec_strvec_val(vec, 0), "*"))
 		eval1->val = eval1->val * eval2->val;
-	} else {
-		ec_free(eval1);
-		ec_free(eval2);
-		return res;
-	}
+	else
+		return -EINVAL;
 
 	printf("eval bin_op %d\n", eval1->val);
-	res.code = 0;
-	res.parsed = eval1;
+	ec_free(eval2);
+	*result = eval1;
 
-	return res;
+	return 0;
+}
+
+static int
+ec_tk_expr_test_eval_parenthesis(void **result, void *userctx,
+	const struct ec_parsed_tk *open_paren,
+	const struct ec_parsed_tk *close_paren,
+	void *value)
+{
+	(void)userctx;
+	(void)open_paren;
+	(void)close_paren;
+
+	printf("eval paren\n");
+	*result = value;
+
+	return 0;
+}
+
+static void
+ec_tk_expr_test_eval_free(void *result, void *userctx)
+{
+	(void)userctx;
+	ec_free(result);
 }
 
 static const struct ec_tk_expr_eval_ops test_ops = {
@@ -176,40 +175,40 @@ static const struct ec_tk_expr_eval_ops test_ops = {
 	.eval_pre_op = ec_tk_expr_test_eval_pre_op,
 	.eval_post_op = ec_tk_expr_test_eval_post_op,
 	.eval_bin_op = ec_tk_expr_test_eval_bin_op,
+	.eval_parenthesis = ec_tk_expr_test_eval_parenthesis,
+	.eval_free = ec_tk_expr_test_eval_free,
 };
 
 static int ec_tk_expr_test_eval(struct ec_tk *lex_tk,
 	const struct ec_tk *expr_tk,
 	const char *str, int val)
 {
-	struct ec_tk_expr_eval_result res;
 	struct ec_parsed_tk *p;
+	void *result;
 	struct my_eval_result *eval;
 	int ret;
 
 	/* XXX check tk type (again and again) */
 
-
 	p = ec_tk_parse(lex_tk, str);
 	if (p == NULL)
 		return -1;
 
-	res = ec_tk_expr_eval(expr_tk, p, &test_ops, NULL);
+	ret = ec_tk_expr_eval(&result, expr_tk, p, &test_ops, NULL);
 	ec_parsed_tk_free(p);
-	if (res.code < 0)
-		return res.code;
+	if (ret < 0)
+		return -1;
 
 	/* the parsed value is an integer */
-	eval = res.parsed;
-	if (eval == NULL) {
+	eval = result;
+	assert(eval != NULL);
+
+	printf("result: %d (expected %d)\n", eval->val, val);
+	if (eval->val == val)
+		ret = 0;
+	else
 		ret = -1;
-	} else {
-		printf("result: %d (expected %d)\n", eval->val, val);
-		if (eval->val == val)
-			ret = 0;
-		else
-			ret = -1;
-	}
+
 	ec_free(eval);
 
 	return ret;
@@ -227,42 +226,42 @@ static int ec_tk_expr_testcase(void)
 	ec_tk_expr_set_val_tk(tk, ec_tk_int(NULL, 0, UCHAR_MAX, 0));
 	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "+"));
 	ec_tk_expr_add_bin_op(tk, ec_tk_str(NULL, "*"));
-	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "~"));
-	ec_tk_expr_add_post_op(tk, ec_tk_str(NULL, "!"));
+	ec_tk_expr_add_pre_op(tk, ec_tk_str(NULL, "!"));  /* not */
+	ec_tk_expr_add_post_op(tk, ec_tk_str(NULL, "^")); /* square */
 	ec_tk_expr_add_parenthesis(tk, ec_tk_str(NULL, "("),
 		ec_tk_str(NULL, ")"));
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "1", "1");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "1", "*");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "1", "*", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 4, "1", "+", "~", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 4, "1", "!", "+", "1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "1", "*", "1", "*");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 4, "1", "+", "!", "1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 4, "1", "^", "+", "1");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "*", "1", "*", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "*", "1", "*", "1", "*", "1");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "*", "1", "+", "1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 7, "1", "*", "1", "*", "1", "*", "1");
 	ret |= EC_TEST_CHECK_TK_PARSE(
-		tk, 10, "~", "(", "1", "*", "(", "1", "+", "1", ")", ")");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "+", "~", "1", "!");
+		tk, 10, "!", "(", "1", "*", "(", "1", "+", "1", ")", ")");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 5, "1", "+", "!", "1", "^");
 
 	/* prepend a lexer to the expression token */
 	lex_tk = ec_tk_re_lex(NULL, ec_tk_clone(tk));
 	if (lex_tk == NULL)
 		goto fail;
 
-	ret |= ec_tk_re_lex_add(lex_tk, "^[0-9]+", 1); /* vars */
-	ret |= ec_tk_re_lex_add(lex_tk, "^[+*~!()]", 1); /* operators */
-	ret |= ec_tk_re_lex_add(lex_tk, "^[ 	]+", 0); /* spaces */
-	if (ret != 0)
-		goto fail;
+	ret |= ec_tk_re_lex_add(lex_tk, "[0-9]+", 1); /* vars */
+	ret |= ec_tk_re_lex_add(lex_tk, "[+*!^()]", 1); /* operators */
+	ret |= ec_tk_re_lex_add(lex_tk, "[ 	]+", 0); /* spaces */
 
 	/* valid expressions */
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "~1");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1!");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1! + 1");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1 + 4 * (2 + 3!)!");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "!1");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1^");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1^ + 1");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "1 + 4 * (2 + 3^)^");
 	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "(1)");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "3*~3+~3*(2+ 2)");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "~~(~1)! + ~(4 + (2*3))");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "(1 + 1)! * 1!");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "3*!3+!3*(2+ 2)");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "!!(!1)^ + !(4 + (2*3))");
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, 1, "(1 + 1)^ * 1^");
 
 	/* invalid expressions */
 	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "");
@@ -273,31 +272,18 @@ static int ec_tk_expr_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "1+");
 	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "1+*1");
 	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "1+(1*1");
-	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "1+~1~1)");
-	if (ret)
-		exit(ret);
+	ret |= EC_TEST_CHECK_TK_PARSE(lex_tk, -1, "1+!1!1)");
 
-	ret |= ec_tk_expr_test_eval(lex_tk, tk, "2!", 4);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "1^", 1);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "2^", 4);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "!1", 0);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "!0", 1);
+
 	ret |= ec_tk_expr_test_eval(lex_tk, tk, "1+1", 2);
 	ret |= ec_tk_expr_test_eval(lex_tk, tk, "1+1*2", 4);
-
-	// XXX marche pas:
-	// le "*" s'applique avant le "!" final
-	ret |= ec_tk_expr_test_eval(lex_tk, tk, "2 * 2!", 8);
-	/* ret |= ec_tk_expr_test_eval(lex_tk, tk, "(1 + ~0)! * ~0!", 4); */
-	/* ret |= ec_tk_expr_test_eval(lex_tk, tk, "(1 + ~1) * 3", 3); */
-	/* ret |= ec_tk_expr_test_eval(lex_tk, tk, "~1", 0); */
-	printf("exit\n");
-	exit(ret);
-
-	/*
-	  idee:
-	  eval_expression() retourne soit:
-	  - NONE
-	  - *_OP, parsed_tk
-	  - VAL, eval(parsed_tk)
-	  */
-
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "2 * 2^", 8);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "(1 + !0)^ * !0^", 4);
+	ret |= ec_tk_expr_test_eval(lex_tk, tk, "(1 + !1) * 3", 3);
 
 	ec_tk_free(tk);
 	ec_tk_free(lex_tk);
@@ -315,4 +301,4 @@ static struct ec_test ec_tk_expr_test = {
 	.test = ec_tk_expr_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_expr_test);
+EC_TEST_REGISTER(ec_tk_expr_test);

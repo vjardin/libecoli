@@ -232,4 +232,4 @@ static struct ec_test ec_keyval_test = {
 	.test = ec_keyval_testcase,
 };
 
-EC_REGISTER_TEST(ec_keyval_test);
+EC_TEST_REGISTER(ec_keyval_test);

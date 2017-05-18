@@ -107,6 +107,8 @@ static struct ec_parsed_tk *ec_tk_re_lex_parse(const struct ec_tk *gen_tk,
 	if (new_vec == NULL)
 		goto fail;
 
+	printf("--------\n");
+	ec_strvec_dump(stdout, new_vec);
 	child_parsed_tk = ec_tk_parse_tokens(tk->child, new_vec);
 	if (child_parsed_tk == NULL)
 		goto fail;
@@ -150,12 +152,14 @@ static void ec_tk_re_lex_free_priv(struct ec_tk *gen_tk)
 	ec_tk_free(tk->child);
 }
 
-static struct ec_tk_ops ec_tk_re_lex_ops = {
-	.typename = "re_lex",
+static struct ec_tk_type ec_tk_re_lex_type = {
+	.name = "re_lex",
 	.parse = ec_tk_re_lex_parse,
 	//.complete = ec_tk_re_lex_complete, //XXX
 	.free_priv = ec_tk_re_lex_free_priv,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_re_lex_type);
 
 int ec_tk_re_lex_add(struct ec_tk *gen_tk, const char *pattern, int keep)
 {
@@ -206,7 +210,7 @@ struct ec_tk *ec_tk_re_lex(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_re_lex *)ec_tk_new(id, &ec_tk_re_lex_ops,
+	tk = (struct ec_tk_re_lex *)ec_tk_new(id, &ec_tk_re_lex_type,
 		sizeof(*tk));
 	if (tk == NULL) {
 		ec_tk_free(child);
@@ -239,12 +243,12 @@ static int ec_tk_re_lex_testcase(void)
 	}
 
 	/* XXX add ^ automatically ? */
-	ret |= ec_tk_re_lex_add(tk, "^[a-zA-Z]+", 1);
-	ret |= ec_tk_re_lex_add(tk, "^[0-9]+", 1);
-	ret |= ec_tk_re_lex_add(tk, "^=", 1);
-	ret |= ec_tk_re_lex_add(tk, "^-", 1);
-	ret |= ec_tk_re_lex_add(tk, "^\\+", 1);
-	ret |= ec_tk_re_lex_add(tk, "^[ 	]+", 0);
+	ret |= ec_tk_re_lex_add(tk, "[a-zA-Z]+", 1);
+	ret |= ec_tk_re_lex_add(tk, "[0-9]+", 1);
+	ret |= ec_tk_re_lex_add(tk, "=", 1);
+	ret |= ec_tk_re_lex_add(tk, "-", 1);
+	ret |= ec_tk_re_lex_add(tk, "\\+", 1);
+	ret |= ec_tk_re_lex_add(tk, "[ 	]+", 0);
 	if (ret != 0) {
 		ec_log(EC_LOG_ERR, "cannot add regexp to token\n");
 		ec_tk_free(tk);
@@ -266,4 +270,4 @@ static struct ec_test ec_tk_re_lex_test = {
 	.test = ec_tk_re_lex_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_re_lex_test);
+EC_TEST_REGISTER(ec_tk_re_lex_test);

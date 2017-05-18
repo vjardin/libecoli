@@ -32,32 +32,66 @@
 
 /* XXX remove the _new for all other tokens */
 
-/* XXX explain the free policy in case of error or success */
-struct ec_tk_expr_eval_result {
-	int code; /* 0 on success, negative on error */
-	void *parsed;
-};
+/**
+ * Callback function type for evaluating a variable
+ *
+ * @param result
+ *   On success, this pointer must be set by the user to point
+ *   to a user structure describing the evaluated result.
+ * @param userctx
+ *   A user-defined context passed to all callback functions, which
+ *   can be used to maintain a state or store global information.
+ * @param var
+ *   The parsed token referencing the variable.
+ * @return
+ *   0 on success (*result must be set), or -errno on error (*result
+ *   is undefined).
+ */
+typedef int (*ec_tk_expr_eval_var_t)(
+	void **result, void *userctx,
+	const struct ec_parsed_tk *var);
 
-typedef struct ec_tk_expr_eval_result (*ec_tk_expr_eval_var_t)(
-	void *userctx, const struct ec_parsed_tk *var);
-
-typedef struct ec_tk_expr_eval_result (*ec_tk_expr_eval_pre_op_t)(
-	void *userctx, struct ec_tk_expr_eval_result operand,
+/**
+ * Callback function type for evaluating a prefix-operator
+ *
+ * @param result
+ *   On success, this pointer must be set by the user to point
+ *   to a user structure describing the evaluated result.
+ * @param userctx
+ *   A user-defined context passed to all callback functions, which
+ *   can be used to maintain a state or store global information.
+ * @param operand
+ *   The evaluated expression on which the operation should be applied.
+ * @param var
+ *   The parsed token referencing the operator.
+ * @return
+ *   0 on success (*result must be set, operand is freed),
+ *   or -errno on error (*result is undefined, operand is not freed).
+ */
+typedef int (*ec_tk_expr_eval_pre_op_t)(
+	void **result, void *userctx,
+	void *operand,
 	const struct ec_parsed_tk *operator);
 
-typedef struct ec_tk_expr_eval_result (*ec_tk_expr_eval_post_op_t)(
-	void *userctx, struct ec_tk_expr_eval_result operand,
+typedef int (*ec_tk_expr_eval_post_op_t)(
+	void **result, void *userctx,
+	void *operand,
 	const struct ec_parsed_tk *operator);
 
-typedef struct ec_tk_expr_eval_result (*ec_tk_expr_eval_bin_op_t)(
-	void *userctx, struct ec_tk_expr_eval_result operand1,
+typedef int (*ec_tk_expr_eval_bin_op_t)(
+	void **result, void *userctx,
+	void *operand1,
 	const struct ec_parsed_tk *operator,
-	struct ec_tk_expr_eval_result operand2);
+	void *operand2);
 
-typedef struct ec_tk_expr_eval_result (*ec_tk_expr_eval_parenthesis_t)(
-	void *userctx, const struct ec_parsed_tk *operator_str,
-	const struct ec_parsed_tk *operand_str,
-	void *operand);
+typedef int (*ec_tk_expr_eval_parenthesis_t)(
+	void **result, void *userctx,
+	const struct ec_parsed_tk *open_paren,
+	const struct ec_parsed_tk *close_paren,
+	void * value);
+
+typedef void (*ec_tk_expr_eval_free_t)(
+	void *result, void *userctx);
 
 
 struct ec_tk *ec_tk_expr(const char *id);
@@ -74,9 +108,10 @@ struct ec_tk_expr_eval_ops {
 	ec_tk_expr_eval_post_op_t eval_post_op;
 	ec_tk_expr_eval_bin_op_t eval_bin_op;
 	ec_tk_expr_eval_parenthesis_t eval_parenthesis;
+	ec_tk_expr_eval_free_t eval_free;
 };
 
-struct ec_tk_expr_eval_result ec_tk_expr_eval(const struct ec_tk *tk,
+int ec_tk_expr_eval(void **result, const struct ec_tk *tk,
 	struct ec_parsed_tk *parsed, const struct ec_tk_expr_eval_ops *ops,
 	void *userctx);
 

@@ -37,7 +37,39 @@
 #include <ecoli_log.h>
 #include <ecoli_tk.h>
 
-struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
+static struct ec_tk_type_list tk_type_list =
+	TAILQ_HEAD_INITIALIZER(tk_type_list);
+
+struct ec_tk_type *ec_tk_type_lookup(const char *name)
+{
+	struct ec_tk_type *type;
+
+	TAILQ_FOREACH(type, &tk_type_list, next) {
+		if (!strcmp(name, type->name))
+			return type;
+	}
+
+	return NULL;
+}
+
+int ec_tk_type_register(struct ec_tk_type *type)
+{
+	if (ec_tk_type_lookup(type->name) != NULL)
+		return -EEXIST;
+	TAILQ_INSERT_TAIL(&tk_type_list, type, next);
+
+	return 0;
+}
+
+void ec_tk_type_dump(FILE *out)
+{
+	struct ec_tk_type *type;
+
+	TAILQ_FOREACH(type, &tk_type_list, next)
+		fprintf(out, "%s\n", type->name);
+}
+
+struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
 	size_t size)
 {
 	struct ec_tk *tk = NULL;
@@ -45,14 +77,14 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 
 	assert(size >= sizeof(*tk));
 
-	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n", ops->typename, id);
+	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n", type->name, id);
 
 	tk = ec_calloc(1, size);
 	if (tk == NULL)
 		goto fail;
 
 	TAILQ_INIT(&tk->children);
-	tk->ops = ops;
+	tk->type = type;
 	tk->refcnt = 1;
 
 	if (id != NULL) {
@@ -61,7 +93,7 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
 			goto fail;
 	}
 
-	snprintf(buf, sizeof(buf), "<%s>", ops->typename);
+	snprintf(buf, sizeof(buf), "<%s>", type->name);
 	tk->desc = ec_strdup(buf); // XXX ec_asprintf ?
 	if (tk->desc == NULL)
 		goto fail;
@@ -87,8 +119,8 @@ void ec_tk_free(struct ec_tk *tk)
 	if (--tk->refcnt > 0)
 		return;
 
-	if (tk->ops != NULL && tk->ops->free_priv != NULL)
-		tk->ops->free_priv(tk);
+	if (tk->type != NULL && tk->type->free_priv != NULL)
+		tk->type->free_priv(tk);
 	ec_free(tk->id);
 	ec_free(tk->desc);
 	ec_free(tk->attrs);
@@ -134,6 +166,42 @@ struct ec_tk *ec_tk_parent(const struct ec_tk *tk)
 	return tk->parent;
 }
 
+static void __ec_tk_dump(FILE *out,
+	const struct ec_tk *tk, size_t indent)
+{
+	struct ec_tk *child;
+	size_t i;
+	const char *id = "None", *typename = "None";
+
+	if (tk->id != NULL)
+		id = tk->id;
+	typename = tk->type->name;
+
+	/* XXX enhance */
+	for (i = 0; i < indent; i++) {
+		if (i % 2)
+			fprintf(out, " ");
+		else
+			fprintf(out, "|");
+	}
+
+	fprintf(out, "tk_type=%s id=%s\n", typename, id);
+	TAILQ_FOREACH(child, &tk->children, next)
+		__ec_tk_dump(out, child, indent + 2);
+}
+
+void ec_tk_dump(FILE *out, const struct ec_tk *tk)
+{
+	fprintf(out, "------------------- tk dump:\n"); //XXX
+
+	if (tk == NULL) {
+		fprintf(out, "tk is NULL\n");
+		return;
+	}
+
+	__ec_tk_dump(out, tk, 0);
+}
+
 struct ec_parsed_tk *ec_tk_parse(struct ec_tk *tk, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
@@ -166,9 +234,9 @@ struct ec_parsed_tk *ec_tk_parse_tokens(struct ec_tk *tk,
 	int ret;
 
 	/* build the node if required */
-	if (tk->ops->build != NULL) {
+	if (tk->type->build != NULL) {
 		if ((tk->flags & EC_TK_F_BUILT) == 0) {
-			ret = tk->ops->build(tk);
+			ret = tk->type->build(tk);
 			if (ret < 0) {
 				errno = -ret;
 				return NULL;
@@ -177,12 +245,12 @@ struct ec_parsed_tk *ec_tk_parse_tokens(struct ec_tk *tk,
 	}
 	tk->flags |= EC_TK_F_BUILT;
 
-	if (tk->ops->parse == NULL) {
+	if (tk->type->parse == NULL) {
 		errno = ENOTSUP;
 		return NULL;
 	}
 
-	parsed_tk = tk->ops->parse(tk, strvec);
+	parsed_tk = tk->type->parse(tk, strvec);
 
 	return parsed_tk;
 }
@@ -246,14 +314,8 @@ static void __ec_parsed_tk_dump(FILE *out,
 	if (parsed_tk->tk != NULL) {
 		if (parsed_tk->tk->id != NULL)
 			id = parsed_tk->tk->id;
-		typename = parsed_tk->tk->ops->typename;
+		typename = parsed_tk->tk->type->name;
 	}
-
-	/* XXX remove this debug hack */
-	if (!strcmp(typename, "str") || !strcmp(typename, "int"))
-		fprintf(out, ">>> ");
-	else
-		fprintf(out, "    ");
 
 	/* XXX enhance */
 	for (i = 0; i < indent; i++) {
@@ -277,7 +339,7 @@ static void __ec_parsed_tk_dump(FILE *out,
 
 void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk)
 {
-	fprintf(out, "------------------- dump:\n");
+	fprintf(out, "------------------- parsed_tk dump:\n"); //XXX
 
 	if (parsed_tk == NULL) {
 		fprintf(out, "parsed_tk is NULL, error in parse\n");
@@ -295,6 +357,12 @@ void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
 	struct ec_parsed_tk *child)
 {
 	TAILQ_INSERT_TAIL(&parsed_tk->children, child, next);
+}
+
+void ec_parsed_tk_del_child(struct ec_parsed_tk *parsed_tk,
+	struct ec_parsed_tk *child)
+{
+	TAILQ_REMOVE(&parsed_tk->children, child, next);
 }
 
 struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
@@ -388,7 +456,7 @@ struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
  * suggestion: tk->op() is internal, user calls the function
  * other idea: have 2 functions
  */
-struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
+struct ec_completed_tk *ec_tk_complete(struct ec_tk *tk,
 	const char *str)
 {
 	struct ec_strvec *strvec = NULL;
@@ -438,10 +506,29 @@ struct ec_completed_tk *ec_tk_default_complete(const struct ec_tk *gen_tk,
 	return completed_tk;
 }
 
-struct ec_completed_tk *ec_tk_complete_tokens(const struct ec_tk *tk,
+struct ec_completed_tk *ec_tk_complete_tokens(struct ec_tk *tk,
 	const struct ec_strvec *strvec)
 {
-	return tk->ops->complete(tk, strvec);
+	int ret;
+
+	/* build the node if required */
+	if (tk->type->build != NULL) {
+		if ((tk->flags & EC_TK_F_BUILT) == 0) {
+			ret = tk->type->build(tk);
+			if (ret < 0) {
+				errno = -ret;
+				return NULL;
+			}
+		}
+	}
+	tk->flags |= EC_TK_F_BUILT;
+
+	if (tk->type->complete == NULL) {
+		errno = ENOTSUP;
+		return NULL;
+	}
+
+	return tk->type->complete(tk, strvec);
 }
 
 /* count the number of identical chars at the beginning of 2 strings */
@@ -529,7 +616,7 @@ void ec_completed_tk_dump(FILE *out, const struct ec_completed_tk *completed_tk)
 
 	TAILQ_FOREACH(elt, &completed_tk->elts, next) {
 		fprintf(out, "add=<%s>, tk=%p, tk_type=%s\n",
-			elt->add, elt->tk, elt->tk->ops->typename);
+			elt->add, elt->tk, elt->tk->type->name);
 	}
 }
 
@@ -612,8 +699,8 @@ void ec_completed_tk_iter_free(struct ec_completed_tk_iter *iter)
 
 const char *ec_tk_desc(const struct ec_tk *tk)
 {
-	if (tk->ops->desc != NULL)
-		return tk->ops->desc(tk);
+	if (tk->type->desc != NULL)
+		return tk->type->desc(tk);
 
 	return tk->desc;
 }

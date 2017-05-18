@@ -49,8 +49,23 @@ typedef struct ec_completed_tk *(*ec_tk_complete_t)(const struct ec_tk *tk,
 typedef const char * (*ec_tk_desc_t)(const struct ec_tk *);
 typedef void (*ec_tk_free_priv_t)(struct ec_tk *);
 
-struct ec_tk_ops {
-	const char *typename;
+#define EC_TK_TYPE_REGISTER(t)						\
+	static void ec_tk_init_##t(void);				\
+	static void __attribute__((constructor, used))			\
+	ec_tk_init_##t(void)						\
+	{								\
+		if (ec_tk_type_register(&t) < 0)			\
+			fprintf(stderr, "cannot register %s\n", t.name); \
+	}
+
+TAILQ_HEAD(ec_tk_type_list, ec_tk_type);
+
+/**
+ * A structure describing a tk type.
+ */
+struct ec_tk_type {
+	TAILQ_ENTRY(ec_tk_type) next;  /**< Next in list. */
+	const char *name;              /**< Tk type name. */
 	ec_tk_build_t build; /* (re)build the node, called by generic parse */
 	ec_tk_parse_t parse;
 	ec_tk_complete_t complete;
@@ -58,10 +73,36 @@ struct ec_tk_ops {
 	ec_tk_free_priv_t free_priv;
 };
 
+/**
+ * Register a token type.
+ *
+ * @param type
+ *   A pointer to a ec_test structure describing the test
+ *   to be registered.
+ * @return
+ *   0 on success, negative value on error.
+ */
+int ec_tk_type_register(struct ec_tk_type *type);
+
+/**
+ * Lookup token type by name
+ *
+ * @param name
+ *   The name of the token type to search.
+ * @return
+ *   The token type if found, or NULL on error.
+ */
+struct ec_tk_type *ec_tk_type_lookup(const char *name);
+
+/**
+ * Dump registered log types
+ */
+void ec_tk_type_dump(FILE *out);
+
 TAILQ_HEAD(ec_tk_list, ec_tk);
 
 struct ec_tk {
-	const struct ec_tk_ops *ops;
+	const struct ec_tk_type *type;
 	char *id;
 	char *desc;
 	struct ec_keyval *attrs;
@@ -75,7 +116,7 @@ struct ec_tk {
 	struct ec_tk_list children;
 };
 
-struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_ops *ops,
+struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
 	size_t priv_size);
 void ec_tk_free(struct ec_tk *tk);
 
@@ -83,7 +124,9 @@ void ec_tk_free(struct ec_tk *tk);
 struct ec_keyval *ec_tk_attrs(const struct ec_tk *tk);
 struct ec_tk *ec_tk_parent(const struct ec_tk *tk);
 const char *ec_tk_id(const struct ec_tk *tk);
+const char *ec_tk_desc(const struct ec_tk *tk);
 
+void ec_tk_dump(FILE *out, const struct ec_tk *tk);
 struct ec_tk *ec_tk_find(struct ec_tk *tk, const char *id);
 
 /* XXX split this file ? */
@@ -127,6 +170,8 @@ struct ec_parsed_tk *ec_tk_parse_tokens(struct ec_tk *tk,
 
 void ec_parsed_tk_add_child(struct ec_parsed_tk *parsed_tk,
 	struct ec_parsed_tk *child);
+void ec_parsed_tk_del_child(struct ec_parsed_tk *parsed_tk,
+	struct ec_parsed_tk *child);
 void ec_parsed_tk_dump(FILE *out, const struct ec_parsed_tk *parsed_tk);
 
 struct ec_parsed_tk *ec_parsed_tk_find_first(struct ec_parsed_tk *parsed_tk,
@@ -156,9 +201,9 @@ struct ec_completed_tk {
  * return a completed_tk object filled with elts
  * return NULL on error (nomem?)
  */
-struct ec_completed_tk *ec_tk_complete(const struct ec_tk *tk,
+struct ec_completed_tk *ec_tk_complete(struct ec_tk *tk,
 	const char *str);
-struct ec_completed_tk *ec_tk_complete_tokens(const struct ec_tk *tk,
+struct ec_completed_tk *ec_tk_complete_tokens(struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 struct ec_completed_tk *ec_completed_tk_new(void);
 struct ec_completed_tk_elt *ec_completed_tk_elt_new(const struct ec_tk *tk,
@@ -202,7 +247,5 @@ const struct ec_completed_tk_elt *ec_completed_tk_iter_next(
 
 void ec_completed_tk_iter_free(struct ec_completed_tk_iter *iter);
 
-
-const char *ec_tk_desc(const struct ec_tk *tk);
 
 #endif

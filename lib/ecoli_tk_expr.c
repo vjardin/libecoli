@@ -219,20 +219,22 @@ fail:
 	return ret;
 }
 
-static struct ec_tk_ops ec_tk_expr_ops = {
-	.typename = "expr",
+static struct ec_tk_type ec_tk_expr_type = {
+	.name = "expr",
 	.build = ec_tk_expr_build,
 	.parse = ec_tk_expr_parse,
 	.complete = ec_tk_expr_complete,
 	.free_priv = ec_tk_expr_free_priv,
 };
 
+EC_TK_TYPE_REGISTER(ec_tk_expr_type);
+
 struct ec_tk *ec_tk_expr(const char *id)
 {
 	struct ec_tk_expr *tk = NULL;
 	struct ec_tk *gen_tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_expr_ops, sizeof(*tk));
+	gen_tk = ec_tk_new(id, &ec_tk_expr_type, sizeof(*tk));
 	if (gen_tk == NULL)
 		return NULL;
 	tk = (struct ec_tk_expr *)gen_tk;
@@ -415,7 +417,8 @@ enum expr_tk_type {
 	BIN_OP,
 	PRE_OP,
 	POST_OP,
-	PAREN,
+	PAREN_OPEN,
+	PAREN_CLOSE,
 };
 static enum expr_tk_type get_tk_type(const struct ec_tk *expr_gen_tk,
 	const struct ec_tk *check_tk)
@@ -439,190 +442,169 @@ static enum expr_tk_type get_tk_type(const struct ec_tk *expr_gen_tk,
 			return POST_OP;
 	}
 
-	/* for (i = 0; i < expr_tk->paren_len; i++) { */
-	/* 	if (check_tk == expr_tk->open_ops[i]) */
-	/* 		return PAREN; */
-	/* } */
+	for (i = 0; i < expr_tk->paren_len; i++) {
+		if (check_tk == expr_tk->open_ops[i])
+			return PAREN_OPEN;
+	}
+	for (i = 0; i < expr_tk->paren_len; i++) {
+		if (check_tk == expr_tk->close_ops[i])
+			return PAREN_CLOSE;
+	}
 
 	return NONE;
 }
 
-struct eval_state {
-	void *userctx;
-	bool has_lval;
-	struct ec_tk_expr_eval_result lval;
-	const struct ec_parsed_tk **op_stack;
-	size_t op_stack_size;
-	size_t op_stack_len;
+struct result {
+	bool has_val;
+	void *val;
+	const struct ec_parsed_tk *op;
+	enum expr_tk_type op_type;
 };
 
-static struct eval_state *eval_state_new(void *userctx)
-{
-	struct eval_state *state;
-
-	state = ec_calloc(1, sizeof(*state));
-	state->userctx = userctx;
-	return state;
-}
-
-static void eval_state_free(struct eval_state *state)
-{
-	if (state == NULL)
-		return;
-	ec_free(state->op_stack);
-	ec_free(state);
-}
-
-static int eval_state_add_val(struct eval_state *state,
+/* merge x and y results in x */
+static int merge_results(void *userctx,
 	const struct ec_tk_expr_eval_ops *ops,
-	const struct ec_tk *expr_gen_tk,
-	const struct ec_parsed_tk *parsed_tk)
+	struct result *x, const struct result *y)
 {
-	struct ec_tk_expr_eval_result val;
-	const struct ec_parsed_tk *op_parsed_tk;
-	enum expr_tk_type type;
+	int ret;
 
-	(void)ops;
-	(void)state;
-	printf("push val: ");
-	ec_parsed_tk_dump(stdout, parsed_tk);
-
-	val = ops->eval_var(state->userctx, parsed_tk);
-	if (val.code != 0)
-		return val.code; // XXX free val?
-
-	/* first value, it is the left operand */
-	if (state->has_lval == 0) {
-		state->lval = val;
-		state->has_lval = 1;
+	if (y->has_val == 0 && y->op == NULL)
+		return 0;
+	if (x->has_val == 0 && x->op == NULL) {
+		*x = *y;
 		return 0;
 	}
 
-	/* if we have a right operand without operator... fail */
-	if (state->op_stack_len == 0)
-		return -EINVAL; // XXX free val?
+	if (x->has_val && x->op == NULL && y->has_val && y->op != NULL) {
+		ret = ops->eval_bin_op(&x->val, userctx, x->val, y->op, y->val);
+		if (ret < 0)
+			return ret;
 
-	while (state->op_stack_len > 0) {
-		state->op_stack_len--;
-		op_parsed_tk = state->op_stack[state->op_stack_len];
-		type = get_tk_type(expr_gen_tk, op_parsed_tk->tk);
-		if (type == PRE_OP) {
-			state->lval = ops->eval_pre_op(state->userctx,
-				val, op_parsed_tk);
-			if (val.code != 0)
-				return val.code; // XXX free val?
-		} else if (type == BIN_OP) {
-			state->lval = ops->eval_bin_op(state->userctx,
-				state->lval, op_parsed_tk, val);
-			if (state->lval.code != 0)
-				return state->lval.code; // XXX free val?
-			break;
-		} else {
-			// ?
+		return 0;
+	}
+
+	if (x->has_val == 0 && x->op != NULL && y->has_val && y->op == NULL) {
+		if (x->op_type == PRE_OP) {
+			ret = ops->eval_pre_op(&x->val, userctx, y->val, x->op);
+			if (ret < 0)
+				return ret;
+			x->has_val = true;
+			x->op_type = NONE;
+			x->op = NULL;
+			return 0;
+		} else if (x->op_type == BIN_OP) {
+			x->val = y->val;
+			x->has_val = true;
+			return 0;
 		}
 	}
 
-	return 0;
-}
+	if (x->has_val && x->op == NULL && y->has_val == 0 && y->op != NULL) {
+		ret = ops->eval_post_op(&x->val, userctx, x->val, y->op);
+		if (ret < 0)
+			return ret;
 
-static int eval_state_add_op(struct eval_state *state,
-	const struct ec_tk_expr_eval_ops *ops,
-	const struct ec_tk *expr_gen_tk,
-	const struct ec_parsed_tk *parsed_tk)
-{
-	enum expr_tk_type type;
-
-	(void)ops;
-	(void)state;
-
-	printf("push op: ");
-	ec_parsed_tk_dump(stdout, parsed_tk);
-
-	type = get_tk_type(expr_gen_tk, parsed_tk->tk);
-	if (type == POST_OP) {
-		if (state->has_lval == 0)
-			return -EINVAL;
-		state->lval = ops->eval_post_op(state->userctx,
-			state->lval, parsed_tk);
-		if (state->lval.code != 0)
-			return state->lval.code;
 		return 0;
 	}
 
-	if (state->op_stack_len >= state->op_stack_size) {
-		const struct ec_parsed_tk **op_stack;
-
-		op_stack = ec_realloc(state->op_stack,
-			(state->op_stack_len + 1) * sizeof(*op_stack));
-		if (op_stack == NULL)
-			return -ENOMEM;
-		state->op_stack = op_stack;
-		state->op_stack_size = state->op_stack_len + 1;
-	}
-
-	state->op_stack[state->op_stack_len] = parsed_tk;
-	state->op_stack_len++;
-
-	return 0;
+	assert(true); /* we should not get here */
+	return -EINVAL;
 }
 
-static int eval_expression(struct eval_state *state,
+static int eval_expression(struct result *result,
+	void *userctx,
 	const struct ec_tk_expr_eval_ops *ops,
 	const struct ec_tk *expr_gen_tk,
 	const struct ec_parsed_tk *parsed_tk)
 
 {
+	struct ec_parsed_tk *open = NULL, *close = NULL;
+	struct result child_result;
 	struct ec_parsed_tk *child;
 	enum expr_tk_type type;
 	int ret;
 
+	memset(result, 0, sizeof(*result));
+	memset(&child_result, 0, sizeof(child_result));
+
 	type = get_tk_type(expr_gen_tk, parsed_tk->tk);
 	if (type == VAL) {
-		ret = eval_state_add_val(state, ops, expr_gen_tk, parsed_tk);
+		ret = ops->eval_var(&result->val, userctx, parsed_tk);
 		if (ret < 0)
-			return ret;
-	} else if (type != NONE) {
-		ret = eval_state_add_op(state, ops, expr_gen_tk, parsed_tk);
-		if (ret < 0)
-			return ret;
+			goto fail;
+		result->has_val = 1;
+	} else if (type == PRE_OP || type == POST_OP || type == BIN_OP) {
+		result->op = parsed_tk;
+		result->op_type = type;
 	}
 
 	TAILQ_FOREACH(child, &parsed_tk->children, next) {
-		ret = eval_expression(state, ops, expr_gen_tk, child);
+
+		type = get_tk_type(expr_gen_tk, child->tk);
+		if (type == PAREN_OPEN) {
+			open = child;
+			continue;
+		} else if (type == PAREN_CLOSE) {
+			close = child;
+			continue;
+		}
+
+		ret = eval_expression(&child_result, userctx, ops,
+			expr_gen_tk, child);
 		if (ret < 0)
-			return ret;
+			goto fail;
+
+		ret = merge_results(userctx, ops, result, &child_result);
+		if (ret < 0)
+			goto fail;
+
+		memset(&child_result, 0, sizeof(child_result));
+	}
+
+	if (open != NULL && close != NULL) {
+		ret = ops->eval_parenthesis(&result->val, userctx, open, close,
+			result->val);
+		if (ret < 0)
+			goto fail;
 	}
 
 	return 0;
+
+fail:
+	if (result->has_val)
+		ops->eval_free(result->val, userctx);
+	if (child_result.has_val)
+		ops->eval_free(child_result.val, userctx);
+	memset(result, 0, sizeof(*result));
+
+	return ret;
 }
 
-struct ec_tk_expr_eval_result ec_tk_expr_eval(const struct ec_tk *tk,
+int ec_tk_expr_eval(void **user_result, const struct ec_tk *tk,
 	struct ec_parsed_tk *parsed, const struct ec_tk_expr_eval_ops *ops,
 	void *userctx)
 {
-	struct ec_tk_expr_eval_result res = { -EINVAL, NULL };
-	struct eval_state *state;
+	struct result result;
 	int ret;
 
-	if (ops == NULL)
-		return res;
+	if (ops == NULL || ops->eval_var == NULL || ops->eval_pre_op == NULL ||
+			ops->eval_post_op == NULL || ops->eval_bin_op == NULL ||
+			ops->eval_parenthesis == NULL || ops->eval_free == NULL)
+		return -EINVAL;
 
-	ec_parsed_tk_dump(stdout, parsed);
+	if (!ec_parsed_tk_matches(parsed))
+		return -EINVAL;
 
-	res.code = -ENOMEM;
-	state = eval_state_new(&userctx);
-	if (state == NULL)
-		return res;
+	ec_parsed_tk_dump(stdout, parsed); //XXX
+	ret = eval_expression(&result, userctx, ops, tk, parsed);
+	if (ret < 0)
+		return ret;
 
-	ret = eval_expression(state, ops, tk, parsed);
-// XXX check if op stack len is 0 ?
-	res = state->lval;
-	eval_state_free(state);
+	assert(result.has_val);
+	assert(result.op == NULL);
+	*user_result = result.val;
 
-	if (ret < 0 && res.code == 0)
-		res.code = ret;
-
-	return res;
+	return 0;
 }
 
 /* the test case is in a separate file ecoli_tk_expr_test.c */

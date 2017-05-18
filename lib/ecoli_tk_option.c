@@ -94,28 +94,34 @@ static void ec_tk_option_free_priv(struct ec_tk *gen_tk)
 	ec_tk_free(tk->child);
 }
 
-static struct ec_tk_ops ec_tk_option_ops = {
-	.typename = "option",
+static struct ec_tk_type ec_tk_option_type = {
+	.name = "option",
 	.parse = ec_tk_option_parse,
 	.complete = ec_tk_option_complete,
 	.free_priv = ec_tk_option_free_priv,
 };
 
+EC_TK_TYPE_REGISTER(ec_tk_option_type);
+
 struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *child)
 {
+	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_option *tk = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_option *)ec_tk_new(id, &ec_tk_option_ops,
-		sizeof(*tk));
-	if (tk == NULL) {
+	gen_tk = ec_tk_new(id, &ec_tk_option_type, sizeof(*tk));
+	if (gen_tk == NULL) {
 		ec_tk_free(child);
 		return NULL;
 	}
+	tk = (struct ec_tk_option *)gen_tk;
 
 	tk->child = child;
+
+	child->parent = gen_tk;
+	TAILQ_INSERT_TAIL(&gen_tk->children, child, next);
 
 	return &tk->gen;
 }
@@ -164,4 +170,4 @@ static struct ec_test ec_tk_option_test = {
 	.test = ec_tk_option_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_option_test);
+EC_TEST_REGISTER(ec_tk_option_test);

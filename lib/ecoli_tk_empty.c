@@ -65,15 +65,17 @@ static struct ec_parsed_tk *ec_tk_empty_parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static struct ec_tk_ops ec_tk_empty_ops = {
-	.typename = "empty",
+static struct ec_tk_type ec_tk_empty_type = {
+	.name = "empty",
 	.parse = ec_tk_empty_parse,
 	.complete = ec_tk_default_complete,
 };
 
+EC_TK_TYPE_REGISTER(ec_tk_empty_type);
+
 struct ec_tk *ec_tk_empty_new(const char *id)
 {
-	return ec_tk_new(id, &ec_tk_empty_ops,
+	return ec_tk_new(id, &ec_tk_empty_type,
 		sizeof(struct ec_tk_empty));
 }
 
@@ -116,4 +118,4 @@ static struct ec_test ec_tk_empty_test = {
 	.test = ec_tk_empty_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_empty_test);
+EC_TEST_REGISTER(ec_tk_empty_test);

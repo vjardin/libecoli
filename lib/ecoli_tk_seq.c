@@ -76,6 +76,7 @@ static struct ec_parsed_tk *ec_tk_seq_parse(const struct ec_tk *gen_tk,
 
 		if (!ec_parsed_tk_matches(child_parsed_tk)) {
 			ec_parsed_tk_free(child_parsed_tk);
+			// XXX ec_parsed_tk_free_children needed? see subset.c
 			ec_parsed_tk_free_children(parsed_tk);
 			return parsed_tk;
 		}
@@ -162,12 +163,14 @@ static void ec_tk_seq_free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->table);
 }
 
-static struct ec_tk_ops ec_tk_seq_ops = {
-	.typename = "seq",
+static struct ec_tk_type ec_tk_seq_type = {
+	.name = "seq",
 	.parse = ec_tk_seq_parse,
 	.complete = ec_tk_seq_complete,
 	.free_priv = ec_tk_seq_free_priv,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_seq_type);
 
 int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 {
@@ -204,7 +207,7 @@ struct ec_tk *ec_tk_seq(const char *id)
 	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_seq *tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_seq_ops, sizeof(*tk));
+	gen_tk = ec_tk_new(id, &ec_tk_seq_type, sizeof(*tk));
 	if (gen_tk == NULL)
 		return NULL;
 
@@ -332,4 +335,4 @@ static struct ec_test ec_tk_seq_test = {
 	.test = ec_tk_seq_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_seq_test);
+EC_TEST_REGISTER(ec_tk_seq_test);

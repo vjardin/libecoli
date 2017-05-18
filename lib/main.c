@@ -102,9 +102,9 @@ parse_int(const char *s, int min, int max, int *ret, unsigned int base)
 	return 0;
 }
 
-static void parse_args(int argc, char **argv)
+static int parse_args(int argc, char **argv)
 {
-	int opt;
+	int ret, opt;
 
 	while ((opt = getopt_long(argc, argv, ec_short_options,
 				ec_long_options, NULL)) != EOF) {
@@ -142,9 +142,14 @@ static void parse_args(int argc, char **argv)
 
 		default:
 			usage(argv[0]);
-			exit(1);
+			return -1;
 		}
 	}
+
+	ret = optind - 1;
+	optind = 1;
+
+	return ret;
 }
 
 TAILQ_HEAD(debug_alloc_hdr_list, debug_alloc_hdr);
@@ -355,9 +360,15 @@ static int debug_log(unsigned int level, void *opaque, const char *str)
 
 int main(int argc, char **argv)
 {
-	int ret, leaks;
+	int i, ret = 0, leaks;
 
-	parse_args(argc, argv);
+	ret = parse_args(argc, argv);
+	if (ret < 0)
+		return 1;
+
+	argc -= ret;
+	argv += ret;
+
 	srandom(seed);
 
 	ec_log_register(debug_log, NULL);
@@ -369,7 +380,13 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	ret = ec_test_all();
+	ret = 0;
+	if (argc <= 1) {
+		ret = ec_test_all();
+	} else {
+		for (i = 1; i < argc; i++)
+			ret |= ec_test_one(argv[i]);
+	}
 
 	ec_malloc_unregister();
 	leaks = debug_alloc_dump_leaks();

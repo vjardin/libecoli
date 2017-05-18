@@ -25,15 +25,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_TK_INT_
-#define ECOLI_TK_INT_
+#ifndef ECOLI_TK_RE_
+#define ECOLI_TK_RE_
 
 #include <ecoli_tk.h>
 
-// XXX remove min, max, base from new(), and add ec_tk_int_set_limits() +
-// XXX ec_tk_int_set_base() ?
-struct ec_tk *ec_tk_int(const char *id, long long int min,
-	long long int max, unsigned int base);
-long long ec_tk_int_getval(struct ec_tk *tk, const char *str);
+struct ec_tk *ec_tk_re(const char *id, const char *str);
+
+struct ec_tk *ec_tk_re_new(const char *id);
+
+/* re is duplicated */
+int ec_tk_re_set_regexp(struct ec_tk *tk, const char *re);
 
 #endif

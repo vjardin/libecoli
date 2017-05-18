@@ -101,11 +101,13 @@ static struct ec_parsed_tk *ec_tk_int_parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static struct ec_tk_ops ec_tk_int_ops = {
-	.typename = "int",
+static struct ec_tk_type ec_tk_int_type = {
+	.name = "int",
 	.parse = ec_tk_int_parse,
 	.complete = ec_tk_default_complete,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_int_type);
 
 struct ec_tk *ec_tk_int(const char *id, long long int min,
 	long long int max, unsigned int base)
@@ -113,7 +115,7 @@ struct ec_tk *ec_tk_int(const char *id, long long int min,
 	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_int *tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_int_ops, sizeof(*tk));
+	gen_tk = ec_tk_new(id, &ec_tk_int_type, sizeof(*tk));
 	if (gen_tk == NULL)
 		return NULL;
 	tk = (struct ec_tk_int *)gen_tk;
@@ -225,4 +227,4 @@ static struct ec_test ec_tk_int_test = {
 	.test = ec_tk_int_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_int_test);
+EC_TEST_REGISTER(ec_tk_int_test);

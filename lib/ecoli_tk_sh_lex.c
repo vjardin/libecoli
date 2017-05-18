@@ -371,12 +371,14 @@ static void ec_tk_sh_lex_free_priv(struct ec_tk *gen_tk)
 	ec_tk_free(tk->child);
 }
 
-static struct ec_tk_ops ec_tk_sh_lex_ops = {
-	.typename = "sh_lex",
+static struct ec_tk_type ec_tk_sh_lex_type = {
+	.name = "sh_lex",
 	.parse = ec_tk_sh_lex_parse,
 	.complete = ec_tk_sh_lex_complete,
 	.free_priv = ec_tk_sh_lex_free_priv,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_sh_lex_type);
 
 struct ec_tk *ec_tk_sh_lex_new(const char *id, struct ec_tk *child)
 {
@@ -385,7 +387,7 @@ struct ec_tk *ec_tk_sh_lex_new(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_sh_lex *)ec_tk_new(id, &ec_tk_sh_lex_ops,
+	tk = (struct ec_tk_sh_lex *)ec_tk_new(id, &ec_tk_sh_lex_type,
 		sizeof(*tk));
 	if (tk == NULL) {
 		ec_tk_free(child);
@@ -494,4 +496,4 @@ static struct ec_test ec_tk_sh_lex_test = {
 	.test = ec_tk_sh_lex_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_sh_lex_test);
+EC_TEST_REGISTER(ec_tk_sh_lex_test);

@@ -42,6 +42,8 @@
 #include <ecoli_tk_or.h>
 #include <ecoli_tk_sh_lex.h>
 #include <ecoli_tk_int.h>
+#include <ecoli_tk_option.h>
+#include <ecoli_tk_cmd.h>
 
 static struct ec_tk *commands;
 
@@ -177,22 +179,34 @@ static int create_commands(void)
 
 	cmd = EC_TK_SEQ(NULL,
 		ec_tk_str(NULL, "hello"),
-		EC_TK_OR(NULL,
-			EC_TK_OR("name",
-				ec_tk_str(NULL, "john"),
-				ec_tk_str(NULL, "johnny"),
-				ec_tk_str(NULL, "mike")
-			),
-			ec_tk_int("int", 0, 10, 10)
-		)
+		EC_TK_OR("name",
+			ec_tk_str(NULL, "john"),
+			ec_tk_str(NULL, "johnny"),
+			ec_tk_str(NULL, "mike")
+		),
+		ec_tk_option_new(NULL, ec_tk_int("int", 0, 10, 10))
 	);
-	ec_keyval_set(ec_tk_attrs(cmd), "help", "say hello to someone", NULL);
+	if (cmd == NULL)
+		goto fail;
+	ec_keyval_set(ec_tk_attrs(cmd), "help",
+		"say hello to someone several times", NULL);
 	ec_keyval_set(ec_tk_attrs(ec_tk_find(cmd, "name")),
 		"help", "the name of the person", NULL);
 	ec_keyval_set(ec_tk_attrs(ec_tk_find(cmd, "int")),
 		"help", "an integer", NULL);
 	if (ec_tk_or_add(cmdlist, cmd) < 0)
 		goto fail;
+
+#if 0
+	cmd = EC_TK_CMD(NULL, "good morning john|johnny|mike [count]",
+			ec_tk_int("count", 0, 10, 10));
+	if (cmd == NULL)
+		goto fail;
+	ec_keyval_set(ec_tk_attrs(cmd), "help",
+		"say good morning to someone several times", NULL);
+	if (ec_tk_or_add(cmdlist, cmd) < 0)
+		goto fail;
+#endif
 
 	cmd = EC_TK_SEQ(NULL,
 		ec_tk_str(NULL, "bye")

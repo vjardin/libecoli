@@ -4,7 +4,7 @@ set -e
 
 SEED=100
 while [ ${SEED} -gt 0 ]; do
-	CMD="./build/test --random-alloc-fail=10 --seed=${SEED}"
+	CMD="./build/test --random-alloc-fail=1 --seed=${SEED}"
 	${CMD} --log-level=0 || (
 		echo "=== test failed, replay seed=${SEED} with logs ===" &&
 		${CMD} --log-level=6 ||

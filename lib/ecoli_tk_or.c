@@ -121,13 +121,6 @@ static void ec_tk_or_free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->table);
 }
 
-static struct ec_tk_ops ec_tk_or_ops = {
-	.typename = "or",
-	.parse = ec_tk_or_parse,
-	.complete = ec_tk_or_complete,
-	.free_priv = ec_tk_or_free_priv,
-};
-
 int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 {
 	struct ec_tk_or *tk = (struct ec_tk_or *)gen_tk;
@@ -156,12 +149,21 @@ int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
+static struct ec_tk_type ec_tk_or_type = {
+	.name = "tk_or",
+	.parse = ec_tk_or_parse,
+	.complete = ec_tk_or_complete,
+	.free_priv = ec_tk_or_free_priv,
+};
+
+EC_TK_TYPE_REGISTER(ec_tk_or_type);
+
 struct ec_tk *ec_tk_or(const char *id)
 {
 	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_or *tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_or_ops, sizeof(*tk));
+	gen_tk = ec_tk_new(id, &ec_tk_or_type, sizeof(*tk));
 	if (gen_tk == NULL)
 		return NULL;
 
@@ -283,4 +285,4 @@ static struct ec_test ec_tk_or_test = {
 	.test = ec_tk_or_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_or_test);
+EC_TEST_REGISTER(ec_tk_or_test);

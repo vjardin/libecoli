@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Olivier MATZ <zer0@droids-corp.org>
+ * Copyright (c) 2016-2017, Olivier MATZ <zer0@droids-corp.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,15 +25,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_TK_INT_
-#define ECOLI_TK_INT_
+#ifndef ECOLI_TK_SUBSET_
+#define ECOLI_TK_SUBSET_
 
 #include <ecoli_tk.h>
 
-// XXX remove min, max, base from new(), and add ec_tk_int_set_limits() +
-// XXX ec_tk_int_set_base() ?
-struct ec_tk *ec_tk_int(const char *id, long long int min,
-	long long int max, unsigned int base);
-long long ec_tk_int_getval(struct ec_tk *tk, const char *str);
+#define EC_TK_SUBSET(args...) __ec_tk_subset(args, EC_TK_ENDLIST)
+
+/* list must be terminated with EC_TK_ENDLIST */
+/* all token given in the list will be freed when freeing this one */
+/* avoid using this function directly, prefer the macro EC_TK_SUBSET() or
+ * ec_tk_subset() + ec_tk_subset_add() */
+struct ec_tk *__ec_tk_subset(const char *id, ...);
+
+struct ec_tk *ec_tk_subset(const char *id);
+
+/* child is consumed */
+int ec_tk_subset_add(struct ec_tk *tk, struct ec_tk *child);
 
 #endif

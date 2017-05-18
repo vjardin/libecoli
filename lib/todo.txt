@@ -1,9 +1,95 @@
-- evaluate expression tree in ec_tk_expr
+tk_cmd
+======
+
+X evaluate expression tree in ec_tk_expr
 - cmd token
-- node regexp
-- node which always matches
-- yaml interface to create nodes
+- example
+- tk_re
+
+cleanup
+=======
+
 - check XXX in code
+- remove the _new() functions
+- add a tk vector type: will be used in several nodes (ex: or, seq, ...)
+- check allocation model everywhere
+- checkpatch?
+- use linux style (update .emacs)
+- better logs
+- return values
+- missing static / const
+- license: "s/neither the name...may/the names of its contributors may not/"
+- check all completion nodes
+- split ecoli_tk.h
+- cache results when appropriate?
+- size_t or unsigned int?
+
+logs
+====
+
+- register log types
+
+yaml
+====
+
+X register nodes by name
+- yaml interface to create nodes
+- example
+
+examples
+========
+
 - example which parses arguments (argc/argv)
 - example that acts as bash completion (ip link ?)
 - calculator example (var assignation, expression evaluation)
+- example with libedit
+- mini script language
+- configuration file
+
+doc
+===
+
+- overview
+- add api doc in .h
+- generate automatic api doc
+- architecture
+- coding rules, process
+- each node
+- allocation model
+- say that it stops at first match (no ambigous support)
+
+build framework
+===============
+
+- .map files for API
+- split libs, tests and examples
+- add make help
+- add make config
+- -fvisibility=
+
+tests
+=====
+
+- complete automatic tests with "make test"
+
+new nodes
+=========
+
+- regexp
+- node which always matches
+- file + partial completion
+- ether, ip, network
+- fusion node: need to match several children, same for completion
+- float
+
+encoding
+========
+
+- support utf-8 and other encodings
+- example
+- documentation
+
+netconf example
+===============
+
+- demonstration example that parses yang file and generate cli

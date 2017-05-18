@@ -42,6 +42,7 @@ static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 void ec_test_register(struct ec_test *test)
 {
 	TAILQ_INSERT_TAIL(&test_list, test, next);
+	// XXX check if already exist, like for type
 }
 
 int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
@@ -95,7 +96,7 @@ out:
 	return ret;
 }
 
-int ec_test_check_tk_complete(const struct ec_tk *tk, ...)
+int ec_test_check_tk_complete(struct ec_tk *tk, ...)
 {
 	struct ec_completed_tk *c = NULL;
 	struct ec_completed_tk_elt *elt;
@@ -175,14 +176,19 @@ out:
 	return ret;
 }
 
-int ec_test_all(void)
+static int launch_test(const char *name)
 {
 	struct ec_test *test;
 	int ret = 0;
+	unsigned int count = 0;
 
 	TAILQ_FOREACH(test, &test_list, next) {
+		if (name != NULL && strcmp(name, test->name))
+			continue;
+
 		ec_log(EC_LOG_INFO, "== starting test %-20s\n", test->name);
 
+		count++;
 		if (test->test() == 0) {
 			ec_log(EC_LOG_INFO, "== test %-20s success\n",
 				test->name);
@@ -193,5 +199,18 @@ int ec_test_all(void)
 		}
 	}
 
+	if (name != NULL && count == 0)
+		ec_log(EC_LOG_WARNING, "== test %s not found\n", name);
+
 	return ret;
+}
+
+int ec_test_all(void)
+{
+	return launch_test(NULL);
+}
+
+int ec_test_one(const char *name)
+{
+	return launch_test(name);
 }

@@ -109,7 +109,7 @@ fail:
 	return NULL;
 }
 
-#if 0
+#if 0 //XXX missing tk_many_complete
 static struct ec_completed_tk *ec_tk_many_complete(const struct ec_tk *gen_tk,
 	const struct ec_strvec *strvec)
 {
@@ -172,13 +172,15 @@ static void ec_tk_many_free_priv(struct ec_tk *gen_tk)
 	ec_tk_free(tk->child);
 }
 
-static struct ec_tk_ops ec_tk_many_ops = {
-	.typename = "many",
+static struct ec_tk_type ec_tk_many_type = {
+	.name = "many",
 	.parse = ec_tk_many_parse,
 	.complete = ec_tk_default_complete,
 //XXX	.complete = ec_tk_many_complete,
 	.free_priv = ec_tk_many_free_priv,
 };
+
+EC_TK_TYPE_REGISTER(ec_tk_many_type);
 
 struct ec_tk *ec_tk_many(const char *id, struct ec_tk *child,
 	unsigned int min, unsigned int max)
@@ -188,7 +190,7 @@ struct ec_tk *ec_tk_many(const char *id, struct ec_tk *child,
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_many *)ec_tk_new(id, &ec_tk_many_ops,
+	tk = (struct ec_tk_many *)ec_tk_new(id, &ec_tk_many_type,
 		sizeof(*tk));
 	if (tk == NULL) {
 		ec_tk_free(child);
@@ -252,4 +254,4 @@ static struct ec_test ec_tk_many_test = {
 	.test = ec_tk_many_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_many_test);
+EC_TEST_REGISTER(ec_tk_many_test);

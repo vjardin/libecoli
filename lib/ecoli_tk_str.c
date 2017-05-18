@@ -129,19 +129,21 @@ static void ec_tk_str_free_priv(struct ec_tk *gen_tk)
 	ec_free(tk->string);
 }
 
-static const struct ec_tk_ops ec_tk_str_ops = {
-	.typename = "str",
+static struct ec_tk_type ec_tk_str_type = {
+	.name = "str",
 	.parse = ec_tk_str_parse,
 	.complete = ec_tk_str_complete,
 	.desc = ec_tk_str_desc,
 	.free_priv = ec_tk_str_free_priv,
 };
 
+EC_TK_TYPE_REGISTER(ec_tk_str_type);
+
 struct ec_tk *ec_tk_str_new(const char *id)
 {
 	struct ec_tk *gen_tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_str_ops, sizeof(struct ec_tk_str));
+	gen_tk = ec_tk_new(id, &ec_tk_str_type, sizeof(struct ec_tk_str));
 	if (gen_tk == NULL)
 		return NULL;
 
@@ -155,7 +157,7 @@ int ec_tk_str_set_str(struct ec_tk *gen_tk, const char *str)
 	if (str == NULL)
 		return -EINVAL;
 	if (tk->string != NULL)
-		return -EEXIST;
+		return -EEXIST; // XXX allow to replace
 
 	tk->string = ec_strdup(str);
 	if (tk->string == NULL)
@@ -189,6 +191,7 @@ static int ec_tk_str_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
+	/* XXX use EC_NO_ID instead of NULL */
 	tk = ec_tk_str(NULL, "foo");
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
@@ -256,4 +259,4 @@ static struct ec_test ec_tk_str_test = {
 	.test = ec_tk_str_testcase,
 };
 
-EC_REGISTER_TEST(ec_tk_str_test);
+EC_TEST_REGISTER(ec_tk_str_test);
