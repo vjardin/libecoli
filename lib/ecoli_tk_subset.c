@@ -163,9 +163,6 @@ static struct ec_parsed_tk *ec_tk_subset_parse(const struct ec_tk *gen_tk,
 	size_t i;
 	int ret;
 
-	printf("---------parse\n");
-	ec_strvec_dump(stdout, strvec);
-
 	memset(&result, 0, sizeof(result));
 
 	parsed_tk = ec_parsed_tk_new();
@@ -205,72 +202,100 @@ static struct ec_parsed_tk *ec_tk_subset_parse(const struct ec_tk *gen_tk,
 	return NULL;
 }
 
-static struct ec_completed_tk *ec_tk_subset_complete(const struct ec_tk *gen_tk,
+static struct ec_completed_tk *
+__ec_tk_subset_complete(struct ec_tk **table, size_t table_len,
 	const struct ec_strvec *strvec)
 {
-	(void)gen_tk;
-	(void)strvec;
-#if 0
-	struct ec_tk_subset *tk = (struct ec_tk_subset *)gen_tk;
-	struct ec_completed_tk *completed_tk = NULL, *child_completed_tk;
-	struct ec_parsed_tk **child_parsed_tab = NULL;
+	struct ec_completed_tk *completed_tk = NULL;
+	struct ec_completed_tk *child_completed_tk = NULL;
 	struct ec_strvec *childvec = NULL;
+	struct ec_parsed_tk *parsed_tk = NULL;
+	struct ec_tk *save;
 	size_t i, len;
+
+	/*
+	 * example with table = [a, b, c]
+	 * subset_complete([a,b,c], strvec) returns:
+	 *   complete(a, strvec) + complete(b, strvec) + complete(c, strvec) +
+	 *   + __subset_complete([b, c], childvec) if a matches
+	 *   + __subset_complete([a, c], childvec) if b matches
+	 *   + __subset_complete([a, b], childvec) if c matches
+	 */
 
 	completed_tk = ec_completed_tk_new();
 	if (completed_tk == NULL)
 		goto fail;
 
-	child_parsed_tab = __ec_tk_subset_parse(gen_tk, strvec, &len);
-	if (child_parsed_tab == NULL)
-		goto fail;
-
-	childvec = ec_strvec_ndup(strvec, len, ec_strvec_len(strvec) - len);
-	for (i = 0; i < tk->len; i++) {
-		if (child_parsed_tab[i] != NULL)
+	/* first, try to complete with each token of the table */
+	for (i = 0; i < table_len; i++) {
+		if (table[i] == NULL)
 			continue;
 
-		child_completed_tk = ec_tk_complete_tokens(tk->table[i],
-			childvec);
+		child_completed_tk = ec_tk_complete_tokens(table[i],
+			strvec);
 
-		if (child_completed_tk == NULL) // XXX fail instead?
-			continue;
+		if (child_completed_tk == NULL)
+			goto fail;
 
 		ec_completed_tk_merge(completed_tk, child_completed_tk);
+		child_completed_tk = NULL;
 	}
-	ec_strvec_free(childvec);
-	if (len > 0) {
-		childvec = ec_strvec_ndup(strvec, len - 1,
-			ec_strvec_len(strvec) - len + 1);
-		for (i = 0; i < tk->len; i++) {
-			if (child_parsed_tab[i] != NULL)
-				continue;
 
-			child_completed_tk = ec_tk_complete_tokens(tk->table[i],
-				childvec);
+	/* then, if a token matches, advance in strvec and try to complete with
+	 * all the other tokens */
+	for (i = 0; i < table_len; i++) {
+		if (table[i] == NULL)
+			continue;
 
-			if (child_completed_tk == NULL) // XXX fail instead?
-				continue;
+		parsed_tk = ec_tk_parse_tokens(table[i], strvec);
+		if (parsed_tk == NULL)
+			goto fail;
 
-			ec_completed_tk_merge(completed_tk, child_completed_tk);
+		if (!ec_parsed_tk_matches(parsed_tk)) {
+			ec_parsed_tk_free(parsed_tk);
+			parsed_tk = NULL;
+			continue;
 		}
-		ec_strvec_free(childvec);
-	}
 
-	for (i = 0; i < tk->len; i++)
-		ec_parsed_tk_free(child_parsed_tab[i]);
-	ec_free(child_parsed_tab);
+		len = ec_parsed_tk_len(parsed_tk);
+		childvec = ec_strvec_ndup(strvec, len,
+					ec_strvec_len(strvec) - len);
+		if (childvec == NULL)
+			goto fail;
+
+		save = table[i];
+		table[i] = NULL;
+		child_completed_tk = __ec_tk_subset_complete(table,
+							table_len, childvec);
+		table[i] = save;
+		ec_strvec_free(childvec);
+		childvec = NULL;
+
+		if (child_completed_tk == NULL)
+			goto fail;
+
+		ec_completed_tk_merge(completed_tk, child_completed_tk);
+		child_completed_tk = NULL;
+
+		ec_parsed_tk_free(parsed_tk);
+		parsed_tk = NULL;
+	}
 
 	return completed_tk;
-
 fail:
-	ec_strvec_free(childvec);
-	for (i = 0; i < tk->len; i++)
-		ec_parsed_tk_free(child_parsed_tab[i]);
-	ec_free(child_parsed_tab);
+	ec_parsed_tk_free(parsed_tk);
+	ec_completed_tk_free(child_completed_tk);
 	ec_completed_tk_free(completed_tk);
-#endif
+
 	return NULL;
+}
+
+static struct ec_completed_tk *ec_tk_subset_complete(const struct ec_tk *gen_tk,
+	const struct ec_strvec *strvec)
+{
+	struct ec_tk_subset *tk = (struct ec_tk_subset *)gen_tk;
+
+	return __ec_tk_subset_complete(tk->table, tk->len, strvec);
 }
 
 static void ec_tk_subset_free_priv(struct ec_tk *gen_tk)
@@ -438,7 +463,7 @@ static int ec_tk_subset_testcase(void)
 		"");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
 		"bar", "b", EC_TK_ENDLIST,
-		"bar2", EC_TK_ENDLIST,
+		"ar2", EC_TK_ENDLIST,
 		"ar2");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
 		"t", EC_TK_ENDLIST,

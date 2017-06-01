@@ -88,21 +88,19 @@ static struct ec_completed_tk *ec_tk_str_complete(const struct ec_tk *gen_tk,
 	if (completed_tk == NULL)
 		return NULL;
 
-	if (ec_strvec_len(strvec) > 1)
+	if (ec_strvec_len(strvec) != 1)
 		return completed_tk;
 
-	if (ec_strvec_len(strvec) == 1) {
-		str = ec_strvec_val(strvec, 0);
-		for (n = 0; n < tk->len; n++) {
-			if (str[n] != tk->string[n])
-				break;
-		}
-
-		if (str[n] != '\0')
-			add = NULL;
-		else
-			add = tk->string + n;
+	str = ec_strvec_val(strvec, 0);
+	for (n = 0; n < tk->len; n++) {
+		if (str[n] != tk->string[n])
+			break;
 	}
+
+	if (str[n] != '\0')
+		add = NULL;
+	else
+		add = tk->string + n;
 
 	completed_tk_elt = ec_completed_tk_elt_new(gen_tk, add);
 	if (completed_tk_elt == NULL) {
@@ -233,6 +231,10 @@ static int ec_tk_str_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
+	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
+		EC_TK_ENDLIST,
+		EC_TK_ENDLIST,
+		"");
 	ret |= EC_TEST_CHECK_TK_COMPLETE(tk,
 		"", EC_TK_ENDLIST,
 		"foo", EC_TK_ENDLIST,
