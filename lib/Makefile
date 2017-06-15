@@ -34,6 +34,7 @@ CFLAGS  = -g -O0 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
 CFLAGS += -I.
 
 srcs :=
+srcs += ecoli_completed.c
 srcs += ecoli_keyval.c
 srcs += ecoli_log.c
 srcs += ecoli_malloc.c
@@ -56,6 +57,7 @@ srcs += ecoli_node_space.c
 srcs += ecoli_node_str.c
 srcs += ecoli_node_subset.c
 srcs += ecoli_node_weakref.c
+srcs += ecoli_parsed.c
 
 shlib-y-$(O)libecoli.so := $(srcs)
 

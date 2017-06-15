@@ -34,8 +34,9 @@
 #include <readline/history.h>
 
 #include <ecoli_node.h>
+#include <ecoli_parsed.h>
+#include <ecoli_completed.h>
 #include <ecoli_keyval.h>
-
 #include <ecoli_node_str.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_space.h>

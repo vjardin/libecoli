@@ -10,6 +10,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_parsed.h>
 #include <ecoli_node_many.h>
 #include <ecoli_node_or.h>
 #include <ecoli_node_str.h>

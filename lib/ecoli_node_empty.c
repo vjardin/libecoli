@@ -34,6 +34,8 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_parsed.h>
+#include <ecoli_completed.h>
 #include <ecoli_node_empty.h>
 
 struct ec_node_empty {

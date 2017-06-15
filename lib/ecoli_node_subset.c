@@ -37,6 +37,8 @@
 #include <ecoli_log.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_parsed.h>
+#include <ecoli_completed.h>
 #include <ecoli_node_subset.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_or.h>

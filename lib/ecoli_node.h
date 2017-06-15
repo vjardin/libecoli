@@ -36,6 +36,7 @@
 
 struct ec_node;
 struct ec_parsed;
+struct ec_completed;
 struct ec_strvec;
 struct ec_keyval;
 
@@ -126,6 +127,7 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id);
 /* create a_new node node */
 struct ec_node *ec_node(const char *typename, const char *id);
 
+struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_node_free(struct ec_node *node);
 
 /* XXX add more accessors */
@@ -136,124 +138,5 @@ const char *ec_node_desc(const struct ec_node *node);
 
 void ec_node_dump(FILE *out, const struct ec_node *node);
 struct ec_node *ec_node_find(struct ec_node *node, const char *id);
-
-/* XXX split this file ? */
-
-TAILQ_HEAD(ec_parsed_list, ec_parsed);
-
-/*
-  node == NULL + empty children list means "no match"
-*/
-struct ec_parsed {
-	TAILQ_ENTRY(ec_parsed) next;
-	struct ec_parsed_list children;
-	const struct ec_node *node;
-	struct ec_strvec *strvec;
-};
-
-struct ec_parsed *ec_parsed(void);
-void ec_parsed_free(struct ec_parsed *parsed);
-struct ec_node *ec_node_clone(struct ec_node *node);
-void ec_parsed_free_children(struct ec_parsed *parsed);
-
-const struct ec_strvec *ec_parsed_strvec(
-	const struct ec_parsed *parsed);
-
-void ec_parsed_set_match(struct ec_parsed *parsed,
-	const struct ec_node *node, struct ec_strvec *strvec);
-
-/* XXX we could use a cache to store possible completions or match: the
- * cache would be per-node, and would be reset for each call to parse()
- * or complete() ? */
-/* a NULL return value is an error, with errno set
-  ENOTSUP: no ->parse() operation
-*/
-struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str);
-
-/* mostly internal to nodes */
-/* XXX it should not reset cache
- * ... not sure... it is used by tests */
-struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
-	const struct ec_strvec *strvec);
-
-void ec_parsed_add_child(struct ec_parsed *parsed,
-	struct ec_parsed *child);
-void ec_parsed_del_child(struct ec_parsed *parsed,
-	struct ec_parsed *child);
-void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
-
-struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
-	const char *id);
-
-const char *ec_parsed_to_string(const struct ec_parsed *parsed);
-size_t ec_parsed_len(const struct ec_parsed *parsed);
-size_t ec_parsed_matches(const struct ec_parsed *parsed);
-
-struct ec_completed_elt {
-	TAILQ_ENTRY(ec_completed_elt) next;
-	const struct ec_node *node;
-	char *add;
-};
-
-TAILQ_HEAD(ec_completed_elt_list, ec_completed_elt);
-
-
-struct ec_completed {
-	struct ec_completed_elt_list elts;
-	unsigned count;
-	unsigned count_match;
-	char *smallest_start;
-};
-
-/*
- * return a completed object filled with elts
- * return NULL on error (nomem?)
- */
-struct ec_completed *ec_node_complete(struct ec_node *node,
-	const char *str);
-struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
-	const struct ec_strvec *strvec);
-struct ec_completed *ec_completed(void);
-struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
-	const char *add);
-void ec_completed_add_elt(struct ec_completed *completed,
-	struct ec_completed_elt *elt);
-void ec_completed_elt_free(struct ec_completed_elt *elt);
-void ec_completed_merge(struct ec_completed *completed1,
-	struct ec_completed *completed2);
-void ec_completed_free(struct ec_completed *completed);
-void ec_completed_dump(FILE *out,
-	const struct ec_completed *completed);
-struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec);
-
-/* cannot return NULL */
-const char *ec_completed_smallest_start(
-	const struct ec_completed *completed);
-
-enum ec_completed_filter_flags {
-	EC_MATCH = 1,
-	EC_NO_MATCH = 2,
-};
-
-unsigned int ec_completed_count(
-	const struct ec_completed *completed,
-	enum ec_completed_filter_flags flags);
-
-struct ec_completed_iter {
-	enum ec_completed_filter_flags flags;
-	const struct ec_completed *completed;
-	const struct ec_completed_elt *cur;
-};
-
-struct ec_completed_iter *
-ec_completed_iter(struct ec_completed *completed,
-	enum ec_completed_filter_flags flags);
-
-const struct ec_completed_elt *ec_completed_iter_next(
-	struct ec_completed_iter *iter);
-
-void ec_completed_iter_free(struct ec_completed_iter *iter);
-
 
 #endif

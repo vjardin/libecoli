@@ -35,6 +35,9 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_parsed.h>
+#include <ecoli_completed.h>
+#include <ecoli_parsed.h>
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 

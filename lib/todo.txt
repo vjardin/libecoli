@@ -45,6 +45,8 @@ yaml
 ====
 
 X register nodes by name
+- interface to add attributes: all nodes must be configurable through a
+  generic api
 - yaml interface to create nodes
 - example
 
