@@ -156,6 +156,7 @@ static struct ec_tk_type ec_tk_re_lex_type = {
 	.name = "re_lex",
 	.parse = ec_tk_re_lex_parse,
 	//.complete = ec_tk_re_lex_complete, //XXX
+	.size = sizeof(struct ec_tk_re_lex),
 	.free_priv = ec_tk_re_lex_free_priv,
 };
 
@@ -210,8 +211,7 @@ struct ec_tk *ec_tk_re_lex(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_re_lex *)ec_tk_new(id, &ec_tk_re_lex_type,
-		sizeof(*tk));
+	tk = (struct ec_tk_re_lex *)__ec_tk_new(&ec_tk_re_lex_type, id);
 	if (tk == NULL) {
 		ec_tk_free(child);
 		return NULL;

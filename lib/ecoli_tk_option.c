@@ -98,6 +98,7 @@ static struct ec_tk_type ec_tk_option_type = {
 	.name = "option",
 	.parse = ec_tk_option_parse,
 	.complete = ec_tk_option_complete,
+	.size = sizeof(struct ec_tk_option),
 	.free_priv = ec_tk_option_free_priv,
 };
 
@@ -111,7 +112,7 @@ struct ec_tk *ec_tk_option_new(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_option_type, sizeof(*tk));
+	gen_tk = __ec_tk_new(&ec_tk_option_type, id);
 	if (gen_tk == NULL) {
 		ec_tk_free(child);
 		return NULL;

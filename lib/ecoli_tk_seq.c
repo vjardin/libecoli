@@ -167,6 +167,7 @@ static struct ec_tk_type ec_tk_seq_type = {
 	.name = "seq",
 	.parse = ec_tk_seq_parse,
 	.complete = ec_tk_seq_complete,
+	.size = sizeof(struct ec_tk_seq),
 	.free_priv = ec_tk_seq_free_priv,
 };
 
@@ -202,22 +203,6 @@ int ec_tk_seq_add(struct ec_tk *gen_tk, struct ec_tk *child)
 	return 0;
 }
 
-struct ec_tk *ec_tk_seq(const char *id)
-{
-	struct ec_tk *gen_tk = NULL;
-	struct ec_tk_seq *tk = NULL;
-
-	gen_tk = ec_tk_new(id, &ec_tk_seq_type, sizeof(*tk));
-	if (gen_tk == NULL)
-		return NULL;
-
-	tk = (struct ec_tk_seq *)gen_tk;
-	tk->table = NULL;
-	tk->len = 0;
-
-	return gen_tk;
-}
-
 struct ec_tk *__ec_tk_seq(const char *id, ...)
 {
 	struct ec_tk *gen_tk = NULL;
@@ -228,7 +213,7 @@ struct ec_tk *__ec_tk_seq(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_tk = ec_tk_seq(id);
+	gen_tk = __ec_tk_new(&ec_tk_seq_type, id);
 	tk = (struct ec_tk_seq *)gen_tk;
 	if (tk == NULL)
 		fail = 1;;

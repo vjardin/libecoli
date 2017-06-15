@@ -79,21 +79,17 @@ static struct ec_tk_type ec_tk_space_type = {
 	.name = "space",
 	.parse = ec_tk_space_parse,
 	.complete = ec_tk_default_complete,
+	.size = sizeof(struct ec_tk_space),
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_space_type);
-
-struct ec_tk *ec_tk_space_new(const char *id)
-{
-	return ec_tk_new(id, &ec_tk_space_type, sizeof(struct ec_tk_space));
-}
 
 static int ec_tk_space_testcase(void)
 {
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_space_new(NULL);
+	tk = ec_tk_new("space", NULL);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -106,7 +102,7 @@ static int ec_tk_space_testcase(void)
 	ec_tk_free(tk);
 
 	/* test completion */
-	tk = ec_tk_space_new(NULL);
+	tk = ec_tk_new("space", NULL);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

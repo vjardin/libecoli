@@ -177,6 +177,7 @@ static struct ec_tk_type ec_tk_many_type = {
 	.parse = ec_tk_many_parse,
 	.complete = ec_tk_default_complete,
 //XXX	.complete = ec_tk_many_complete,
+	.size = sizeof(struct ec_tk_many),
 	.free_priv = ec_tk_many_free_priv,
 };
 
@@ -190,8 +191,7 @@ struct ec_tk *ec_tk_many(const char *id, struct ec_tk *child,
 	if (child == NULL)
 		return NULL;
 
-	tk = (struct ec_tk_many *)ec_tk_new(id, &ec_tk_many_type,
-		sizeof(*tk));
+	tk = (struct ec_tk_many *)__ec_tk_new(&ec_tk_many_type, id);
 	if (tk == NULL) {
 		ec_tk_free(child);
 		return NULL;

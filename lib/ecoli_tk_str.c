@@ -132,21 +132,11 @@ static struct ec_tk_type ec_tk_str_type = {
 	.parse = ec_tk_str_parse,
 	.complete = ec_tk_str_complete,
 	.desc = ec_tk_str_desc,
+	.size = sizeof(struct ec_tk_str),
 	.free_priv = ec_tk_str_free_priv,
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_str_type);
-
-struct ec_tk *ec_tk_str_new(const char *id)
-{
-	struct ec_tk *gen_tk = NULL;
-
-	gen_tk = ec_tk_new(id, &ec_tk_str_type, sizeof(struct ec_tk_str));
-	if (gen_tk == NULL)
-		return NULL;
-
-	return gen_tk;
-}
 
 int ec_tk_str_set_str(struct ec_tk *gen_tk, const char *str)
 {
@@ -170,7 +160,7 @@ struct ec_tk *ec_tk_str(const char *id, const char *str)
 {
 	struct ec_tk *gen_tk = NULL;
 
-	gen_tk = ec_tk_str_new(id);
+	gen_tk = __ec_tk_new(&ec_tk_str_type, id);
 	if (gen_tk == NULL)
 		goto fail;
 

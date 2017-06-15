@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <ctype.h>
 #include <errno.h>
@@ -41,7 +43,9 @@
 
 struct ec_tk_int {
 	struct ec_tk gen;
+	bool check_min;
 	long long int min;
+	bool check_max;
 	long long int max;
 	unsigned int base;
 };
@@ -59,7 +63,10 @@ static int parse_llint(struct ec_tk_int *tk, const char *str,
 			(errno != 0 && *val == 0))
 		return -1;
 
-	if (*val < tk->min || *val > tk->max)
+	if (tk->check_min && *val < tk->min)
+		return -1;
+
+	if (tk->check_max && *val > tk->max)
 		return -1;
 
 	if (*endptr != 0)
@@ -105,6 +112,7 @@ static struct ec_tk_type ec_tk_int_type = {
 	.name = "int",
 	.parse = ec_tk_int_parse,
 	.complete = ec_tk_default_complete,
+	.size = sizeof(struct ec_tk_int),
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_int_type);
@@ -115,12 +123,14 @@ struct ec_tk *ec_tk_int(const char *id, long long int min,
 	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_int *tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_int_type, sizeof(*tk));
+	gen_tk = __ec_tk_new(&ec_tk_int_type, id);
 	if (gen_tk == NULL)
 		return NULL;
 	tk = (struct ec_tk_int *)gen_tk;
 
+	tk->check_min = true;
 	tk->min = min;
+	tk->check_max = true;
 	tk->max = max;
 	tk->base = base;
 

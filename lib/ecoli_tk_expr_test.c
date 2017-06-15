@@ -219,7 +219,7 @@ static int ec_tk_expr_testcase(void)
 	struct ec_tk *tk = NULL, *lex_tk = NULL;
 	int ret = 0;
 
-	tk = ec_tk_expr("expr");
+	tk = ec_tk_new("expr", "my_expr");
 	if (tk == NULL)
 		return -1;
 

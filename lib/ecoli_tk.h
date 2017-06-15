@@ -47,6 +47,7 @@ typedef struct ec_parsed_tk *(*ec_tk_parse_t)(const struct ec_tk *tk,
 typedef struct ec_completed_tk *(*ec_tk_complete_t)(const struct ec_tk *tk,
 	const struct ec_strvec *strvec);
 typedef const char * (*ec_tk_desc_t)(const struct ec_tk *);
+typedef void (*ec_tk_init_priv_t)(struct ec_tk *);
 typedef void (*ec_tk_free_priv_t)(struct ec_tk *);
 
 #define EC_TK_TYPE_REGISTER(t)						\
@@ -70,6 +71,8 @@ struct ec_tk_type {
 	ec_tk_parse_t parse;
 	ec_tk_complete_t complete;
 	ec_tk_desc_t desc;
+	size_t size;
+	ec_tk_init_priv_t init_priv;
 	ec_tk_free_priv_t free_priv;
 };
 
@@ -116,8 +119,12 @@ struct ec_tk {
 	struct ec_tk_list children;
 };
 
-struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
-	size_t priv_size);
+/* create a new token when the type is known, typically called from the node
+ * code */
+struct ec_tk *__ec_tk_new(const struct ec_tk_type *type, const char *id);
+
+/* create a_new token node */
+struct ec_tk *ec_tk_new(const char *typename, const char *id);
 
 void ec_tk_free(struct ec_tk *tk);
 

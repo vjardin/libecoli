@@ -91,21 +91,11 @@ static struct ec_tk_type ec_tk_re_type = {
 	.name = "re",
 	.parse = ec_tk_re_parse,
 	.complete = ec_tk_default_complete,
+	.size = sizeof(struct ec_tk_re),
 	.free_priv = ec_tk_re_free_priv,
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_re_type);
-
-struct ec_tk *ec_tk_re_new(const char *id)
-{
-	struct ec_tk *gen_tk = NULL;
-
-	gen_tk = ec_tk_new(id, &ec_tk_re_type, sizeof(struct ec_tk_re));
-	if (gen_tk == NULL)
-		return NULL;
-
-	return gen_tk;
-}
 
 int ec_tk_re_set_regexp(struct ec_tk *gen_tk, const char *str)
 {
@@ -137,7 +127,7 @@ struct ec_tk *ec_tk_re(const char *id, const char *re_str)
 {
 	struct ec_tk *gen_tk = NULL;
 
-	gen_tk = ec_tk_re_new(id);
+	gen_tk = __ec_tk_new(&ec_tk_re_type, id);
 	if (gen_tk == NULL)
 		goto fail;
 

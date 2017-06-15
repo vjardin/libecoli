@@ -173,7 +173,7 @@ static int create_commands(void)
 {
 	struct ec_tk *cmdlist = NULL, *cmd = NULL;
 
-	cmdlist = ec_tk_or(NULL);
+	cmdlist = ec_tk_new("or", NULL);
 	if (cmdlist == NULL)
 		goto fail;
 

@@ -150,29 +150,14 @@ int ec_tk_or_add(struct ec_tk *gen_tk, struct ec_tk *child)
 }
 
 static struct ec_tk_type ec_tk_or_type = {
-	.name = "tk_or",
+	.name = "or",
 	.parse = ec_tk_or_parse,
 	.complete = ec_tk_or_complete,
+	.size = sizeof(struct ec_tk_or),
 	.free_priv = ec_tk_or_free_priv,
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_or_type);
-
-struct ec_tk *ec_tk_or(const char *id)
-{
-	struct ec_tk *gen_tk = NULL;
-	struct ec_tk_or *tk = NULL;
-
-	gen_tk = ec_tk_new(id, &ec_tk_or_type, sizeof(*tk));
-	if (gen_tk == NULL)
-		return NULL;
-
-	tk = (struct ec_tk_or *)gen_tk;
-	tk->table = NULL;
-	tk->len = 0;
-
-	return gen_tk;
-}
 
 struct ec_tk *__ec_tk_or(const char *id, ...)
 {
@@ -184,7 +169,7 @@ struct ec_tk *__ec_tk_or(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_tk = ec_tk_or(id);
+	gen_tk = __ec_tk_new(&ec_tk_or_type, id);
 	tk = (struct ec_tk_or *)gen_tk;
 	if (tk == NULL)
 		fail = 1;;

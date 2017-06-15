@@ -66,23 +66,10 @@ static struct ec_tk_type ec_tk_weakref_type = {
 	.name = "weakref",
 	.parse = ec_tk_weakref_parse,
 	.complete = ec_tk_weakref_complete,
+	.size = sizeof(struct ec_tk_weakref),
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_weakref_type);
-
-struct ec_tk *ec_tk_weakref_empty(const char *id)
-{
-	struct ec_tk_weakref *tk = NULL;
-
-	tk = (struct ec_tk_weakref *)ec_tk_new(id,
-		&ec_tk_weakref_type, sizeof(*tk));
-	if (tk == NULL)
-		return NULL;
-
-	tk->child = NULL;
-
-	return &tk->gen;
-}
 
 int ec_tk_weakref_set(struct ec_tk *gen_tk, struct ec_tk *child)
 {
@@ -112,7 +99,7 @@ struct ec_tk *ec_tk_weakref(const char *id, struct ec_tk *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_tk = ec_tk_weakref_empty(id);
+	gen_tk = __ec_tk_new(&ec_tk_weakref_type, id);
 	if (gen_tk == NULL)
 		return NULL;
 

@@ -273,7 +273,7 @@ static int ec_tk_cmd_build(struct ec_tk *gen_tk)
 
 	/* build the expression parser */
 	ret = -ENOMEM;
-	expr = ec_tk_expr("expr");
+	expr = ec_tk_new("expr", "expr");
 	if (expr == NULL)
 		goto fail;
 	ret = ec_tk_expr_set_val_tk(expr, ec_tk_re(NULL, "[a-zA-Z0-9]+"));
@@ -338,7 +338,7 @@ static int ec_tk_cmd_build(struct ec_tk *gen_tk)
 		goto fail;
 
 	ret = -ENOMEM;
-	cmd = ec_tk_seq(NULL);
+	cmd = ec_tk_new("seq", NULL);
 	if (cmd == NULL)
 		goto fail;
 
@@ -375,6 +375,7 @@ static struct ec_tk_type ec_tk_cmd_type = {
 	.build = ec_tk_cmd_build,
 	.parse = ec_tk_cmd_parse,
 	.complete = ec_tk_cmd_complete,
+	.size = sizeof(struct ec_tk_cmd),
 	.free_priv = ec_tk_cmd_free_priv,
 };
 
@@ -416,7 +417,7 @@ struct ec_tk *ec_tk_cmd(const char *id, const char *cmd_str)
 	struct ec_tk *gen_tk = NULL;
 	struct ec_tk_cmd *tk = NULL;
 
-	gen_tk = ec_tk_new(id, &ec_tk_cmd_type, sizeof(*tk));
+	gen_tk = __ec_tk_new(&ec_tk_cmd_type, id);
 	if (gen_tk == NULL)
 		goto fail;
 

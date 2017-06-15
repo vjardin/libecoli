@@ -10,19 +10,26 @@ cleanup
 =======
 
 - check XXX in code
-- remove the _new() functions
+X remove the _new() functions
 - add a tk vector type: will be used in several nodes (ex: or, seq, ...)
 - check allocation model everywhere
 - checkpatch?
 - use linux style (update .emacs)
 - better logs
 - return values
+- use errno when returning pointers
 - missing static / const
 - license: "s/neither the name...may/the names of its contributors may not/"
 - check all completion nodes
 - split ecoli_tk.h
 - cache results when appropriate?
 - size_t or unsigned int?
+- rename:
+  - ec_tk -> ec_node
+  - ec_parsed_tk -> ec_parsed
+  - ec_completed_tk -> ec_completed
+  - tk, gen_tk, token, ... -> node
+  - tokens -> input_str / input_strvec ?
 
 logs
 ====

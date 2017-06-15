@@ -56,6 +56,9 @@ int ec_tk_type_register(struct ec_tk_type *type)
 {
 	if (ec_tk_type_lookup(type->name) != NULL)
 		return -EEXIST;
+	if (type->size < sizeof(struct ec_tk))
+		return -EINVAL;
+
 	TAILQ_INSERT_TAIL(&tk_type_list, type, next);
 
 	return 0;
@@ -69,17 +72,14 @@ void ec_tk_type_dump(FILE *out)
 		fprintf(out, "%s\n", type->name);
 }
 
-struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
-	size_t size)
+struct ec_tk *__ec_tk_new(const struct ec_tk_type *type, const char *id)
 {
 	struct ec_tk *tk = NULL;
 	char buf[256]; // XXX
 
-	assert(size >= sizeof(*tk));
-
 	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n", type->name, id);
 
-	tk = ec_calloc(1, size);
+	tk = ec_calloc(1, type->size);
 	if (tk == NULL)
 		goto fail;
 
@@ -107,6 +107,19 @@ struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
  fail:
 	ec_tk_free(tk);
 	return NULL;
+}
+
+struct ec_tk *ec_tk_new(const char *typename, const char *id)
+{
+	struct ec_tk_type *type;
+
+	type = ec_tk_type_lookup(typename);
+	if (type == NULL) {
+		ec_log(EC_LOG_ERR, "type=%s does not exist\n", typename);
+		return NULL;
+	}
+
+	return __ec_tk_new(type, id);
 }
 
 void ec_tk_free(struct ec_tk *tk)

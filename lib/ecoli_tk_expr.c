@@ -125,12 +125,12 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	/* create the object, we will initialize it later: this is
 	 * needed because we have a circular dependency */
 	ret = -ENOMEM;
-	weak = ec_tk_weakref_empty("weak");
+	weak = ec_tk_new("weakref", "weak");
 	if (weak == NULL)
 		return -1;
 
 	/* prefix unary operators */
-	pre_op = ec_tk_or("pre-op");
+	pre_op = ec_tk_new("or", "pre-op");
 	if (pre_op == NULL)
 		goto fail;
 	for (i = 0; i < tk->pre_ops_len; i++) {
@@ -139,7 +139,7 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 	}
 
 	/* suffix unary operators */
-	post_op = ec_tk_or("post-op");
+	post_op = ec_tk_new("or", "post-op");
 	if (post_op == NULL)
 		goto fail;
 	for (i = 0; i < tk->post_ops_len; i++) {
@@ -147,7 +147,7 @@ static int ec_tk_expr_build(struct ec_tk *gen_tk)
 			goto fail;
 	}
 
-	post = ec_tk_or("post");
+	post = ec_tk_new("or", "post");
 	if (post == NULL)
 		goto fail;
 	if (ec_tk_or_add(post, ec_tk_clone(tk->val_tk)) < 0)
@@ -224,23 +224,11 @@ static struct ec_tk_type ec_tk_expr_type = {
 	.build = ec_tk_expr_build,
 	.parse = ec_tk_expr_parse,
 	.complete = ec_tk_expr_complete,
+	.size = sizeof(struct ec_tk_expr),
 	.free_priv = ec_tk_expr_free_priv,
 };
 
 EC_TK_TYPE_REGISTER(ec_tk_expr_type);
-
-struct ec_tk *ec_tk_expr(const char *id)
-{
-	struct ec_tk_expr *tk = NULL;
-	struct ec_tk *gen_tk = NULL;
-
-	gen_tk = ec_tk_new(id, &ec_tk_expr_type, sizeof(*tk));
-	if (gen_tk == NULL)
-		return NULL;
-	tk = (struct ec_tk_expr *)gen_tk;
-
-	return gen_tk;
-}
 
 int ec_tk_expr_set_val_tk(struct ec_tk *gen_tk, struct ec_tk *val_tk)
 {
