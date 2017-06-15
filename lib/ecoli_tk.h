@@ -118,6 +118,7 @@ struct ec_tk {
 
 struct ec_tk *ec_tk_new(const char *id, const struct ec_tk_type *type,
 	size_t priv_size);
+
 void ec_tk_free(struct ec_tk *tk);
 
 /* XXX add more accessors */

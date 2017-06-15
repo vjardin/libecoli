@@ -41,6 +41,7 @@
 #include <ecoli_tk_expr.h>
 #include <ecoli_tk_str.h>
 #include <ecoli_tk_or.h>
+#include <ecoli_tk_subset.h>
 #include <ecoli_tk_int.h>
 #include <ecoli_tk_many.h>
 #include <ecoli_tk_seq.h>
@@ -168,9 +169,12 @@ ec_tk_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 		ec_tk_free(in2);
 		*result = out;
 	} else if (!strcmp(ec_strvec_val(vec, 0), ",")) {
+		out = EC_TK_SUBSET(NULL, ec_tk_clone(in1), ec_tk_clone(in2));
+		if (out == NULL)
+			return -EINVAL;
 		ec_tk_free(in1);
 		ec_tk_free(in2);
-		*result = NULL; //XXX
+		*result = out;
 	} else {
 		return -EINVAL;
 	}
@@ -201,6 +205,8 @@ ec_tk_cmd_eval_parenthesis(void **result, void *userctx,
 		if (out == NULL)
 			return -EINVAL;
 		ec_tk_free(in);
+	} else if (!strcmp(ec_strvec_val(vec, 0), "(")) {
+		out = in;
 	} else {
 		return -EINVAL;
 	}
@@ -471,7 +477,7 @@ static int ec_tk_cmd_testcase(void)
 	int ret = 0;
 
 	tk = EC_TK_CMD(NULL,
-		"add [toto] x | y",
+		"command [option] (subset1, subset2) x | y",
 		ec_tk_int("x", 0, 10, 10),
 		ec_tk_int("y", 20, 30, 10)
 	);
@@ -479,10 +485,10 @@ static int ec_tk_cmd_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "add", "1");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "add", "23");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "add", "toto", "23");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "add", "15");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "command", "1");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "command", "23");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 3, "command", "option", "23");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "command", "15");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foo");
 	ec_tk_free(tk);
 

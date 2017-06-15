@@ -4,7 +4,7 @@ tk_cmd
 X evaluate expression tree in ec_tk_expr
 - cmd token
 - example
-- tk_re
+X tk_re
 
 cleanup
 =======

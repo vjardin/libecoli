@@ -73,7 +73,7 @@ static struct ec_tk_type ec_tk_empty_type = {
 
 EC_TK_TYPE_REGISTER(ec_tk_empty_type);
 
-struct ec_tk *ec_tk_empty_new(const char *id)
+struct ec_tk *ec_tk_empty(const char *id)
 {
 	return ec_tk_new(id, &ec_tk_empty_type,
 		sizeof(struct ec_tk_empty));
@@ -84,7 +84,7 @@ static int ec_tk_empty_testcase(void)
 	struct ec_tk *tk;
 	int ret = 0;
 
-	tk = ec_tk_empty_new(NULL);
+	tk = ec_tk_empty(NULL);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
@@ -95,7 +95,7 @@ static int ec_tk_empty_testcase(void)
 	ec_tk_free(tk);
 
 	/* never completes */
-	tk = ec_tk_empty_new(NULL);
+	tk = ec_tk_empty(NULL);
 	if (tk == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;

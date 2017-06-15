@@ -25,9 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * This token always matches an empty string vector
+ */
+
 #ifndef ECOLI_TK_EMPTY_
 #define ECOLI_TK_EMPTY_
 
-struct ec_tk *ec_tk_empty_new(const char *id);
+struct ec_tk *ec_tk_empty(const char *id);
 
 #endif

@@ -173,8 +173,13 @@ static struct ec_parsed_tk *ec_tk_subset_parse(const struct ec_tk *gen_tk,
 	if (ret < 0)
 		goto fail;
 
+	/* if no child tk matches, return a matching empty strvec */
 	if (result.parsed_table_len == 0) {
 		ec_free(result.parsed_table);
+		match_strvec = ec_strvec_new();
+		if (match_strvec == NULL)
+			goto fail;
+		ec_parsed_tk_set_match(parsed_tk, gen_tk, match_strvec);
 		return parsed_tk;
 	}
 
@@ -416,6 +421,7 @@ static int ec_tk_subset_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create tk\n");
 		return -1;
 	}
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0);
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "bar");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "foo", "bar", "titi");
@@ -423,10 +429,8 @@ static int ec_tk_subset_testcase(void)
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 1, "foo", "foo");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "bar", "bar");
 	ret |= EC_TEST_CHECK_TK_PARSE(tk, 2, "bar", "foo");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, " ");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "foox");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "titi");
-	ret |= EC_TEST_CHECK_TK_PARSE(tk, -1, "");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, " ");
+	ret |= EC_TEST_CHECK_TK_PARSE(tk, 0, "foox");
 	ec_tk_free(tk);
 
 	/* test completion */
