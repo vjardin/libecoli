@@ -46,7 +46,7 @@ struct ec_keyval {
 	struct ec_keyval_elt *vec;
 };
 
-struct ec_keyval *ec_keyval_new(void)
+struct ec_keyval *ec_keyval(void)
 {
 	struct ec_keyval *keyval;
 
@@ -192,7 +192,7 @@ static int ec_keyval_testcase(void)
 	struct ec_keyval *keyval;
 	char *val;
 
-	keyval = ec_keyval_new();
+	keyval = ec_keyval();
 	if (keyval == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create keyval\n");
 		return -1;

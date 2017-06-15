@@ -49,7 +49,7 @@ static struct ec_parsed *ec_node_space_parse(const struct ec_node *gen_node,
 	const char *str;
 	size_t len = 0;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -89,7 +89,7 @@ static int ec_node_space_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node_new("space", NULL);
+	node = ec_node("space", NULL);
 	if (node == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -102,7 +102,7 @@ static int ec_node_space_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = ec_node_new("space", NULL);
+	node = ec_node("space", NULL);
 	if (node == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;

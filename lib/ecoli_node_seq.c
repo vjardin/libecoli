@@ -57,7 +57,7 @@ static struct ec_parsed *ec_node_seq_parse(const struct ec_node *gen_node,
 	size_t len = 0;
 	unsigned int i;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -109,7 +109,7 @@ static struct ec_completed *ec_node_seq_complete(const struct ec_node *gen_node,
 	size_t len = 0;
 	unsigned int i;
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
@@ -213,7 +213,7 @@ struct ec_node *__ec_node_seq(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_node = __ec_node_new(&ec_node_seq_type, id);
+	gen_node = __ec_node(&ec_node_seq_type, id);
 	node = (struct ec_node_seq *)gen_node;
 	if (node == NULL)
 		fail = 1;;

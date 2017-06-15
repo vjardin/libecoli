@@ -72,7 +72,7 @@ void ec_node_type_dump(FILE *out)
 		fprintf(out, "%s\n", type->name);
 }
 
-struct ec_node *__ec_node_new(const struct ec_node_type *type, const char *id)
+struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 {
 	struct ec_node *node = NULL;
 	char buf[256]; // XXX
@@ -98,7 +98,7 @@ struct ec_node *__ec_node_new(const struct ec_node_type *type, const char *id)
 	if (node->desc == NULL)
 		goto fail;
 
-	node->attrs = ec_keyval_new();
+	node->attrs = ec_keyval();
 	if (node->attrs == NULL)
 		goto fail;
 
@@ -109,7 +109,7 @@ struct ec_node *__ec_node_new(const struct ec_node_type *type, const char *id)
 	return NULL;
 }
 
-struct ec_node *ec_node_new(const char *typename, const char *id)
+struct ec_node *ec_node(const char *typename, const char *id)
 {
 	struct ec_node_type *type;
 
@@ -119,7 +119,7 @@ struct ec_node *ec_node_new(const char *typename, const char *id)
 		return NULL;
 	}
 
-	return __ec_node_new(type, id);
+	return __ec_node(type, id);
 }
 
 void ec_node_free(struct ec_node *node)
@@ -221,7 +221,7 @@ struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str)
 	struct ec_parsed *parsed;
 
 	errno = ENOMEM;
-	strvec = ec_strvec_new();
+	strvec = ec_strvec();
 	if (strvec == NULL)
 		goto fail;
 
@@ -269,7 +269,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 }
 
 
-struct ec_parsed *ec_parsed_new(void)
+struct ec_parsed *ec_parsed(void)
 {
 	struct ec_parsed *parsed = NULL;
 
@@ -429,7 +429,7 @@ size_t ec_parsed_matches(const struct ec_parsed *parsed)
 	return 1;
 }
 
-struct ec_completed *ec_completed_new(void)
+struct ec_completed *ec_completed(void)
 {
 	struct ec_completed *completed = NULL;
 
@@ -443,7 +443,7 @@ struct ec_completed *ec_completed_new(void)
 	return completed;
 }
 
-struct ec_completed_elt *ec_completed_elt_new(const struct ec_node *node,
+struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
 	const char *add)
 {
 	struct ec_completed_elt *elt = NULL;
@@ -476,7 +476,7 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 	struct ec_completed *completed;
 
 	errno = ENOMEM;
-	strvec = ec_strvec_new();
+	strvec = ec_strvec();
 	if (strvec == NULL)
 		goto fail;
 
@@ -504,11 +504,11 @@ struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
 
 	(void)strvec;
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
-	completed_elt = ec_completed_elt_new(gen_node, NULL);
+	completed_elt = ec_completed_elt(gen_node, NULL);
 	if (completed_elt == NULL) {
 		ec_completed_free(completed);
 		return NULL;
@@ -660,7 +660,7 @@ unsigned int ec_completed_count(
 }
 
 struct ec_completed_iter *
-ec_completed_iter_new(struct ec_completed *completed,
+ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_filter_flags flags)
 {
 	struct ec_completed_iter *iter;

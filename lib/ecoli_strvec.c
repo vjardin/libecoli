@@ -43,7 +43,7 @@ struct ec_strvec {
 	struct ec_strvec_elt **vec;
 };
 
-struct ec_strvec *ec_strvec_new(void)
+struct ec_strvec *ec_strvec(void)
 {
 	struct ec_strvec *strvec;
 
@@ -87,7 +87,7 @@ struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t off,
 	struct ec_strvec *copy = NULL;
 	size_t i, veclen;
 
-	copy = ec_strvec_new();
+	copy = ec_strvec();
 	if (copy == NULL)
 		goto fail;
 

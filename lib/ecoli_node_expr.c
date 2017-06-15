@@ -125,12 +125,12 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	/* create the object, we will initialize it later: this is
 	 * needed because we have a circular dependency */
 	ret = -ENOMEM;
-	weak = ec_node_new("weakref", "weak");
+	weak = ec_node("weakref", "weak");
 	if (weak == NULL)
 		return -1;
 
 	/* prefix unary operators */
-	pre_op = ec_node_new("or", "pre-op");
+	pre_op = ec_node("or", "pre-op");
 	if (pre_op == NULL)
 		goto fail;
 	for (i = 0; i < node->pre_ops_len; i++) {
@@ -139,7 +139,7 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	}
 
 	/* suffix unary operators */
-	post_op = ec_node_new("or", "post-op");
+	post_op = ec_node("or", "post-op");
 	if (post_op == NULL)
 		goto fail;
 	for (i = 0; i < node->post_ops_len; i++) {
@@ -147,7 +147,7 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 			goto fail;
 	}
 
-	post = ec_node_new("or", "post");
+	post = ec_node("or", "post");
 	if (post == NULL)
 		goto fail;
 	if (ec_node_or_add(post, ec_node_clone(node->val_node)) < 0)

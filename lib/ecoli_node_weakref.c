@@ -99,7 +99,7 @@ struct ec_node *ec_node_weakref(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_node = __ec_node_new(&ec_node_weakref_type, id);
+	gen_node = __ec_node(&ec_node_weakref_type, id);
 	if (gen_node == NULL)
 		return NULL;
 

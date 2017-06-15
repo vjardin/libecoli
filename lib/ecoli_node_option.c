@@ -51,7 +51,7 @@ static struct ec_parsed *ec_node_option_parse(const struct ec_node *gen_node,
 	struct ec_parsed *parsed = NULL, *child_parsed;
 	struct ec_strvec *match_strvec;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -64,7 +64,7 @@ static struct ec_parsed *ec_node_option_parse(const struct ec_node *gen_node,
 		match_strvec = ec_strvec_dup(child_parsed->strvec);
 	} else {
 		ec_parsed_free(child_parsed);
-		match_strvec = ec_strvec_new();
+		match_strvec = ec_strvec();
 	}
 
 	if (match_strvec == NULL)
@@ -112,7 +112,7 @@ struct ec_node *ec_node_option(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_node = __ec_node_new(&ec_node_option_type, id);
+	gen_node = __ec_node(&ec_node_option_type, id);
 	if (gen_node == NULL) {
 		ec_node_free(child);
 		return NULL;

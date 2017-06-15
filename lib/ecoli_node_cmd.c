@@ -273,7 +273,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 
 	/* build the expression parser */
 	ret = -ENOMEM;
-	expr = ec_node_new("expr", "expr");
+	expr = ec_node("expr", "expr");
 	if (expr == NULL)
 		goto fail;
 	ret = ec_node_expr_set_val_node(expr, ec_node_re(NULL, "[a-zA-Z0-9]+"));
@@ -338,7 +338,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 		goto fail;
 
 	ret = -ENOMEM;
-	cmd = ec_node_new("seq", NULL);
+	cmd = ec_node("seq", NULL);
 	if (cmd == NULL)
 		goto fail;
 
@@ -417,7 +417,7 @@ struct ec_node *ec_node_cmd(const char *id, const char *cmd_str)
 	struct ec_node *gen_node = NULL;
 	struct ec_node_cmd *node = NULL;
 
-	gen_node = __ec_node_new(&ec_node_cmd_type, id);
+	gen_node = __ec_node(&ec_node_cmd_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

@@ -156,7 +156,7 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 
 //	printf("str=%s\n", str);
 
-	strvec = ec_strvec_new();
+	strvec = ec_strvec();
 	if (strvec == NULL)
 		goto fail;
 
@@ -241,7 +241,7 @@ static struct ec_parsed *ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	struct ec_parsed *parsed = NULL, *child_parsed;
 	const char *str;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		return NULL;
 
@@ -292,7 +292,7 @@ static struct ec_completed *ec_node_sh_lex_complete(const struct ec_node *gen_no
 	char missing_quote;
 
 //	printf("==================\n");
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
@@ -346,7 +346,7 @@ struct ec_node *ec_node_sh_lex(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_sh_lex *)__ec_node_new(&ec_node_sh_lex_type, id);
+	node = (struct ec_node_sh_lex *)__ec_node(&ec_node_sh_lex_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;

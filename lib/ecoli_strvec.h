@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 
-struct ec_strvec *ec_strvec_new(void);
+struct ec_strvec *ec_strvec(void);
 int ec_strvec_add(struct ec_strvec *strvec, const char *s);
 struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec);
 struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec,

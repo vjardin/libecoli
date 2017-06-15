@@ -32,8 +32,6 @@
 
 struct ec_node *ec_node_str(const char *id, const char *str);
 
-struct ec_node *ec_node_str_new(const char *id);
-
 /* str is duplicated */
 int ec_node_str_set_str(struct ec_node *node, const char *str);
 

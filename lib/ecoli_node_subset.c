@@ -165,7 +165,7 @@ static struct ec_parsed *ec_node_subset_parse(const struct ec_node *gen_node,
 
 	memset(&result, 0, sizeof(result));
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -176,7 +176,7 @@ static struct ec_parsed *ec_node_subset_parse(const struct ec_node *gen_node,
 	/* if no child node matches, return a matching empty strvec */
 	if (result.parsed_table_len == 0) {
 		ec_free(result.parsed_table);
-		match_strvec = ec_strvec_new();
+		match_strvec = ec_strvec();
 		if (match_strvec == NULL)
 			goto fail;
 		ec_parsed_set_match(parsed, gen_node, match_strvec);
@@ -227,7 +227,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 	 *   + __subset_complete([a, b], childvec) if c matches
 	 */
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		goto fail;
 
@@ -361,7 +361,7 @@ struct ec_node *__ec_node_subset(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_node = __ec_node_new(&ec_node_subset_type, id);
+	gen_node = __ec_node(&ec_node_subset_type, id);
 	node = (struct ec_node_subset *)gen_node;
 	if (node == NULL)
 		fail = 1;;

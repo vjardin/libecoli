@@ -71,7 +71,7 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 
 		ec_completed_iter_free(iter);
-		iter = ec_completed_iter_new(c, EC_MATCH);
+		iter = ec_completed_iter(c, EC_MATCH);
 		if (iter == NULL)
 			return NULL;
 	}
@@ -146,7 +146,7 @@ static int show_help(int ignore, int invoking_key)
 	if (helps == NULL)
 		return 1;
 
-	iter = ec_completed_iter_new(c, EC_MATCH | EC_NO_MATCH);
+	iter = ec_completed_iter(c, EC_MATCH | EC_NO_MATCH);
 	if (iter == NULL)
 		goto fail;
 
@@ -175,7 +175,7 @@ static int create_commands(void)
 {
 	struct ec_node *cmdlist = NULL, *cmd = NULL;
 
-	cmdlist = ec_node_new("or", NULL);
+	cmdlist = ec_node("or", NULL);
 	if (cmdlist == NULL)
 		goto fail;
 

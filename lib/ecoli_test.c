@@ -56,7 +56,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 	va_start(ap, expected);
 
 	/* build a string vector */
-	vec = ec_strvec_new();
+	vec = ec_strvec();
 	if (vec == NULL)
 		goto out;
 
@@ -109,7 +109,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	va_start(ap, tk);
 
 	/* build a string vector */
-	vec = ec_strvec_new();
+	vec = ec_strvec();
 	if (vec == NULL)
 		goto out;
 

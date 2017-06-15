@@ -56,7 +56,7 @@ static struct ec_parsed *ec_node_many_parse(const struct ec_node *gen_node,
 	struct ec_strvec *childvec = NULL;
 	size_t off = 0, len, count;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -120,7 +120,7 @@ static struct ec_completed *ec_node_many_complete(const struct ec_node *gen_node
 	size_t len = 0;
 	unsigned int i;
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
@@ -191,7 +191,7 @@ struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_many *)__ec_node_new(&ec_node_many_type, id);
+	node = (struct ec_node_many *)__ec_node(&ec_node_many_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;

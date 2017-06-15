@@ -53,7 +53,7 @@ static struct ec_parsed *ec_node_re_parse(const struct ec_node *gen_node,
 	const char *str;
 	regmatch_t pos;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -127,7 +127,7 @@ struct ec_node *ec_node_re(const char *id, const char *re_str)
 {
 	struct ec_node *gen_node = NULL;
 
-	gen_node = __ec_node_new(&ec_node_re_type, id);
+	gen_node = __ec_node(&ec_node_re_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

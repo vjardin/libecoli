@@ -44,7 +44,7 @@ tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 	if (dup == NULL)
 		goto fail;
 
-	strvec = ec_strvec_new();
+	strvec = ec_strvec();
 	if (strvec == NULL)
 		goto fail;
 
@@ -95,7 +95,7 @@ static struct ec_parsed *ec_node_re_lex_parse(const struct ec_node *gen_node,
 	struct ec_parsed *parsed = NULL, *child_parsed;
 	const char *str;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		return NULL;
 
@@ -211,7 +211,7 @@ struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_re_lex *)__ec_node_new(&ec_node_re_lex_type, id);
+	node = (struct ec_node_re_lex *)__ec_node(&ec_node_re_lex_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;

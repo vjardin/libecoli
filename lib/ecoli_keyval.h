@@ -34,7 +34,7 @@ typedef void (*ec_keyval_elt_free_t)(void *);
 
 struct ec_keyval;
 
-struct ec_keyval *ec_keyval_new(void);
+struct ec_keyval *ec_keyval(void);
 
 void *ec_keyval_get(const struct ec_keyval *keyval, const char *key);
 int ec_keyval_del(struct ec_keyval *keyval, const char *key);

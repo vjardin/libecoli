@@ -121,10 +121,10 @@ struct ec_node {
 
 /* create a new node when the type is known, typically called from the node
  * code */
-struct ec_node *__ec_node_new(const struct ec_node_type *type, const char *id);
+struct ec_node *__ec_node(const struct ec_node_type *type, const char *id);
 
 /* create a_new node node */
-struct ec_node *ec_node_new(const char *typename, const char *id);
+struct ec_node *ec_node(const char *typename, const char *id);
 
 void ec_node_free(struct ec_node *node);
 
@@ -151,7 +151,7 @@ struct ec_parsed {
 	struct ec_strvec *strvec;
 };
 
-struct ec_parsed *ec_parsed_new(void);
+struct ec_parsed *ec_parsed(void);
 void ec_parsed_free(struct ec_parsed *parsed);
 struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_parsed_free_children(struct ec_parsed *parsed);
@@ -213,8 +213,8 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 	const char *str);
 struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	const struct ec_strvec *strvec);
-struct ec_completed *ec_completed_new(void);
-struct ec_completed_elt *ec_completed_elt_new(const struct ec_node *node,
+struct ec_completed *ec_completed(void);
+struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
 	const char *add);
 void ec_completed_add_elt(struct ec_completed *completed,
 	struct ec_completed_elt *elt);
@@ -247,7 +247,7 @@ struct ec_completed_iter {
 };
 
 struct ec_completed_iter *
-ec_completed_iter_new(struct ec_completed *completed,
+ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_filter_flags flags);
 
 const struct ec_completed_elt *ec_completed_iter_next(

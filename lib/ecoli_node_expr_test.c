@@ -219,7 +219,7 @@ static int ec_node_expr_testcase(void)
 	struct ec_node *node = NULL, *lex_node = NULL;
 	int ret = 0;
 
-	node = ec_node_new("expr", "my_expr");
+	node = ec_node("expr", "my_expr");
 	if (node == NULL)
 		return -1;
 

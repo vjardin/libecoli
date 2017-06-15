@@ -84,7 +84,7 @@ static struct ec_parsed *ec_node_int_parse(const struct ec_node *gen_node,
 	const char *str;
 	long long val;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -123,7 +123,7 @@ struct ec_node *ec_node_int(const char *id, long long int min,
 	struct ec_node *gen_node = NULL;
 	struct ec_node_int *node = NULL;
 
-	gen_node = __ec_node_new(&ec_node_int_type, id);
+	gen_node = __ec_node(&ec_node_int_type, id);
 	if (gen_node == NULL)
 		return NULL;
 	node = (struct ec_node_int *)gen_node;

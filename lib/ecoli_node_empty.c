@@ -48,11 +48,11 @@ static struct ec_parsed *ec_node_empty_parse(const struct ec_node *gen_node,
 
 	(void)strvec;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
-	match_strvec = ec_strvec_new();
+	match_strvec = ec_strvec();
 	if (match_strvec == NULL)
 		goto fail;
 
@@ -79,7 +79,7 @@ static int ec_node_empty_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node_new("empty", NULL);
+	node = ec_node("empty", NULL);
 	if (node == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -90,7 +90,7 @@ static int ec_node_empty_testcase(void)
 	ec_node_free(node);
 
 	/* never completes */
-	node = ec_node_new("empty", NULL);
+	node = ec_node("empty", NULL);
 	if (node == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;

@@ -54,7 +54,7 @@ static struct ec_parsed *ec_node_or_parse(const struct ec_node *gen_node,
 	struct ec_strvec *match_strvec;
 	unsigned int i;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -94,7 +94,7 @@ static struct ec_completed *ec_node_or_complete(const struct ec_node *gen_node,
 	struct ec_completed *completed, *child_completed;
 	size_t n;
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
@@ -169,7 +169,7 @@ struct ec_node *__ec_node_or(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_node = __ec_node_new(&ec_node_or_type, id);
+	gen_node = __ec_node(&ec_node_or_type, id);
 	node = (struct ec_node_or *)gen_node;
 	if (node == NULL)
 		fail = 1;;

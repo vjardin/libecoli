@@ -51,7 +51,7 @@ static struct ec_parsed *ec_node_str_parse(const struct ec_node *gen_node,
 	struct ec_parsed *parsed = NULL;
 	const char *str;
 
-	parsed = ec_parsed_new();
+	parsed = ec_parsed();
 	if (parsed == NULL)
 		goto fail;
 
@@ -84,7 +84,7 @@ static struct ec_completed *ec_node_str_complete(const struct ec_node *gen_node,
 	const char *str, *add;
 	size_t n = 0;
 
-	completed = ec_completed_new();
+	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
@@ -102,7 +102,7 @@ static struct ec_completed *ec_node_str_complete(const struct ec_node *gen_node,
 	else
 		add = node->string + n;
 
-	completed_elt = ec_completed_elt_new(gen_node, add);
+	completed_elt = ec_completed_elt(gen_node, add);
 	if (completed_elt == NULL) {
 		ec_completed_free(completed);
 		return NULL;
@@ -160,7 +160,7 @@ struct ec_node *ec_node_str(const char *id, const char *str)
 {
 	struct ec_node *gen_node = NULL;
 
-	gen_node = __ec_node_new(&ec_node_str_type, id);
+	gen_node = __ec_node(&ec_node_str_type, id);
 	if (gen_node == NULL)
 		goto fail;
 
