@@ -31,7 +31,7 @@
 #include <sys/queue.h>
 
 #include <ecoli_log.h>
-#include <ecoli_tk.h>
+#include <ecoli_node.h>
 
 // XXX check if already exists?
 #define EC_TEST_REGISTER(t)						\
@@ -71,7 +71,7 @@ int ec_test_all(void);
 int ec_test_one(const char *name);
 
 /* expected == -1 means no match */
-int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...);
+int ec_test_check_parse(struct ec_node *node, int expected, ...);
 
 #define EC_TEST_ERR(fmt, ...)						\
 	ec_log(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
@@ -83,18 +83,18 @@ int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...);
 			EC_TEST_ERR("assertion failure: " #cond);	\
 	} while (0)
 
-/* tk, input, [expected1, expected2, ...] */
-#define EC_TEST_CHECK_TK_PARSE(tk, args...) ({		\
-	int ret_ = ec_test_check_tk_parse(tk, args, EC_TK_ENDLIST);	\
+/* node, input, [expected1, expected2, ...] */
+#define EC_TEST_CHECK_PARSE(node, args...) ({				\
+	int ret_ = ec_test_check_parse(node, args, EC_NODE_ENDLIST);	\
 	if (ret_)							\
 		EC_TEST_ERR("parse test failed");			\
 	ret_;								\
 })
 
-int ec_test_check_tk_complete(struct ec_tk *tk, ...);
+int ec_test_check_complete(struct ec_node *node, ...);
 
-#define EC_TEST_CHECK_TK_COMPLETE(tk, args...) ({			\
-	int ret_ = ec_test_check_tk_complete(tk, args);			\
+#define EC_TEST_CHECK_COMPLETE(node, args...) ({			\
+	int ret_ = ec_test_check_complete(node, args);			\
 	if (ret_)							\
 		EC_TEST_ERR("complete test failed");			\
 	ret_;								\

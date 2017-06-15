@@ -34,7 +34,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
-#include <ecoli_tk.h>
+#include <ecoli_node.h>
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 
@@ -45,9 +45,9 @@ void ec_test_register(struct ec_test *test)
 	// XXX check if already exist, like for type
 }
 
-int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
+int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 {
-	struct ec_parsed_tk *p;
+	struct ec_parsed *p;
 	struct ec_strvec *vec = NULL;
 	const char *s;
 	int ret = -1, match;
@@ -61,7 +61,7 @@ int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
 		goto out;
 
 	for (s = va_arg(ap, const char *);
-	     s != EC_TK_ENDLIST;
+	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
 		if (s == NULL)
 			goto out;
@@ -70,14 +70,14 @@ int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
 			goto out;
 	}
 
-	p = ec_tk_parse_tokens(tk, vec);
+	p = ec_node_parse_strvec(tk, vec);
 	/* XXX only for debug */
-	ec_parsed_tk_dump(stdout, p);
+	ec_parsed_dump(stdout, p);
 	if (p == NULL) {
-		ec_log(EC_LOG_ERR, "parsed_tk is NULL\n");
+		ec_log(EC_LOG_ERR, "parsed is NULL\n");
 	}
-	if (ec_parsed_tk_matches(p))
-		match = ec_parsed_tk_len(p);
+	if (ec_parsed_matches(p))
+		match = ec_parsed_len(p);
 	else
 		match = -1;
 	if (expected == match) {
@@ -88,7 +88,7 @@ int ec_test_check_tk_parse(struct ec_tk *tk, int expected, ...)
 			match, expected);
 	}
 
-	ec_parsed_tk_free(p);
+	ec_parsed_free(p);
 
 out:
 	ec_strvec_free(vec);
@@ -96,10 +96,10 @@ out:
 	return ret;
 }
 
-int ec_test_check_tk_complete(struct ec_tk *tk, ...)
+int ec_test_check_complete(struct ec_node *tk, ...)
 {
-	struct ec_completed_tk *c = NULL;
-	struct ec_completed_tk_elt *elt;
+	struct ec_completed *c = NULL;
+	struct ec_completed_elt *elt;
 	struct ec_strvec *vec = NULL;
 	const char *s, *expected;
 	int ret = 0;
@@ -114,7 +114,7 @@ int ec_test_check_tk_complete(struct ec_tk *tk, ...)
 		goto out;
 
 	for (s = va_arg(ap, const char *);
-	     s != EC_TK_ENDLIST;
+	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
 		if (s == NULL)
 			goto out;
@@ -123,14 +123,14 @@ int ec_test_check_tk_complete(struct ec_tk *tk, ...)
 			goto out;
 	}
 
-	c = ec_tk_complete_tokens(tk, vec);
+	c = ec_node_complete_strvec(tk, vec);
 	if (c == NULL) {
 		ret = -1;
 		goto out;
 	}
 
 	for (s = va_arg(ap, const char *);
-	     s != EC_TK_ENDLIST;
+	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
 		if (s == NULL) {
 			ret = -1;
@@ -151,17 +151,17 @@ int ec_test_check_tk_complete(struct ec_tk *tk, ...)
 		}
 	}
 
-	if (count != ec_completed_tk_count(c, EC_MATCH)) {
+	if (count != ec_completed_count(c, EC_MATCH)) {
 		ec_log(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_tk_count(c, EC_MATCH));
-		ec_completed_tk_dump(stdout, c);
+			count, ec_completed_count(c, EC_MATCH));
+		ec_completed_dump(stdout, c);
 		ret = -1;
 	}
 
 
 	expected = va_arg(ap, const char *);
-	s = ec_completed_tk_smallest_start(c);
+	s = ec_completed_smallest_start(c);
 	if (strcmp(s, expected)) {
 		ret = -1;
 		ec_log(EC_LOG_ERR,
@@ -171,7 +171,7 @@ int ec_test_check_tk_complete(struct ec_tk *tk, ...)
 
 out:
 	ec_strvec_free(vec);
-	ec_completed_tk_free(c);
+	ec_completed_free(c);
 	va_end(ap);
 	return ret;
 }

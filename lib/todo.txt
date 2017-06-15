@@ -24,12 +24,17 @@ X remove the _new() functions
 - split ecoli_tk.h
 - cache results when appropriate?
 - size_t or unsigned int?
-- rename:
+X rename:
   - ec_tk -> ec_node
   - ec_parsed_tk -> ec_parsed
   - ec_completed_tk -> ec_completed
   - tk, gen_tk, token, ... -> node
   - tokens -> input_str / input_strvec ?
+
+dependencies
+============
+
+- pass the current parsed state when parsing/completing
 
 logs
 ====

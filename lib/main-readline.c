@@ -33,50 +33,50 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <ecoli_tk.h>
+#include <ecoli_node.h>
 #include <ecoli_keyval.h>
 
-#include <ecoli_tk_str.h>
-#include <ecoli_tk_seq.h>
-#include <ecoli_tk_space.h>
-#include <ecoli_tk_or.h>
-#include <ecoli_tk_sh_lex.h>
-#include <ecoli_tk_int.h>
-#include <ecoli_tk_option.h>
-#include <ecoli_tk_cmd.h>
+#include <ecoli_node_str.h>
+#include <ecoli_node_seq.h>
+#include <ecoli_node_space.h>
+#include <ecoli_node_or.h>
+#include <ecoli_node_sh_lex.h>
+#include <ecoli_node_int.h>
+#include <ecoli_node_option.h>
+#include <ecoli_node_cmd.h>
 
-static struct ec_tk *commands;
+static struct ec_node *commands;
 
 static char *my_completion_entry(const char *s, int state)
 {
-	static struct ec_completed_tk *c;
-	static struct ec_completed_tk_iter *iter;
-	static const struct ec_completed_tk_elt *elt;
+	static struct ec_completed *c;
+	static struct ec_completed_iter *iter;
+	static const struct ec_completed_elt *elt;
 	char *out_string;
 
 
 	if (state == 0) {
 		char *line;
 
-		ec_completed_tk_free(c);
+		ec_completed_free(c);
 
 		line = strdup(rl_line_buffer);
 		if (line == NULL)
 			return NULL;
 		line[rl_point] = '\0';
 
-		c = ec_tk_complete(commands, line);
+		c = ec_node_complete(commands, line);
 		free(line);
 		if (c == NULL)
 			return NULL;
 
-		ec_completed_tk_iter_free(iter);
-		iter = ec_completed_tk_iter_new(c, EC_MATCH);
+		ec_completed_iter_free(iter);
+		iter = ec_completed_iter_new(c, EC_MATCH);
 		if (iter == NULL)
 			return NULL;
 	}
 
-	elt = ec_completed_tk_iter_next(iter);
+	elt = ec_completed_iter_next(iter);
 	if (elt == NULL)
 		return NULL;
 
@@ -98,19 +98,21 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_tk_help(const struct ec_tk *tk)
+static char *get_tk_help(const struct ec_node *node)
 {
-	const struct ec_tk *tk2;
+	const struct ec_node *node2;
 	char *help = NULL;
 	char *tk_help = NULL;
 
-	for (tk2 = tk; tk2 != NULL && tk_help == NULL; tk2 = ec_tk_parent(tk2))
-		tk_help = ec_keyval_get(ec_tk_attrs(tk2), "help");
+	for (node2 = node;
+	     node2 != NULL && tk_help == NULL;
+	     node2 = ec_node_parent(node2))
+		tk_help = ec_keyval_get(ec_node_attrs(node2), "help");
 
 	if (tk_help == NULL)
 		tk_help = "";
 
-	if (asprintf(&help, "%-20s %s", ec_tk_desc(tk), tk_help) < 0)
+	if (asprintf(&help, "%-20s %s", ec_node_desc(node), tk_help) < 0)
 		return NULL;
 
 	return help;
@@ -118,9 +120,9 @@ static char *get_tk_help(const struct ec_tk *tk)
 
 static int show_help(int ignore, int invoking_key)
 {
-	const struct ec_completed_tk_elt *elt;
-	struct ec_completed_tk_iter *iter;
-	struct ec_completed_tk *c;
+	const struct ec_completed_elt *elt;
+	struct ec_completed_iter *iter;
+	struct ec_completed *c;
 	char *line;
 	unsigned int count, i;
 	char **helps = NULL;
@@ -133,29 +135,29 @@ static int show_help(int ignore, int invoking_key)
 		return 1;
 	line[rl_point] = '\0';
 
-	c = ec_tk_complete(commands, line);
+	c = ec_node_complete(commands, line);
 	free(line);
 	if (c == NULL)
 		return 1;
-	//ec_completed_tk_dump(stdout, c);
+	//ec_completed_dump(stdout, c);
 
-	count = ec_completed_tk_count(c, EC_MATCH | EC_NO_MATCH);
+	count = ec_completed_count(c, EC_MATCH | EC_NO_MATCH);
 	helps = calloc(count + 1, sizeof(char *));
 	if (helps == NULL)
 		return 1;
 
-	iter = ec_completed_tk_iter_new(c, EC_MATCH | EC_NO_MATCH);
+	iter = ec_completed_iter_new(c, EC_MATCH | EC_NO_MATCH);
 	if (iter == NULL)
 		goto fail;
 
 	/* strangely, rl_display_match_list() expects first index at 1 */
-	for (i = 1, elt = ec_completed_tk_iter_next(iter);
+	for (i = 1, elt = ec_completed_iter_next(iter);
 	     i <= count && elt != NULL;
-	     i++, elt = ec_completed_tk_iter_next(iter)) {
-		helps[i] = get_tk_help(elt->tk);
+	     i++, elt = ec_completed_iter_next(iter)) {
+		helps[i] = get_tk_help(elt->node);
 	}
 
-	ec_completed_tk_free(c);
+	ec_completed_free(c);
 
 	rl_display_match_list(helps, count, 1000);
 
@@ -171,65 +173,65 @@ fail:
 
 static int create_commands(void)
 {
-	struct ec_tk *cmdlist = NULL, *cmd = NULL;
+	struct ec_node *cmdlist = NULL, *cmd = NULL;
 
-	cmdlist = ec_tk_new("or", NULL);
+	cmdlist = ec_node_new("or", NULL);
 	if (cmdlist == NULL)
 		goto fail;
 
-	cmd = EC_TK_SEQ(NULL,
-		ec_tk_str(NULL, "hello"),
-		EC_TK_OR("name",
-			ec_tk_str(NULL, "john"),
-			ec_tk_str(NULL, "johnny"),
-			ec_tk_str(NULL, "mike")
+	cmd = EC_NODE_SEQ(NULL,
+		ec_node_str(NULL, "hello"),
+		EC_NODE_OR("name",
+			ec_node_str(NULL, "john"),
+			ec_node_str(NULL, "johnny"),
+			ec_node_str(NULL, "mike")
 		),
-		ec_tk_option_new(NULL, ec_tk_int("int", 0, 10, 10))
+		ec_node_option(NULL, ec_node_int("int", 0, 10, 10))
 	);
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_tk_attrs(cmd), "help",
+	ec_keyval_set(ec_node_attrs(cmd), "help",
 		"say hello to someone several times", NULL);
-	ec_keyval_set(ec_tk_attrs(ec_tk_find(cmd, "name")),
+	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")),
 		"help", "the name of the person", NULL);
-	ec_keyval_set(ec_tk_attrs(ec_tk_find(cmd, "int")),
+	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "int")),
 		"help", "an integer", NULL);
-	if (ec_tk_or_add(cmdlist, cmd) < 0)
+	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
 #if 0
-	cmd = EC_TK_CMD(NULL, "good morning john|johnny|mike [count]",
-			ec_tk_int("count", 0, 10, 10));
+	cmd = EC_NODE_CMD(NULL, "good morning john|johnny|mike [count]",
+			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_tk_attrs(cmd), "help",
+	ec_keyval_set(ec_node_attrs(cmd), "help",
 		"say good morning to someone several times", NULL);
-	if (ec_tk_or_add(cmdlist, cmd) < 0)
+	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 #endif
 
-	cmd = EC_TK_SEQ(NULL,
-		ec_tk_str(NULL, "bye")
+	cmd = EC_NODE_SEQ(NULL,
+		ec_node_str(NULL, "bye")
 	);
-	ec_keyval_set(ec_tk_attrs(cmd), "help", "say bye to someone", NULL);
-	if (ec_tk_or_add(cmdlist, cmd) < 0)
+	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye to someone", NULL);
+	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
-	commands = ec_tk_sh_lex_new(NULL, cmdlist);
+	commands = ec_node_sh_lex(NULL, cmdlist);
 	if (commands == NULL)
 		goto fail;
 
 	return 0;
 
  fail:
-	fprintf(stderr, "cannot initialize tokens\n");
-	ec_tk_free(cmdlist);
+	fprintf(stderr, "cannot initialize nodes\n");
+	ec_node_free(cmdlist);
 	return -1;
 }
 
 int main(void)
 {
-	struct ec_parsed_tk *p;
+	struct ec_parsed *p;
 //	const char *name;
 	char *line;
 
@@ -245,14 +247,14 @@ int main(void)
 		if (line == NULL)
 			break;
 
-		p = ec_tk_parse(commands, line);
-		ec_parsed_tk_dump(stdout, p);
+		p = ec_node_parse(commands, line);
+		ec_parsed_dump(stdout, p);
 		add_history(line);
-		ec_parsed_tk_free(p);
+		ec_parsed_free(p);
 	}
 
 
-	ec_tk_free(commands);
+	ec_node_free(commands);
 	return 0;
 
 }
