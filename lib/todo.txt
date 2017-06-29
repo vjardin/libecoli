@@ -21,7 +21,7 @@ X remove the _new() functions
 - missing static / const
 - license: "s/neither the name...may/the names of its contributors may not/"
 - check all completion nodes
-- split ecoli_tk.h
+X split ecoli_tk.h
 - cache results when appropriate?
 - size_t or unsigned int?
 X rename:
@@ -35,6 +35,7 @@ dependencies
 ============
 
 - pass the current parsed state when parsing/completing
+- new node "condition"
 
 logs
 ====
@@ -47,6 +48,12 @@ yaml
 X register nodes by name
 - interface to add attributes: all nodes must be configurable through a
   generic api
+  - attr string
+  - attr string list
+  - attr node
+  - attr node list
+  - attr int
+
 - yaml interface to create nodes
 - example
 
@@ -71,6 +78,7 @@ doc
 - each node
 - allocation model
 - say that it stops at first match (no ambigous support)
+- say that completion must be exhaustive
 
 build framework
 ===============

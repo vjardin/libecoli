@@ -124,9 +124,11 @@ static int show_help(int ignore, int invoking_key)
 	const struct ec_completed_elt *elt;
 	struct ec_completed_iter *iter;
 	struct ec_completed *c;
+	struct ec_parsed *p;
 	char *line;
 	unsigned int count, i;
 	char **helps = NULL;
+	int match = 0;
 
 	(void)ignore;
 	(void)invoking_key;
@@ -134,33 +136,43 @@ static int show_help(int ignore, int invoking_key)
 	line = strdup(rl_line_buffer);
 	if (line == NULL)
 		return 1;
-	line[rl_point] = '\0';
 
+	/* check if the current line matches */
+	p = ec_node_parse(commands, line);
+	if (ec_parsed_matches(p))
+		match = 1;
+	ec_parsed_free(p);
+
+	/* complete at current cursor position */
+	line[rl_point] = '\0';
 	c = ec_node_complete(commands, line);
+	ec_completed_dump(stdout, c);
 	free(line);
 	if (c == NULL)
 		return 1;
-	//ec_completed_dump(stdout, c);
 
 	count = ec_completed_count(c, EC_MATCH | EC_NO_MATCH);
-	helps = calloc(count + 1, sizeof(char *));
+	helps = calloc(count + match + 1, sizeof(char *));
 	if (helps == NULL)
 		return 1;
+
+	if (match)
+		helps[1] = "<return>";
 
 	iter = ec_completed_iter(c, EC_MATCH | EC_NO_MATCH);
 	if (iter == NULL)
 		goto fail;
 
 	/* strangely, rl_display_match_list() expects first index at 1 */
-	for (i = 1, elt = ec_completed_iter_next(iter);
-	     i <= count && elt != NULL;
+	for (i = match + 1, elt = ec_completed_iter_next(iter);
+	     i < count + match + 1 && elt != NULL;
 	     i++, elt = ec_completed_iter_next(iter)) {
 		helps[i] = get_tk_help(elt->node);
 	}
 
 	ec_completed_free(c);
 
-	rl_display_match_list(helps, count, 1000);
+	rl_display_match_list(helps, count + match, 1000); /* XXX 1000 */
 
 	rl_forced_update_display();
 
@@ -200,8 +212,7 @@ static int create_commands(void)
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
-#if 0
-	cmd = EC_NODE_CMD(NULL, "good morning john|johnny|mike [count]",
+	cmd = EC_NODE_CMD(NULL, "good morning bob|bobby|michael [count]",
 			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
 		goto fail;
@@ -209,7 +220,6 @@ static int create_commands(void)
 		"say good morning to someone several times", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
-#endif
 
 	cmd = EC_NODE_SEQ(NULL,
 		ec_node_str(NULL, "bye")

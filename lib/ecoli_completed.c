@@ -118,6 +118,9 @@ struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
 	if (completed == NULL)
 		return NULL;
 
+	if (ec_strvec_len(strvec) != 1)
+		return completed;
+
 	completed_elt = ec_completed_elt(gen_node, NULL);
 	if (completed_elt == NULL) {
 		ec_completed_free(completed);
@@ -172,9 +175,8 @@ void ec_completed_add_elt(
 
 	TAILQ_INSERT_TAIL(&completed->elts, elt, next);
 	completed->count++;
-	if (elt->add != NULL)
-		completed->count_match++;
 	if (elt->add != NULL) {
+		completed->count_match++;
 		if (completed->smallest_start == NULL) {
 			completed->smallest_start = ec_strdup(elt->add);
 		} else {

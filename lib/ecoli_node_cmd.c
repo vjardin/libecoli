@@ -274,6 +274,8 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	void *result;
 	int ret;
 
+	/* XXX the expr parser can be moved in the node init */
+
 	/* build the expression parser */
 	ret = -ENOMEM;
 	expr = ec_node("expr", "expr");
@@ -355,6 +357,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 			goto fail;
 	}
 	ec_parsed_free(p);
+	p = NULL;
 	ec_node_dump(stdout, cmd);
 
 	ec_node_free(node->expr);
@@ -367,6 +370,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	return 0;
 
 fail:
+	ec_parsed_free(p);
 	ec_node_free(expr);
 	ec_node_free(lex);
 	ec_node_free(cmd);
@@ -494,6 +498,15 @@ static int ec_node_cmd_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "option", "23");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "command", "15");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
+	ec_node_free(node);
+
+	node = EC_NODE_CMD(NULL, "good morning bob|bobby|michael [count]",
+			ec_node_int("count", 0, 10, 10));
+	if (node == NULL) {
+		ec_log(EC_LOG_ERR, "cannot create node\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "bob", "1");
 	ec_node_free(node);
 
 	// XXX completion

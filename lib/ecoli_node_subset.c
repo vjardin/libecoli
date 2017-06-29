@@ -52,8 +52,8 @@ struct ec_node_subset {
 
 struct parse_result {
 	struct ec_parsed **parsed_table; /* list of parsed node */
-	size_t parsed_table_len;            /* number of parsed node */
-	size_t len;                         /* consumed strings */
+	size_t parsed_table_len;         /* number of parsed node */
+	size_t len;                      /* consumed strings */
 };
 
 static int __ec_node_subset_parse(struct ec_node **table, size_t table_len,

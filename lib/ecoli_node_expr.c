@@ -465,12 +465,15 @@ static int merge_results(void *userctx,
 		return 0;
 	}
 
-	if (x->has_val && x->op == NULL && y->has_val && y->op != NULL) {
-		ret = ops->eval_bin_op(&x->val, userctx, x->val, y->op, y->val);
-		if (ret < 0)
-			return ret;
+	if (x->has_val && y->has_val && y->op != NULL) {
+		if (y->op_type == BIN_OP) {
+			ret = ops->eval_bin_op(&x->val, userctx, x->val,
+					y->op, y->val);
+			if (ret < 0)
+				return ret;
 
-		return 0;
+			return 0;
+		}
 	}
 
 	if (x->has_val == 0 && x->op != NULL && y->has_val && y->op == NULL) {
@@ -497,7 +500,7 @@ static int merge_results(void *userctx,
 		return 0;
 	}
 
-	assert(true); /* we should not get here */
+	assert(false); /* we should not get here */
 	return -EINVAL;
 }
 

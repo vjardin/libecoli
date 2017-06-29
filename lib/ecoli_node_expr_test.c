@@ -282,6 +282,7 @@ static int ec_node_expr_testcase(void)
 	ret |= ec_node_expr_test_eval(lex_node, node, "!0", 1);
 
 	ret |= ec_node_expr_test_eval(lex_node, node, "1+1", 2);
+	ret |= ec_node_expr_test_eval(lex_node, node, "1+2+3", 6);
 	ret |= ec_node_expr_test_eval(lex_node, node, "1+1*2", 4);
 	ret |= ec_node_expr_test_eval(lex_node, node, "2 * 2^", 8);
 	ret |= ec_node_expr_test_eval(lex_node, node, "(1 + !0)^ * !0^", 4);

@@ -223,8 +223,7 @@ struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	return NULL;
 }
 
-const struct ec_strvec *ec_parsed_strvec(
-	const struct ec_parsed *parsed)
+const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed)
 {
 	if (parsed == NULL || parsed->strvec == NULL)
 		return NULL;
