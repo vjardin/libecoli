@@ -40,17 +40,6 @@ struct ec_completed;
 struct ec_strvec;
 struct ec_keyval;
 
-/* return 0 on success, else -errno. */
-typedef int (*ec_node_build_t)(struct ec_node *node);
-
-typedef struct ec_parsed *(*ec_node_parse_t)(const struct ec_node *node,
-	const struct ec_strvec *strvec);
-typedef struct ec_completed *(*ec_node_complete_t)(const struct ec_node *node,
-	const struct ec_strvec *strvec);
-typedef const char * (*ec_node_desc_t)(const struct ec_node *);
-typedef void (*ec_node_init_priv_t)(struct ec_node *);
-typedef void (*ec_node_free_priv_t)(struct ec_node *);
-
 #define EC_NODE_TYPE_REGISTER(t)						\
 	static void ec_node_init_##t(void);				\
 	static void __attribute__((constructor, used))			\
@@ -61,6 +50,18 @@ typedef void (*ec_node_free_priv_t)(struct ec_node *);
 	}
 
 TAILQ_HEAD(ec_node_type_list, ec_node_type);
+
+/* return 0 on success, else -errno. */
+typedef int (*ec_node_build_t)(struct ec_node *node);
+
+typedef int (*ec_node_parse_t)(const struct ec_node *node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec);
+typedef struct ec_completed *(*ec_node_complete_t)(const struct ec_node *node,
+						const struct ec_strvec *strvec);
+typedef const char * (*ec_node_desc_t)(const struct ec_node *);
+typedef void (*ec_node_init_priv_t)(struct ec_node *);
+typedef void (*ec_node_free_priv_t)(struct ec_node *);
 
 /**
  * A structure describing a node type.

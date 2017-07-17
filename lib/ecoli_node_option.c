@@ -46,43 +46,26 @@ struct ec_node_option {
 	struct ec_node *child;
 };
 
-static struct ec_parsed *ec_node_option_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_option_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_option *node = (struct ec_node_option *)gen_node;
-	struct ec_parsed *parsed = NULL, *child_parsed;
-	struct ec_strvec *match_strvec;
+	int ret;
 
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
+	ret = ec_node_parse_child(node->child, state, strvec);
+	if (ret == EC_PARSED_NOMATCH)
+		return 0;
+	else if (ret < 0)
+		return ret;
 
-	child_parsed = ec_node_parse_strvec(node->child, strvec);
-	if (child_parsed == NULL)
-		goto fail;
-
-	if (ec_parsed_matches(child_parsed)) {
-		ec_parsed_add_child(parsed, child_parsed);
-		match_strvec = ec_strvec_dup(child_parsed->strvec);
-	} else {
-		ec_parsed_free(child_parsed);
-		match_strvec = ec_strvec();
-	}
-
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
-
- fail:
-	ec_parsed_free(parsed);
-	return NULL;
+	return ret;
 }
 
-static struct ec_completed *ec_node_option_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+ec_node_option_complete(const struct ec_node *gen_node,
+			const struct ec_strvec *strvec)
 {
 	struct ec_node_option *node = (struct ec_node_option *)gen_node;
 

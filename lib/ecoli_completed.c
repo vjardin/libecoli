@@ -154,7 +154,20 @@ struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 		return NULL;
 	}
 
+#if 0 // XXX dump
+	{
+		struct ec_completed *c;
+		c = node->type->complete(node, strvec);
+
+		printf("--------------------------------------------------------------\n");
+		ec_node_dump(stdout, node);
+		ec_strvec_dump(stdout, strvec);
+		ec_completed_dump(stdout, c);
+		return c;
+	}
+#else
 	return node->type->complete(node, strvec);
+#endif
 }
 
 /* count the number of identical chars at the beginning of 2 strings */

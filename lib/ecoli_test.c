@@ -74,8 +74,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 	}
 
 	p = ec_node_parse_strvec(tk, vec);
-	/* XXX only for debug */
-	ec_parsed_dump(stdout, p);
+	ec_parsed_dump(stdout, p); /* XXX only for debug */
 	if (p == NULL) {
 		ec_log(EC_LOG_ERR, "parsed is NULL\n");
 	}

@@ -30,6 +30,7 @@
 
 #include <sys/queue.h>
 #include <sys/types.h>
+#include <limits.h>
 #include <stdio.h>
 
 struct ec_node;
@@ -42,6 +43,7 @@ TAILQ_HEAD(ec_parsed_list, ec_parsed);
 struct ec_parsed {
 	TAILQ_ENTRY(ec_parsed) next;
 	struct ec_parsed_list children;
+	struct ec_parsed *parent;
 	const struct ec_node *node;
 	struct ec_strvec *strvec;
 };
@@ -50,11 +52,7 @@ struct ec_parsed *ec_parsed(void);
 void ec_parsed_free(struct ec_parsed *parsed);
 void ec_parsed_free_children(struct ec_parsed *parsed);
 
-const struct ec_strvec *ec_parsed_strvec(
-	const struct ec_parsed *parsed);
-
-void ec_parsed_set_match(struct ec_parsed *parsed,
-	const struct ec_node *node, struct ec_strvec *strvec);
+const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
 
 /* XXX we could use a cache to store possible completions or match: the
  * cache would be per-node, and would be reset for each call to parse()
@@ -64,16 +62,26 @@ void ec_parsed_set_match(struct ec_parsed *parsed,
 */
 struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str);
 
-/* mostly internal to nodes */
-/* XXX it should not reset cache
- * ... not sure... it is used by tests */
 struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
-	const struct ec_strvec *strvec);
+				const struct ec_strvec *strvec);
+
+#define EC_PARSED_NOMATCH INT_MIN
+/* internal: used by nodes */
+/* return:
+ * EC_PARSED_NOMATCH (negative) if it does not match
+ * any other negative value (-errno) for other errors
+ * the number of matched strings in strvec
+ */
+int ec_node_parse_child(struct ec_node *node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec);
 
 void ec_parsed_add_child(struct ec_parsed *parsed,
-	struct ec_parsed *child);
+			struct ec_parsed *child);
 void ec_parsed_del_child(struct ec_parsed *parsed,
-	struct ec_parsed *child);
+			struct ec_parsed *child);
+struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed);
+struct ec_parsed *ec_parsed_get_last_child(struct ec_parsed *parsed);
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
 
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,

@@ -48,16 +48,19 @@ struct ec_node_weakref {
 	struct ec_node *child;
 };
 
-static struct ec_parsed *ec_node_weakref_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_weakref_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_weakref *node = (struct ec_node_weakref *)gen_node;
 
-	return ec_node_parse_strvec(node->child, strvec);
+	return ec_node_parse_child(node->child, state, strvec);
 }
 
-static struct ec_completed *ec_node_weakref_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+ec_node_weakref_complete(const struct ec_node *gen_node,
+			const struct ec_strvec *strvec)
 {
 	struct ec_node_weakref *node = (struct ec_node_weakref *)gen_node;
 

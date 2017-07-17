@@ -66,12 +66,13 @@ struct ec_node_expr {
 	unsigned int paren_len;
 };
 
-static struct ec_parsed *ec_node_expr_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int ec_node_expr_parse(const struct ec_node *gen_node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec)
 {
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 
-	return ec_node_parse_strvec(node->child, strvec);
+	return ec_node_parse_child(node->child, state, strvec);
 }
 
 static struct ec_completed *ec_node_expr_complete(const struct ec_node *gen_node,

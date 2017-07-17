@@ -48,45 +48,23 @@ struct ec_node_or {
 	unsigned int len;
 };
 
-static struct ec_parsed *ec_node_or_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_or_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
-	struct ec_parsed *parsed, *child_parsed = NULL;
-	struct ec_strvec *match_strvec;
 	unsigned int i;
-
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
+	int ret;
 
 	for (i = 0; i < node->len; i++) {
-		child_parsed = ec_node_parse_strvec(node->table[i], strvec);
-		if (child_parsed == NULL)
-			goto fail;
-		if (ec_parsed_matches(child_parsed))
-			break;
-		ec_parsed_free(child_parsed);
-		child_parsed = NULL;
+		ret = ec_node_parse_child(node->table[i], state, strvec);
+		if (ret == EC_PARSED_NOMATCH)
+			continue;
+		return ret;
 	}
 
-	/* no match */
-	if (i == node->len)
-		return parsed;
-
-	match_strvec = ec_strvec_dup(child_parsed->strvec);
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-	ec_parsed_add_child(parsed, child_parsed);
-
-	return parsed;
-
- fail:
-	ec_parsed_free(child_parsed);
-	ec_parsed_free(parsed);
-	return NULL;
+	return EC_PARSED_NOMATCH;
 }
 
 static struct ec_completed *ec_node_or_complete(const struct ec_node *gen_node,

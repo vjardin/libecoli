@@ -88,55 +88,48 @@ fail:
 	return NULL;
 }
 
-static struct ec_parsed *ec_node_re_lex_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_re_lex_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
-	struct ec_strvec *new_vec = NULL, *match_strvec;
-	struct ec_parsed *parsed = NULL, *child_parsed;
+	struct ec_strvec *new_vec = NULL;
+	struct ec_parsed *child_parsed;
 	const char *str;
+	int ret;
 
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		return NULL;
-
-	if (ec_strvec_len(strvec) == 0)
-		return parsed;
-
-	str = ec_strvec_val(strvec, 0);
-	new_vec = tokenize(node->table, node->len, str);
-	if (new_vec == NULL)
-		goto fail;
-
-	printf("--------\n");
-	ec_strvec_dump(stdout, new_vec);
-	child_parsed = ec_node_parse_strvec(node->child, new_vec);
-	if (child_parsed == NULL)
-		goto fail;
-
-	if (!ec_parsed_matches(child_parsed) ||
-			ec_parsed_len(child_parsed) !=
-				ec_strvec_len(new_vec)) {
-		ec_strvec_free(new_vec);
-		ec_parsed_free(child_parsed);
-		return parsed;
+	if (ec_strvec_len(strvec) == 0) {
+		new_vec = ec_strvec();
+	} else {
+		str = ec_strvec_val(strvec, 0);
+		new_vec = tokenize(node->table, node->len, str);
 	}
+	if (new_vec == NULL) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	ret = ec_node_parse_child(node->child, state, new_vec);
+	if (ret >= 0) {
+		if ((unsigned)ret == ec_strvec_len(new_vec)) {
+			ret = 1;
+		} else {
+			child_parsed = ec_parsed_get_last_child(state);
+			ec_parsed_del_child(state, child_parsed);
+			ec_parsed_free(child_parsed);
+			ret = EC_PARSED_NOMATCH;
+		}
+	}
+
 	ec_strvec_free(new_vec);
 	new_vec = NULL;
 
-	ec_parsed_add_child(parsed, child_parsed);
-	match_strvec = ec_strvec_ndup(strvec, 0, 1);
-	if (match_strvec == NULL)
-		goto fail;
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
+	return ret;
 
  fail:
 	ec_strvec_free(new_vec);
-	ec_parsed_free(parsed);
-
-	return NULL;
+	return ret;
 }
 
 static void ec_node_re_lex_free_priv(struct ec_node *gen_node)

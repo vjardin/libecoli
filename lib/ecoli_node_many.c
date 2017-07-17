@@ -30,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
@@ -49,66 +50,54 @@ struct ec_node_many {
 	struct ec_node *child;
 };
 
-static struct ec_parsed *ec_node_many_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int ec_node_many_parse(const struct ec_node *gen_node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec)
 {
 	struct ec_node_many *node = (struct ec_node_many *)gen_node;
-	struct ec_parsed *parsed, *child_parsed;
-	struct ec_strvec *match_strvec;
+	struct ec_parsed *child_parsed;
 	struct ec_strvec *childvec = NULL;
-	size_t off = 0, len, count;
-
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
+	size_t off = 0, count;
+	int ret;
 
 	for (count = 0; node->max == 0 || count < node->max; count++) {
 		childvec = ec_strvec_ndup(strvec, off,
 			ec_strvec_len(strvec) - off);
-		if (childvec == NULL)
+		if (childvec == NULL) {
+			ret = -ENOMEM;
 			goto fail;
+		}
 
-		child_parsed = ec_node_parse_strvec(node->child, childvec);
-		if (child_parsed == NULL)
-			goto fail;
-
+		ret = ec_node_parse_child(node->child, state, childvec);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (!ec_parsed_matches(child_parsed)) {
-			ec_parsed_free(child_parsed);
+		if (ret == EC_PARSED_NOMATCH)
 			break;
-		}
-
-		ec_parsed_add_child(parsed, child_parsed);
+		else if (ret < 0)
+			goto fail;
 
 		/* it matches an empty strvec, no need to continue */
-		len = ec_parsed_len(child_parsed);
-		if (len == 0) {
+		if (ret == 0) {
+			child_parsed = ec_parsed_get_last_child(state);
+			ec_parsed_del_child(state, child_parsed);
 			ec_parsed_free(child_parsed);
 			break;
 		}
 
-		off += len;
+		off += ret;
 	}
 
 	if (count < node->min) {
-		ec_parsed_free_children(parsed);
-		return parsed;
+		ec_parsed_free_children(state);
+		return EC_PARSED_NOMATCH;
 	}
 
-	match_strvec = ec_strvec_ndup(strvec, 0, off);
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
+	return off;
 
 fail:
 	ec_strvec_free(childvec);
-	ec_parsed_free(parsed);
-	return NULL;
+	return ret;
 }
 
 #if 0 //XXX missing node_many_complete

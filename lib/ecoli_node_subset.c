@@ -51,46 +51,42 @@ struct ec_node_subset {
 };
 
 struct parse_result {
-	struct ec_parsed **parsed_table; /* list of parsed node */
-	size_t parsed_table_len;         /* number of parsed node */
-	size_t len;                      /* consumed strings */
+	size_t parsed_len;          /* number of parsed node */
+	size_t len;                 /* consumed strings */
 };
 
-static int __ec_node_subset_parse(struct ec_node **table, size_t table_len,
-				const struct ec_strvec *strvec,
-				struct parse_result *out)
+/* recursively find the longest list of nodes that matches: the state is
+ * updated accordingly. */
+static int
+__ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
+		size_t table_len, struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node **child_table;
-	struct ec_parsed *child_parsed = NULL;
 	struct ec_strvec *childvec = NULL;
 	size_t i, j, len = 0;
 	struct parse_result best_result, result;
+	struct ec_parsed *best_parsed = NULL;
 	int ret;
 
 	if (table_len == 0)
 		return 0;
 
 	memset(&best_result, 0, sizeof(best_result));
-	best_result.parsed_table =
-		ec_calloc(table_len, sizeof(*best_result.parsed_table[0]));
-	if (best_result.parsed_table == NULL)
-		goto fail;
 
 	child_table = ec_calloc(table_len - 1, sizeof(*child_table));
-	if (child_table == NULL)
+	if (child_table == NULL) {
+		ret = -ENOMEM;
 		goto fail;
+	}
 
 	for (i = 0; i < table_len; i++) {
 		/* try to parse elt i */
-		child_parsed = ec_node_parse_strvec(table[i], strvec);
-		if (child_parsed == NULL)
-			goto fail;
-
-		if (!ec_parsed_matches(child_parsed)) {
-			ec_parsed_free(child_parsed);
-			child_parsed = NULL;
+		ret = ec_node_parse_child(table[i], state, strvec);
+		if (ret == EC_PARSED_NOMATCH)
 			continue;
-		}
+		else if (ret < 0)
+			goto fail;
 
 		/* build a new table without elt i */
 		for (j = 0; j < table_len; j++) {
@@ -100,113 +96,85 @@ static int __ec_node_subset_parse(struct ec_node **table, size_t table_len,
 				child_table[j - 1] = table[j];
 		}
 
-		/* build a new strvec */
-		len = ec_parsed_len(child_parsed);
+		/* build a new strvec (ret is the len of matched strvec) */
+		len = ret;
 		childvec = ec_strvec_ndup(strvec, len,
 					ec_strvec_len(strvec) - len);
-		if (childvec == NULL)
+		if (childvec == NULL) {
+			ret = -ENOMEM;
 			goto fail;
+		}
 
 		memset(&result, 0, sizeof(result));
-
-		ret = __ec_node_subset_parse(child_table, table_len - 1,
-					childvec, &result);
+		ret = __ec_node_subset_parse(&result, child_table,
+					table_len - 1, state, childvec);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 		if (ret < 0)
 			goto fail;
 
 		/* if result is not the best, ignore */
-		if (result.parsed_table_len + 1 <=
-				best_result.parsed_table_len) {
-			ec_parsed_free(child_parsed);
-			child_parsed = NULL;
-			for (j = 0; j < result.parsed_table_len; j++)
-				ec_parsed_free(result.parsed_table[j]);
-			ec_free(result.parsed_table);
+		if (result.parsed_len < best_result.parsed_len) {
+			struct ec_parsed *child_parsed;
+
 			memset(&result, 0, sizeof(result));
+			child_parsed = ec_parsed_get_last_child(state);
+			ec_parsed_del_child(state, child_parsed);
+			ec_parsed_free(child_parsed);
 			continue;
 		}
 
 		/* replace the previous best result */
-		for (j = 0; j < best_result.parsed_table_len; j++)
-			ec_parsed_free(best_result.parsed_table[j]);
-		best_result.parsed_table[0] = child_parsed;
-		child_parsed = NULL;
-		for (j = 0; j < result.parsed_table_len; j++)
-			best_result.parsed_table[j+1] = result.parsed_table[j];
-		best_result.parsed_table_len = result.parsed_table_len + 1;
+		ec_parsed_free(best_parsed);
+		best_parsed = ec_parsed_get_last_child(state);
+		ec_parsed_del_child(state, best_parsed);
+
+		best_result.parsed_len = result.parsed_len + 1;
 		best_result.len = len + result.len;
-		ec_free(result.parsed_table);
+
+		memset(&result, 0, sizeof(result));
 	}
 
 	*out = best_result;
 	ec_free(child_table);
+	if (best_parsed != NULL)
+		ec_parsed_add_child(state, best_parsed);
 
 	return 0;
 
  fail:
-	ec_parsed_free(child_parsed);
+	ec_parsed_free(best_parsed);
 	ec_strvec_free(childvec);
-	for (j = 0; j < best_result.parsed_table_len; j++)
-		ec_parsed_free(best_result.parsed_table[j]);
-	ec_free(best_result.parsed_table);
 	ec_free(child_table);
-	return -1;
+	return ret;
 }
 
-static struct ec_parsed *ec_node_subset_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_subset_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
 	struct ec_parsed *parsed = NULL;
 	struct parse_result result;
-	struct ec_strvec *match_strvec;
-	size_t i;
 	int ret;
 
 	memset(&result, 0, sizeof(result));
 
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
-
-	ret = __ec_node_subset_parse(node->table, node->len, strvec, &result);
+	ret = __ec_node_subset_parse(&result, node->table,
+				node->len, state, strvec);
 	if (ret < 0)
 		goto fail;
 
 	/* if no child node matches, return a matching empty strvec */
-	if (result.parsed_table_len == 0) {
-		ec_free(result.parsed_table);
-		match_strvec = ec_strvec();
-		if (match_strvec == NULL)
-			goto fail;
-		ec_parsed_set_match(parsed, gen_node, match_strvec);
-		return parsed;
-	}
+	if (result.parsed_len == 0)
+		return 0;
 
-	for (i = 0; i < result.parsed_table_len; i++) {
-		ec_parsed_add_child(parsed, result.parsed_table[i]);
-		result.parsed_table[i] = NULL;
-	}
-	ec_free(result.parsed_table);
-	result.parsed_table = NULL;
-
-	match_strvec = ec_strvec_ndup(strvec, 0, result.len);
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
+	return result.len;
 
  fail:
-	for (i = 0; i < result.parsed_table_len; i++)
-		ec_parsed_free(result.parsed_table[i]);
-	ec_free(result.parsed_table);
 	ec_parsed_free(parsed);
-
-	return NULL;
+	return ret;
 }
 
 static struct ec_completed *

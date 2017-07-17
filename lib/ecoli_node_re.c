@@ -46,39 +46,27 @@ struct ec_node_re {
 	regex_t re;
 };
 
-static struct ec_parsed *ec_node_re_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int
+ec_node_re_parse(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_re *node = (struct ec_node_re *)gen_node;
-	struct ec_strvec *match_strvec;
-	struct ec_parsed *parsed = NULL;
 	const char *str;
 	regmatch_t pos;
 
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
+	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
-		return parsed;
+		return EC_PARSED_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
 	if (regexec(&node->re, str, 1, &pos, 0) != 0)
-		return parsed;
+		return EC_PARSED_NOMATCH;
 	if (pos.rm_so != 0 || pos.rm_eo != (int)strlen(str))
-		return parsed;
+		return EC_PARSED_NOMATCH;
 
-	match_strvec = ec_strvec_ndup(strvec, 0, 1);
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
-
- fail:
-	ec_parsed_free(parsed);
-	return NULL;
+	return 1;
 }
 
 static void ec_node_re_free_priv(struct ec_node *gen_node)

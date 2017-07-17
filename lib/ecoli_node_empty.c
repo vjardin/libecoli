@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
@@ -42,29 +43,14 @@ struct ec_node_empty {
 	struct ec_node gen;
 };
 
-static struct ec_parsed *ec_node_empty_parse(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static int ec_node_empty_parse(const struct ec_node *gen_node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed;
-	struct ec_strvec *match_strvec;
-
+	(void)gen_node;
+	(void)state;
 	(void)strvec;
-
-	parsed = ec_parsed();
-	if (parsed == NULL)
-		goto fail;
-
-	match_strvec = ec_strvec();
-	if (match_strvec == NULL)
-		goto fail;
-
-	ec_parsed_set_match(parsed, gen_node, match_strvec);
-
-	return parsed;
-
- fail:
-	ec_parsed_free(parsed);
-	return NULL;
+	return 0;
 }
 
 static struct ec_node_type ec_node_empty_type = {

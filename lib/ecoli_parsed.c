@@ -38,10 +38,82 @@
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
 
+int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
+			const struct ec_strvec *strvec)
+{
+	struct ec_strvec *match_strvec;
+	struct ec_parsed *child;
+	int ret;
+
+	assert(state != NULL);
+
+	/* build the node if required */
+	if (node->type->build != NULL) {
+		if ((node->flags & EC_NODE_F_BUILT) == 0) {
+			ret = node->type->build(node);
+			if (ret < 0)
+				return ret;
+		}
+	}
+	node->flags |= EC_NODE_F_BUILT;
+
+	if (node->type->parse == NULL)
+		return -ENOTSUP;
+
+	child = ec_parsed();
+	if (child == NULL)
+		return -ENOMEM;
+
+	ec_parsed_add_child(state, child);
+	ret = node->type->parse(node, child, strvec);
+	if (ret == EC_PARSED_NOMATCH) {
+		ec_parsed_del_child(state, child);
+		assert(TAILQ_EMPTY(&child->children));
+		ec_parsed_free(child);
+		return ret;
+	} else if (ret < 0) {
+		return ret;
+	}
+
+	match_strvec = ec_strvec_ndup(strvec, 0, ret);
+	if (match_strvec == NULL)
+		return -ENOMEM;
+
+	child->node = node;
+	child->strvec = match_strvec;
+
+	return ret;
+}
+
+struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
+				const struct ec_strvec *strvec)
+{
+	struct ec_parsed *parsed = ec_parsed();
+	struct ec_parsed *child_parsed;
+	int ret;
+
+	if (parsed == NULL)
+		return NULL;
+
+	ret = ec_node_parse_child(node, parsed, strvec);
+	if (ret < 0 && ret != EC_PARSED_NOMATCH) {
+		ec_parsed_free(parsed);
+		parsed = NULL;
+	} else if (ret != EC_PARSED_NOMATCH) {
+		/* remove dummy root node */
+		child_parsed = ec_parsed_get_last_child(parsed);
+		ec_parsed_del_child(parsed, child_parsed);
+		ec_parsed_free(parsed);
+		parsed = child_parsed;
+	}
+
+	return parsed;
+}
+
 struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
-	struct ec_parsed *parsed;
+	struct ec_parsed *parsed = NULL;
 
 	errno = ENOMEM;
 	strvec = ec_strvec();
@@ -60,37 +132,9 @@ struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str)
 
  fail:
 	ec_strvec_free(strvec);
+	ec_parsed_free(parsed);
 	return NULL;
 }
-
-struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
-	const struct ec_strvec *strvec)
-{
-	struct ec_parsed *parsed;
-	int ret;
-
-	/* build the node if required */
-	if (node->type->build != NULL) {
-		if ((node->flags & EC_NODE_F_BUILT) == 0) {
-			ret = node->type->build(node);
-			if (ret < 0) {
-				errno = -ret;
-				return NULL;
-			}
-		}
-	}
-	node->flags |= EC_NODE_F_BUILT;
-
-	if (node->type->parse == NULL) {
-		errno = ENOTSUP;
-		return NULL;
-	}
-
-	parsed = node->type->parse(node, strvec);
-
-	return parsed;
-}
-
 
 struct ec_parsed *ec_parsed(void)
 {
@@ -106,13 +150,6 @@ struct ec_parsed *ec_parsed(void)
 
  fail:
 	return NULL;
-}
-
-void ec_parsed_set_match(struct ec_parsed *parsed,
-	const struct ec_node *node, struct ec_strvec *strvec)
-{
-	parsed->node = node;
-	parsed->strvec = strvec;
 }
 
 void ec_parsed_free_children(struct ec_parsed *parsed)
@@ -145,7 +182,7 @@ static void __ec_parsed_dump(FILE *out,
 	struct ec_parsed *child;
 	const struct ec_strvec *vec;
 	size_t i;
-	const char *id = "None", *typename = "None";
+	const char *id = "none", *typename = "none";
 
 	if (parsed->node != NULL) {
 		if (parsed->node->id != NULL)
@@ -167,7 +204,11 @@ static void __ec_parsed_dump(FILE *out,
 		fprintf(out, "%s<%s>",
 			i == 0 ? "" : ",",
 			ec_strvec_val(vec, i));
-	fprintf(out, "]\n");
+	// XXX
+	if (!strcmp(typename, "int") || !strcmp(typename, "str"))
+		fprintf(out, "] <<<<<\n");
+	else
+		fprintf(out, "]\n");
 
 	TAILQ_FOREACH(child, &parsed->children, next)
 		__ec_parsed_dump(out, child, indent + 2);
@@ -193,12 +234,31 @@ void ec_parsed_add_child(struct ec_parsed *parsed,
 	struct ec_parsed *child)
 {
 	TAILQ_INSERT_TAIL(&parsed->children, child, next);
+	child->parent = parsed;
 }
 
 void ec_parsed_del_child(struct ec_parsed *parsed,
 	struct ec_parsed *child)
 {
 	TAILQ_REMOVE(&parsed->children, child, next);
+	child->parent = NULL;
+}
+
+struct ec_parsed *
+ec_parsed_get_last_child(struct ec_parsed *parsed)
+{
+	return TAILQ_LAST(&parsed->children, ec_parsed_list);
+}
+
+struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed)
+{
+	if (parsed == NULL)
+		return NULL;
+
+	while (parsed->parent != NULL)
+		parsed = parsed->parent;
+
+	return parsed;
 }
 
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
@@ -245,7 +305,7 @@ size_t ec_parsed_matches(const struct ec_parsed *parsed)
 	if (parsed == NULL)
 		return 0;
 
-	if (parsed->node == NULL && TAILQ_EMPTY(&parsed->children))
+	if (parsed->node == NULL && TAILQ_EMPTY(&parsed->children)) // XXX both needed?
 		return 0;
 
 	return 1;

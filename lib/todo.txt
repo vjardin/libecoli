@@ -30,6 +30,7 @@ X rename:
   - ec_completed_tk -> ec_completed
   - tk, gen_tk, token, ... -> node
   - tokens -> input_str / input_strvec ?
+- use is_err() for errno in ptrs
 
 dependencies
 ============

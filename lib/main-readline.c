@@ -146,7 +146,7 @@ static int show_help(int ignore, int invoking_key)
 	/* complete at current cursor position */
 	line[rl_point] = '\0';
 	c = ec_node_complete(commands, line);
-	ec_completed_dump(stdout, c);
+	//ec_completed_dump(stdout, c);
 	free(line);
 	if (c == NULL)
 		return 1;
@@ -192,6 +192,7 @@ static int create_commands(void)
 	if (cmdlist == NULL)
 		goto fail;
 
+
 	cmd = EC_NODE_SEQ(NULL,
 		ec_node_str(NULL, "hello"),
 		EC_NODE_OR("name",
@@ -212,6 +213,7 @@ static int create_commands(void)
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
+
 	cmd = EC_NODE_CMD(NULL, "good morning bob|bobby|michael [count]",
 			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
@@ -221,12 +223,24 @@ static int create_commands(void)
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
+
+	cmd = EC_NODE_CMD(NULL,
+			"buy potatoes,carrots,pumpkins");
+	if (cmd == NULL)
+		goto fail;
+	ec_keyval_set(ec_node_attrs(cmd), "help",
+		"buy some vegetables", NULL);
+	if (ec_node_or_add(cmdlist, cmd) < 0)
+		goto fail;
+
+
 	cmd = EC_NODE_SEQ(NULL,
 		ec_node_str(NULL, "bye")
 	);
 	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye to someone", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
+
 
 	commands = ec_node_sh_lex(NULL, cmdlist);
 	if (commands == NULL)
