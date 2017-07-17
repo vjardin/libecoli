@@ -25,13 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ECOLI_NODE_BYPASS_
-#define ECOLI_NODE_BYPASS_
+#ifndef ECOLI_NODE_WEAKREF_
+#define ECOLI_NODE_WEAKREF_
 
 #include <ecoli_node.h>
 
-/* a node that just behaves like its child and that does not free
- * its child when freed.
+/* A node that just behaves like its child and that does not free
+ * its child when freed. **The child has to be freed manually**.
  *
  * useful to create cyclic graphs of nodes:
  *   creating a loop (with clones) result in something that is not
@@ -82,8 +82,6 @@
 
 /* on error, child is *not* freed */
 struct ec_node *ec_node_weakref(const char *id, struct ec_node *child);
-
-struct ec_node *ec_node_weakref_empty(const char *id);
 
 /* on error, child is *not* freed */
 int ec_node_weakref_set(struct ec_node *node, struct ec_node *child);

@@ -205,6 +205,7 @@ static int ec_node_many_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
+	ret |= EC_TEST_CHECK_PARSE(node, 0);
 	ret |= EC_TEST_CHECK_PARSE(node, 0, "bar");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo", "bar");
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "foo", "bar");

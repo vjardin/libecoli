@@ -115,6 +115,7 @@ struct ec_node *ec_node_weakref(const char *id, struct ec_node *child)
 
 static int ec_node_weakref_testcase(void)
 {
+	//XXX weakref testcase
 	return 0;
 }
 
