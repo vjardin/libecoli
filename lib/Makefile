@@ -47,6 +47,7 @@ srcs += ecoli_node_expr.c
 srcs += ecoli_node_expr_test.c
 srcs += ecoli_node_int.c
 srcs += ecoli_node_many.c
+srcs += ecoli_node_once.c
 srcs += ecoli_node_option.c
 srcs += ecoli_node_or.c
 srcs += ecoli_node_re.c
