@@ -53,8 +53,8 @@ struct ec_completed *ec_completed(void)
 	return completed;
 }
 
-struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
-	const char *add)
+static struct ec_completed_elt *
+ec_completed_elt(const struct ec_node *node, const char *add)
 {
 	struct ec_completed_elt *elt = NULL;
 
@@ -74,11 +74,70 @@ struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
 	return elt;
 }
 
-/* XXX define when to use ec_node_complete() or node->complete()
- * (same for parse)
- * suggestion: node->op() is internal, user calls the function
- * other idea: have 2 functions
- */
+struct ec_completed *
+ec_node_complete_child(struct ec_node *node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
+{
+	struct ec_completed *completed;
+	struct ec_parsed *child;
+	int ret;
+
+	/* build the node if required */
+	if (node->type->build != NULL) {
+		if ((node->flags & EC_NODE_F_BUILT) == 0) {
+			ret = node->type->build(node);
+			if (ret < 0) {
+				errno = -ret;
+				return NULL;
+			}
+		}
+	}
+	node->flags |= EC_NODE_F_BUILT;
+
+	if (node->type->complete == NULL) {
+		errno = ENOTSUP;
+		return NULL;
+	}
+
+	child = ec_parsed();
+	if (child == NULL)
+		return NULL;
+
+	child->node = node;
+	ec_parsed_add_child(state, child);
+	completed = node->type->complete(node, child, strvec);
+
+#if 0 // XXX dump
+	printf("----------------------------------------------------------\n");
+	ec_node_dump(stdout, node);
+	ec_strvec_dump(stdout, strvec);
+	ec_completed_dump(stdout, completed);
+	ec_parsed_dump(stdout, state);
+#endif
+
+	ec_parsed_del_child(state, child);
+	assert(TAILQ_EMPTY(&child->children));
+	ec_parsed_free(child);
+
+	return completed;
+}
+
+struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
+	const struct ec_strvec *strvec)
+{
+	struct ec_parsed *state = ec_parsed();
+	struct ec_completed *completed;
+
+	if (state == NULL)
+		return NULL;
+
+	completed = ec_node_complete_child(node, state, strvec);
+	ec_parsed_free(state);
+
+	return completed;
+}
+
 struct ec_completed *ec_node_complete(struct ec_node *node,
 	const char *str)
 {
@@ -107,12 +166,13 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 
 /* default completion function: return a no-match element */
 struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+					struct ec_parsed *state,
+					const struct ec_strvec *strvec)
 {
 	struct ec_completed *completed;
-	struct ec_completed_elt *completed_elt;
 
 	(void)strvec;
+	(void)state;
 
 	completed = ec_completed();
 	if (completed == NULL)
@@ -121,53 +181,12 @@ struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
 	if (ec_strvec_len(strvec) != 1)
 		return completed;
 
-	completed_elt = ec_completed_elt(gen_node, NULL);
-	if (completed_elt == NULL) {
+	if (ec_completed_add_elt(completed, gen_node, NULL) < 0) {
 		ec_completed_free(completed);
 		return NULL;
 	}
 
-	ec_completed_add_elt(completed, completed_elt);
-
 	return completed;
-}
-
-struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
-	const struct ec_strvec *strvec)
-{
-	int ret;
-
-	/* build the node if required */
-	if (node->type->build != NULL) {
-		if ((node->flags & EC_NODE_F_BUILT) == 0) {
-			ret = node->type->build(node);
-			if (ret < 0) {
-				errno = -ret;
-				return NULL;
-			}
-		}
-	}
-	node->flags |= EC_NODE_F_BUILT;
-
-	if (node->type->complete == NULL) {
-		errno = ENOTSUP;
-		return NULL;
-	}
-
-#if 0 // XXX dump
-	{
-		struct ec_completed *c;
-		c = node->type->complete(node, strvec);
-
-		printf("--------------------------------------------------------------\n");
-		ec_node_dump(stdout, node);
-		ec_strvec_dump(stdout, strvec);
-		ec_completed_dump(stdout, c);
-		return c;
-	}
-#else
-	return node->type->complete(node, strvec);
-#endif
 }
 
 /* count the number of identical chars at the beginning of 2 strings */
@@ -181,8 +200,8 @@ static size_t strcmp_count(const char *s1, const char *s2)
 	return i;
 }
 
-void ec_completed_add_elt(
-	struct ec_completed *completed, struct ec_completed_elt *elt)
+static int __ec_completed_add_elt(struct ec_completed *completed,
+				struct ec_completed_elt *elt)
 {
 	size_t n;
 
@@ -198,6 +217,20 @@ void ec_completed_add_elt(
 			completed->smallest_start[n] = '\0';
 		}
 	}
+
+	return 0;
+}
+
+int ec_completed_add_elt(struct ec_completed *completed,
+			const struct ec_node *node, const char *add)
+{
+	struct ec_completed_elt *elt;
+
+	elt = ec_completed_elt(node, add);
+	if (elt == NULL)
+		return -ENOMEM;
+
+	return __ec_completed_add_elt(completed, elt);
 }
 
 void ec_completed_elt_free(struct ec_completed_elt *elt)
@@ -217,7 +250,7 @@ void ec_completed_merge(struct ec_completed *completed1,
 	while (!TAILQ_EMPTY(&completed2->elts)) {
 		elt = TAILQ_FIRST(&completed2->elts);
 		TAILQ_REMOVE(&completed2->elts, elt, next);
-		ec_completed_add_elt(completed1, elt);
+		__ec_completed_add_elt(completed1, elt);
 	}
 
 	ec_completed_free(completed2);

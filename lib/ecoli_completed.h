@@ -42,7 +42,6 @@ struct ec_completed_elt {
 
 TAILQ_HEAD(ec_completed_elt_list, ec_completed_elt);
 
-
 struct ec_completed {
 	struct ec_completed_elt_list elts;
 	unsigned count;
@@ -59,11 +58,16 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	const struct ec_strvec *strvec);
 
+/* internal: used by nodes */
+struct ec_completed *ec_node_complete_child(struct ec_node *node,
+					struct ec_parsed *state,
+					const struct ec_strvec *strvec);
+
 struct ec_completed *ec_completed(void);
-struct ec_completed_elt *ec_completed_elt(const struct ec_node *node,
-	const char *add);
-void ec_completed_add_elt(struct ec_completed *completed,
-	struct ec_completed_elt *elt);
+
+/* XXX add completion type: full, partial, none */
+int ec_completed_add_elt(struct ec_completed *completed,
+			const struct ec_node *node, const char *add);
 void ec_completed_elt_free(struct ec_completed_elt *elt);
 void ec_completed_merge(struct ec_completed *completed1,
 	struct ec_completed *completed2);
@@ -71,7 +75,8 @@ void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
 struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec);
+					struct ec_parsed *state,
+					const struct ec_strvec *strvec);
 
 /* cannot return NULL */
 const char *ec_completed_smallest_start(

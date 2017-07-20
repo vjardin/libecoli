@@ -64,6 +64,7 @@ int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	if (child == NULL)
 		return -ENOMEM;
 
+	child->node = node;
 	ec_parsed_add_child(state, child);
 	ret = node->type->parse(node, child, strvec);
 	if (ret == EC_PARSED_NOMATCH) {
@@ -79,7 +80,6 @@ int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	if (match_strvec == NULL)
 		return -ENOMEM;
 
-	child->node = node;
 	child->strvec = match_strvec;
 
 	return ret;
@@ -198,17 +198,21 @@ static void __ec_parsed_dump(FILE *out,
 			fprintf(out, "|");
 	}
 
-	fprintf(out, "node_type=%s id=%s vec=[", typename, id);
+	fprintf(out, "node_type=%s id=%s vec=", typename, id);
 	vec = ec_parsed_strvec(parsed);
-	for (i = 0; i < ec_strvec_len(vec); i++)
-		fprintf(out, "%s<%s>",
-			i == 0 ? "" : ",",
-			ec_strvec_val(vec, i));
-	// XXX
-	if (!strcmp(typename, "int") || !strcmp(typename, "str"))
-		fprintf(out, "] <<<<<\n");
-	else
-		fprintf(out, "]\n");
+	if (vec == NULL) {
+		fprintf(out, "none\n");
+	} else {
+		for (i = 0; i < ec_strvec_len(vec); i++)
+			fprintf(out, "%s<%s>",
+				i == 0 ? "" : ",",
+				ec_strvec_val(vec, i));
+		// XXX
+		if (!strcmp(typename, "int") || !strcmp(typename, "str"))
+			fprintf(out, "] <<<<<\n");
+		else
+			fprintf(out, "]\n");
+	}
 
 	TAILQ_FOREACH(child, &parsed->children, next)
 		__ec_parsed_dump(out, child, indent + 2);
@@ -248,6 +252,15 @@ struct ec_parsed *
 ec_parsed_get_last_child(struct ec_parsed *parsed)
 {
 	return TAILQ_LAST(&parsed->children, ec_parsed_list);
+}
+
+void ec_parsed_del_last_child(struct ec_parsed *parsed)
+{
+	struct ec_parsed *child;
+
+	child = ec_parsed_get_last_child(parsed);
+	ec_parsed_del_child(parsed, child);
+	ec_parsed_free(child);
 }
 
 struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed)

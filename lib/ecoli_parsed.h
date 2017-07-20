@@ -66,8 +66,17 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 				const struct ec_strvec *strvec);
 
 #define EC_PARSED_NOMATCH INT_MIN
-/* internal: used by nodes */
-/* return:
+/* internal: used by nodes
+ *
+ * state is the current parse tree, which is built bit by bit while
+ *   parsing the node tree: ec_node_parse_child() creates a new child in
+ *   this state parse tree, and calls the parse() method for the child
+ *   node, with state pointing to this new child. If it does not match,
+ *   the child is removed in the state, else it is kept, with its
+ *   possible descendants.
+ *
+ * return:
+ * XXX change EC_PARSED_NOMATCH to INT_MAX?
  * EC_PARSED_NOMATCH (negative) if it does not match
  * any other negative value (-errno) for other errors
  * the number of matched strings in strvec
@@ -82,12 +91,13 @@ void ec_parsed_del_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
 struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed);
 struct ec_parsed *ec_parsed_get_last_child(struct ec_parsed *parsed);
+void ec_parsed_del_last_child(struct ec_parsed *parsed);
+
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
 
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	const char *id);
 
-const char *ec_parsed_to_string(const struct ec_parsed *parsed);
 size_t ec_parsed_len(const struct ec_parsed *parsed);
 size_t ec_parsed_matches(const struct ec_parsed *parsed);
 

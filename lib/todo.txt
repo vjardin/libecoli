@@ -30,7 +30,7 @@ X rename:
   - ec_completed_tk -> ec_completed
   - tk, gen_tk, token, ... -> node
   - tokens -> input_str / input_strvec ?
-- use is_err() for errno in ptrs
+- use is_err() or errno for funcs returning ptrs
 
 dependencies
 ============
@@ -104,6 +104,7 @@ new nodes
 - ether, ip, network
 - fusion node: need to match several children, same for completion
 - float
+- not
 
 encoding
 ========

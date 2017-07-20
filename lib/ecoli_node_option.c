@@ -65,11 +65,12 @@ ec_node_option_parse(const struct ec_node *gen_node,
 
 static struct ec_completed *
 ec_node_option_complete(const struct ec_node *gen_node,
+			struct ec_parsed *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_option *node = (struct ec_node_option *)gen_node;
 
-	return ec_node_complete_strvec(node->child, strvec);
+	return ec_node_complete_child(node->child, state, strvec);
 }
 
 static void ec_node_option_free_priv(struct ec_node *gen_node)

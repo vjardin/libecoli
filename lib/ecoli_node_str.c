@@ -65,14 +65,17 @@ ec_node_str_parse(const struct ec_node *gen_node,
 	return 1;
 }
 
-static struct ec_completed *ec_node_str_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+ec_node_str_complete(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
 	struct ec_completed *completed;
-	struct ec_completed_elt *completed_elt;
 	const char *str, *add;
 	size_t n = 0;
+
+	(void)state;
 
 	completed = ec_completed();
 	if (completed == NULL)
@@ -92,13 +95,10 @@ static struct ec_completed *ec_node_str_complete(const struct ec_node *gen_node,
 	else
 		add = node->string + n;
 
-	completed_elt = ec_completed_elt(gen_node, add);
-	if (completed_elt == NULL) {
+	if (ec_completed_add_elt(completed, gen_node, add) < 0) {
 		ec_completed_free(completed);
 		return NULL;
 	}
-
-	ec_completed_add_elt(completed, completed_elt);
 
 	return completed;
 }

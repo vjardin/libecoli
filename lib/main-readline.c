@@ -45,6 +45,8 @@
 #include <ecoli_node_int.h>
 #include <ecoli_node_option.h>
 #include <ecoli_node_cmd.h>
+#include <ecoli_node_many.h>
+#include <ecoli_node_once.h>
 
 static struct ec_node *commands;
 
@@ -230,6 +232,24 @@ static int create_commands(void)
 		goto fail;
 	ec_keyval_set(ec_node_attrs(cmd), "help",
 		"buy some vegetables", NULL);
+	if (ec_node_or_add(cmdlist, cmd) < 0)
+		goto fail;
+
+
+	cmd = EC_NODE_CMD(NULL, "sell vegetable",
+			ec_node_many("vegetable",
+				EC_NODE_OR(NULL,
+					ec_node_once(NULL,
+						ec_node_str(NULL, "potatoes")),
+					ec_node_once(NULL,
+						ec_node_str(NULL, "carrots")),
+					ec_node_once(NULL,
+						ec_node_str(NULL, "pumpkins"))),
+			1, 0));
+	if (cmd == NULL)
+		goto fail;
+	ec_keyval_set(ec_node_attrs(cmd), "help",
+		"sell vegetables", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 

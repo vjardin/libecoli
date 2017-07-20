@@ -100,61 +100,91 @@ fail:
 	return ret;
 }
 
-#if 0 //XXX missing node_many_complete
-static struct ec_completed *ec_node_many_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+__ec_node_many_complete(struct ec_node_many *node, unsigned int max,
+			struct ec_parsed *state, const struct ec_strvec *strvec)
 {
-	struct ec_node_many *node = (struct ec_node_many *)gen_node;
 	struct ec_completed *completed, *child_completed;
-	struct ec_strvec *childvec;
-	struct ec_parsed *parsed;
-	size_t len = 0;
+	struct ec_strvec *childvec = NULL;
 	unsigned int i;
+	int ret;
 
 	completed = ec_completed();
 	if (completed == NULL)
 		return NULL;
 
-	if (node->len == 0)
+	/* first, try to complete with the child node */
+	child_completed = ec_node_complete_child(node->child, state, strvec);
+	if (child_completed == NULL)
+		goto fail;
+	ec_completed_merge(completed, child_completed);
+	child_completed = NULL;
+
+	/* we're done, we reached the max number of nodes */
+	if (max == 1)
 		return completed;
 
-	for (i = 0; i < node->len; i++) {
-		childvec = ec_strvec_ndup(strvec, len,
-			ec_strvec_len(strvec) - len);
-		if (childvec == NULL)
-			goto fail; // XXX fail ?
+	/* if there is a maximum, decrease it before recursion */
+	if (max != 0)
+		max--;
 
-		child_completed = ec_node_complete_strvec(node->table[i],
-			childvec);
-		if (child_completed == NULL)
+	/* then, if the node matches the beginning of the strvec, try to
+	 * complete the rest */
+	for (i = 0; i < ec_strvec_len(strvec); i++) {
+		childvec = ec_strvec_ndup(strvec, 0, i);
+		if (childvec == NULL)
 			goto fail;
 
-		ec_completed_merge(completed, child_completed);
-
-		parsed = ec_node_parse_strvec(node->table[i], childvec);
-		if (parsed == NULL)
+		ret = ec_node_parse_child(node->child, state, childvec);
+		if (ret < 0 && ret != EC_PARSED_NOMATCH)
 			goto fail;
 
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (!ec_parsed_matches(parsed)) {
-			ec_parsed_free(parsed);
-			break;
+		if ((unsigned int)ret != i) {
+			if (ret != EC_PARSED_NOMATCH)
+				ec_parsed_del_last_child(state);
+			continue;
 		}
 
-		len += ec_strvec_len(parsed->strvec);
-		ec_parsed_free(parsed);
+		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
+		if (childvec == NULL) {
+			ec_parsed_del_last_child(state);
+			goto fail;
+		}
+
+		child_completed = __ec_node_many_complete(node, max,
+							state, childvec);
+		ec_parsed_del_last_child(state);
+		ec_strvec_free(childvec);
+		childvec = NULL;
+
+		if (child_completed == NULL)
+			goto fail;
+
+		ec_completed_merge(completed, child_completed);
+		child_completed = NULL;
 	}
 
 	return completed;
 
 fail:
 	ec_strvec_free(childvec);
+	ec_completed_free(child_completed);
 	ec_completed_free(completed);
 	return NULL;
 }
-#endif
+
+static struct ec_completed *
+ec_node_many_complete(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
+{
+	struct ec_node_many *node = (struct ec_node_many *)gen_node;
+
+	return __ec_node_many_complete(node, node->max,	state, strvec);
+}
 
 static void ec_node_many_free_priv(struct ec_node *gen_node)
 {
@@ -166,8 +196,7 @@ static void ec_node_many_free_priv(struct ec_node *gen_node)
 static struct ec_node_type ec_node_many_type = {
 	.name = "many",
 	.parse = ec_node_many_parse,
-	.complete = ec_node_default_complete,
-//XXX	.complete = ec_node_many_complete,
+	.complete = ec_node_many_complete,
 	.size = sizeof(struct ec_node_many),
 	.free_priv = ec_node_many_free_priv,
 };
@@ -236,13 +265,46 @@ static int ec_node_many_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	/* XXX */
+	node = ec_node_many(NULL, ec_node_str(NULL, "foo"), 2, 4);
+	if (node == NULL) {
+		ec_log(EC_LOG_ERR, "cannot create node\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"", EC_NODE_ENDLIST,
+		"foo", EC_NODE_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"f", EC_NODE_ENDLIST,
+		"oo", EC_NODE_ENDLIST,
+		"oo");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", EC_NODE_ENDLIST,
+		"", EC_NODE_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", "", EC_NODE_ENDLIST,
+		"foo", EC_NODE_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", "foo", "", EC_NODE_ENDLIST,
+		"foo", EC_NODE_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", "foo", "foo", "", EC_NODE_ENDLIST,
+		"foo", EC_NODE_ENDLIST,
+		"foo");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", "foo", "foo", "foo", "", EC_NODE_ENDLIST,
+		EC_NODE_ENDLIST,
+		"");
+	ec_node_free(node);
 
 	return ret;
 }
 
 static struct ec_test ec_node_many_test = {
-	.name = "many",
+	.name = "node_many",
 	.test = ec_node_many_testcase,
 };
 

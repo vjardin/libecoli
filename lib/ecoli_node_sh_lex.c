@@ -279,8 +279,10 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	return ret;
 }
 
-static struct ec_completed *ec_node_sh_lex_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+ec_node_sh_lex_complete(const struct ec_node *gen_node,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
 	struct ec_completed *completed, *child_completed = NULL;
@@ -303,7 +305,7 @@ static struct ec_completed *ec_node_sh_lex_complete(const struct ec_node *gen_no
 
 //	ec_strvec_dump(new_vec, stdout);
 
-	child_completed = ec_node_complete_strvec(node->child, new_vec);
+	child_completed = ec_node_complete_child(node->child, state, new_vec);
 	if (child_completed == NULL)
 		goto fail;
 

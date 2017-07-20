@@ -90,12 +90,12 @@ fail:
 
 static struct ec_completed *
 __ec_node_seq_complete(struct ec_node **table, size_t table_len,
-	const struct ec_strvec *strvec)
+		struct ec_parsed *state, const struct ec_strvec *strvec)
 {
 	struct ec_completed *completed, *child_completed;
 	struct ec_strvec *childvec = NULL;
-	struct ec_parsed *parsed;
 	unsigned int i;
+	int ret;
 
 	completed = ec_completed();
 	if (completed == NULL)
@@ -116,41 +116,43 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 	 */
 
 	/* first, try to complete with the first node of the table */
-	child_completed = ec_node_complete_strvec(table[0], strvec);
+	child_completed = ec_node_complete_child(table[0], state, strvec);
 	if (child_completed == NULL)
 		goto fail;
+
 	ec_completed_merge(completed, child_completed);
 	child_completed = NULL;
 
-	/* then, if the node matches the beginning of the strvec, try to
-	 * complete the rest */
+	/* then, if the first node of the table matches the beginning of the
+	 * strvec, try to complete the rest */
 	for (i = 0; i < ec_strvec_len(strvec); i++) {
 		childvec = ec_strvec_ndup(strvec, 0, i);
 		if (childvec == NULL)
 			goto fail;
 
-		parsed = ec_node_parse_strvec(table[0], childvec);
-		if (parsed == NULL)
+		ret = ec_node_parse_child(table[0], state, childvec);
+		if (ret < 0 && ret != EC_PARSED_NOMATCH)
 			goto fail;
 
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (!ec_parsed_matches(parsed) || ec_parsed_len(parsed) != i) {
-			ec_parsed_free(parsed);
-			parsed = NULL;
+		if ((unsigned int)ret != i) {
+			if (ret != EC_PARSED_NOMATCH)
+				ec_parsed_del_last_child(state);
 			continue;
 		}
-		ec_parsed_free(parsed);
-		parsed = NULL;
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
-		if (childvec == NULL)
+		if (childvec == NULL) {
+			ec_parsed_del_last_child(state);
 			goto fail;
+		}
 
 		child_completed = __ec_node_seq_complete(&table[1],
 							table_len - 1,
-							childvec);
+							state, childvec);
+		ec_parsed_del_last_child(state);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
@@ -165,18 +167,19 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 
 fail:
 	ec_strvec_free(childvec);
-	ec_parsed_free(parsed);
 	ec_completed_free(child_completed);
 	ec_completed_free(completed);
 	return NULL;
 }
 
-static struct ec_completed *ec_node_seq_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+static struct ec_completed *
+ec_node_seq_complete(const struct ec_node *gen_node,
+		struct ec_parsed *state,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
 
-	return __ec_node_seq_complete(node->table, node->len, strvec);
+	return __ec_node_seq_complete(node->table, node->len, state, strvec);
 }
 
 static void ec_node_seq_free_priv(struct ec_node *gen_node)

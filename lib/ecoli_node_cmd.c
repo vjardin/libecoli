@@ -172,15 +172,25 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 		ec_node_free(in2);
 		*result = out;
 	} else if (!strcmp(ec_strvec_val(vec, 0), ",")) {
-		out = EC_NODE_SUBSET(NULL, ec_node_clone(in1), ec_node_clone(in2));
-		if (out == NULL)
-			return -EINVAL;
-		ec_node_free(in1);
-		ec_node_free(in2);
-		*result = out;
+		if (!strcmp(in2->type->name, "subset")) {
+			if (ec_node_subset_add(in2, ec_node_clone(in1)) < 0)
+				return -EINVAL;
+			ec_node_free(in1);
+			*result = in2;
+		} else {
+			out = EC_NODE_SUBSET(NULL, ec_node_clone(in1),
+					ec_node_clone(in2));
+			if (out == NULL)
+				return -EINVAL;
+			ec_node_free(in1);
+			ec_node_free(in2);
+			*result = out;
+		}
 	} else {
 		return -EINVAL;
 	}
+
+	printf("eval bin_op out %p\n", *result);
 
 	return 0;
 }
@@ -246,11 +256,12 @@ static int ec_node_cmd_parse(const struct ec_node *gen_node,
 }
 
 static struct ec_completed *ec_node_cmd_complete(const struct ec_node *gen_node,
-	const struct ec_strvec *strvec)
+						struct ec_parsed *state,
+						const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
-	return ec_node_complete_strvec(node->cmd, strvec);
+	return ec_node_complete_child(node->cmd, state, strvec);
 }
 
 static void ec_node_cmd_free_priv(struct ec_node *gen_node)
@@ -486,7 +497,7 @@ static int ec_node_cmd_testcase(void)
 	int ret = 0;
 
 	node = EC_NODE_CMD(NULL,
-		"command [option] (subset1, subset2) x | y",
+		"command [option] (subset1, subset2, subset3) x | y",
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
 	);
