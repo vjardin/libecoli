@@ -38,6 +38,10 @@ struct ec_completed_elt {
 	TAILQ_ENTRY(ec_completed_elt) next;
 	const struct ec_node *node;
 	char *add;
+
+	/* reverse order: [0] = last parsed, [len-1] = root */
+	const struct ec_node **path;
+	size_t pathlen;
 };
 
 TAILQ_HEAD(ec_completed_elt_list, ec_completed_elt);
@@ -67,6 +71,7 @@ struct ec_completed *ec_completed(void);
 
 /* XXX add completion type: full, partial, none */
 int ec_completed_add_elt(struct ec_completed *completed,
+			struct ec_parsed *parsed,
 			const struct ec_node *node, const char *add);
 void ec_completed_elt_free(struct ec_completed_elt *elt);
 void ec_completed_merge(struct ec_completed *completed1,

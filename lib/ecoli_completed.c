@@ -53,27 +53,6 @@ struct ec_completed *ec_completed(void)
 	return completed;
 }
 
-static struct ec_completed_elt *
-ec_completed_elt(const struct ec_node *node, const char *add)
-{
-	struct ec_completed_elt *elt = NULL;
-
-	elt = ec_calloc(1, sizeof(*elt));
-	if (elt == NULL)
-		return NULL;
-
-	elt->node = node;
-	if (add != NULL) {
-		elt->add = ec_strdup(add);
-		if (elt->add == NULL) {
-			ec_completed_elt_free(elt);
-			return NULL;
-		}
-	}
-
-	return elt;
-}
-
 struct ec_completed *
 ec_node_complete_child(struct ec_node *node,
 		struct ec_parsed *state,
@@ -181,7 +160,7 @@ struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
 	if (ec_strvec_len(strvec) != 1)
 		return completed;
 
-	if (ec_completed_add_elt(completed, gen_node, NULL) < 0) {
+	if (ec_completed_add_elt(completed, state, gen_node, NULL) < 0) {
 		ec_completed_free(completed);
 		return NULL;
 	}
@@ -198,6 +177,56 @@ static size_t strcmp_count(const char *s1, const char *s2)
 		i++;
 
 	return i;
+}
+
+static struct ec_completed_elt *
+ec_completed_elt(struct ec_parsed *parsed,
+		const struct ec_node *node, const char *add)
+{
+	struct ec_completed_elt *elt = NULL;
+
+	elt = ec_calloc(1, sizeof(*elt));
+	if (elt == NULL)
+		return NULL;
+
+	if (parsed != NULL) {
+		struct ec_parsed *p;
+		size_t len;
+
+		/* get path len */
+		for (p = parsed, len = 0; p != NULL;
+		     p = ec_parsed_get_parent(p), len++)
+			;
+
+		elt->path = ec_calloc(len, sizeof(*elt->path));
+		if (elt->path == NULL)
+			goto fail;
+
+		elt->pathlen = len;
+
+		/* write path in array */
+		for (p = parsed, len = 0; p != NULL;
+		     p = ec_parsed_get_parent(p), len++)
+			elt->path[len] = p->node;
+	}
+
+	elt->node = node;
+	if (add != NULL) {
+		elt->add = ec_strdup(add);
+		if (elt->add == NULL)
+			goto fail;
+	}
+
+	return elt;
+
+fail:
+	if (elt != NULL) {
+		ec_free(elt->path);
+		ec_free(elt->add);
+	}
+	ec_completed_elt_free(elt);
+
+	return NULL;
 }
 
 static int __ec_completed_add_elt(struct ec_completed *completed,
@@ -222,11 +251,12 @@ static int __ec_completed_add_elt(struct ec_completed *completed,
 }
 
 int ec_completed_add_elt(struct ec_completed *completed,
+			struct ec_parsed *parsed,
 			const struct ec_node *node, const char *add)
 {
 	struct ec_completed_elt *elt;
 
-	elt = ec_completed_elt(node, add);
+	elt = ec_completed_elt(parsed, node, add);
 	if (elt == NULL)
 		return -ENOMEM;
 
@@ -236,6 +266,7 @@ int ec_completed_add_elt(struct ec_completed *completed,
 void ec_completed_elt_free(struct ec_completed_elt *elt)
 {
 	ec_free(elt->add);
+	ec_free(elt->path);
 	ec_free(elt);
 }
 
@@ -341,11 +372,10 @@ const struct ec_completed_elt *ec_completed_iter_next(
 		return NULL;
 
 	do {
-		if (iter->cur == NULL) {
+		if (iter->cur == NULL)
 			iter->cur = TAILQ_FIRST(&iter->completed->elts);
-		} else {
+		else
 			iter->cur = TAILQ_NEXT(iter->cur, next);
-		}
 
 		if (iter->cur == NULL)
 			break;

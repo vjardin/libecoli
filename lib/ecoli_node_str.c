@@ -95,7 +95,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	else
 		add = node->string + n;
 
-	if (ec_completed_add_elt(completed, gen_node, add) < 0) {
+	if (ec_completed_add_elt(completed, state, gen_node, add) < 0) {
 		ec_completed_free(completed);
 		return NULL;
 	}
@@ -164,6 +164,7 @@ fail:
 	return NULL;
 }
 
+/* LCOV_EXCL_START */
 static int ec_node_str_testcase(void)
 {
 	struct ec_node *node;
@@ -235,6 +236,7 @@ static int ec_node_str_testcase(void)
 
 	return ret;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_str_test = {
 	.name = "node_str",

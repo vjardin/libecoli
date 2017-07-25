@@ -216,6 +216,7 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 	return ret;
 }
 
+/* LCOV_EXCL_START */
 static int ec_node_expr_testcase(void)
 {
 	struct ec_node *node = NULL, *lex_node = NULL;
@@ -298,6 +299,7 @@ fail:
 	ec_node_free(node);
 	return -1;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_expr_test = {
 	.name = "expr",

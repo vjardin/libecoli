@@ -171,6 +171,7 @@ struct ec_node *ec_node_once(const char *id, struct ec_node *child)
 	return gen_node;
 }
 
+/* LCOV_EXCL_START */
 static int ec_node_once_testcase(void)
 {
 	struct ec_node *node;
@@ -223,6 +224,7 @@ static int ec_node_once_testcase(void)
 #endif
 	return ret;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_once_test = {
 	.name = "node_once",

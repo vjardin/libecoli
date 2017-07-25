@@ -89,9 +89,12 @@ void ec_parsed_add_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
 void ec_parsed_del_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
+
 struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed);
+struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed);
 struct ec_parsed *ec_parsed_get_last_child(struct ec_parsed *parsed);
 void ec_parsed_del_last_child(struct ec_parsed *parsed);
+int ec_parsed_get_path(struct ec_parsed *parsed, struct ec_node **path);
 
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
 

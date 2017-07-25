@@ -139,6 +139,7 @@ long long ec_node_int_getval(struct ec_node *gen_node, const char *str)
 	return val;
 }
 
+/* LCOV_EXCL_START */
 static int ec_node_int_testcase(void)
 {
 	struct ec_parsed *p;
@@ -220,6 +221,7 @@ static int ec_node_int_testcase(void)
 
 	return ret;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_int_test = {
 	.name = "node_int",

@@ -101,21 +101,28 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_tk_help(const struct ec_node *node)
+static char *get_node_help(const struct ec_completed_elt *elt)
 {
-	const struct ec_node *node2;
+	const struct ec_node *node;
 	char *help = NULL;
-	char *tk_help = NULL;
+	const char *node_help = NULL;
+	const char *node_desc = NULL;
+	size_t i;
 
-	for (node2 = node;
-	     node2 != NULL && tk_help == NULL;
-	     node2 = ec_node_parent(node2))
-		tk_help = ec_keyval_get(ec_node_attrs(node2), "help");
+	for (i = 0; i < elt->pathlen; i++) {
+		node = elt->path[i];
+		if (node_help == NULL)
+			node_help = ec_keyval_get(ec_node_attrs(node), "help");
+		if (node_desc == NULL)
+			node_desc = ec_node_desc(node);
+	}
 
-	if (tk_help == NULL)
-		tk_help = "";
+	if (node_help == NULL)
+		node_help = "";
+	if (node_desc == NULL)
+		return NULL;
 
-	if (asprintf(&help, "%-20s %s", ec_node_desc(node), tk_help) < 0)
+	if (asprintf(&help, "%-20s %s", node_desc, node_help) < 0)
 		return NULL;
 
 	return help;
@@ -169,7 +176,7 @@ static int show_help(int ignore, int invoking_key)
 	for (i = match + 1, elt = ec_completed_iter_next(iter);
 	     i < count + match + 1 && elt != NULL;
 	     i++, elt = ec_completed_iter_next(iter)) {
-		helps[i] = get_tk_help(elt->node);
+		helps[i] = get_node_help(elt);
 	}
 
 	ec_completed_free(c);
@@ -198,7 +205,7 @@ static int create_commands(void)
 	cmd = EC_NODE_SEQ(NULL,
 		ec_node_str(NULL, "hello"),
 		EC_NODE_OR("name",
-			ec_node_str(NULL, "john"),
+			ec_node_str("john", "john"),
 			ec_node_str(NULL, "johnny"),
 			ec_node_str(NULL, "mike")
 		),
@@ -208,6 +215,8 @@ static int create_commands(void)
 		goto fail;
 	ec_keyval_set(ec_node_attrs(cmd), "help",
 		"say hello to someone several times", NULL);
+	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "john")),
+		"help", "specific help for john", NULL);
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")),
 		"help", "the name of the person", NULL);
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "int")),
@@ -216,12 +225,17 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_CMD(NULL, "good morning bob|bobby|michael [count]",
+	cmd = EC_NODE_CMD(NULL, "good morning name [count]",
+			EC_NODE_CMD("name", "bob|bobby|michael"),
 			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
 		goto fail;
 	ec_keyval_set(ec_node_attrs(cmd), "help",
 		"say good morning to someone several times", NULL);
+	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")), "help",
+		"the person to greet", NULL);
+	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "count")), "help",
+		"how many times to greet", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
@@ -236,11 +250,10 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_CMD(NULL, "sell vegetable",
-			ec_node_many("vegetable",
+	cmd = EC_NODE_CMD(NULL, "eat vegetables",
+			ec_node_many("vegetables",
 				EC_NODE_OR(NULL,
-					ec_node_once(NULL,
-						ec_node_str(NULL, "potatoes")),
+					ec_node_str(NULL, "potatoes"),
 					ec_node_once(NULL,
 						ec_node_str(NULL, "carrots")),
 					ec_node_once(NULL,
@@ -249,7 +262,7 @@ static int create_commands(void)
 	if (cmd == NULL)
 		goto fail;
 	ec_keyval_set(ec_node_attrs(cmd), "help",
-		"sell vegetables", NULL);
+		"eat vegetables (take some more potatoes)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
@@ -257,7 +270,7 @@ static int create_commands(void)
 	cmd = EC_NODE_SEQ(NULL,
 		ec_node_str(NULL, "bye")
 	);
-	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye to someone", NULL);
+	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 

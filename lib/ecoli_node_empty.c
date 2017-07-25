@@ -62,6 +62,7 @@ static struct ec_node_type ec_node_empty_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_empty_type);
 
+/* LCOV_EXCL_START */
 static int ec_node_empty_testcase(void)
 {
 	struct ec_node *node;
@@ -95,6 +96,7 @@ static int ec_node_empty_testcase(void)
 
 	return ret;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_empty_test = {
 	.name = "node_empty",

@@ -28,7 +28,6 @@
 #ifndef ECOLI_STRVEC_
 #define ECOLI_STRVEC_
 
-#include <sys/types.h>
 #include <stdio.h>
 
 struct ec_strvec *ec_strvec(void);

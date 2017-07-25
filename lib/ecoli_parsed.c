@@ -274,6 +274,14 @@ struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed)
 	return parsed;
 }
 
+struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed)
+{
+	if (parsed == NULL)
+		return NULL;
+
+	return parsed->parent;
+}
+
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	const char *id)
 {

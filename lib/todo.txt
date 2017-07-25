@@ -2,15 +2,16 @@ tk_cmd
 ======
 
 X evaluate expression tree in ec_tk_expr
-- cmd token
+X cmd token
 - example
 X tk_re
 
-cleanup
-=======
+cleanup / rework
+================
 
 - check XXX in code
 X remove the _new() functions
+- iterate children nodes without chaining them
 - add a tk vector type: will be used in several nodes (ex: or, seq, ...)
 - check allocation model everywhere
 - checkpatch?
@@ -25,17 +26,21 @@ X split ecoli_tk.h
 - cache results when appropriate?
 - size_t or unsigned int?
 X rename:
-  - ec_tk -> ec_node
-  - ec_parsed_tk -> ec_parsed
-  - ec_completed_tk -> ec_completed
-  - tk, gen_tk, token, ... -> node
-  - tokens -> input_str / input_strvec ?
+  X ec_tk -> ec_node
+  X ec_parsed_tk -> ec_parsed
+  X ec_completed_tk -> ec_completed
+  X tk, gen_tk, token, ... -> node
+  X tokens -> input_str / input_strvec ?
 - use is_err() or errno for funcs returning ptrs
+- save node path in completion to fix help string
+- code coverage
+- try to hide structures
 
 dependencies
 ============
 
-- pass the current parsed state when parsing/completing
+X pass the current parsed state when parsing/completing
+X new node "once"
 - new node "condition"
 
 logs

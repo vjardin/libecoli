@@ -187,6 +187,7 @@ void ec_keyval_dump(const struct ec_keyval *keyval, FILE *out)
 	}
 }
 
+/* LCOV_EXCL_START */
 static int ec_keyval_testcase(void)
 {
 	struct ec_keyval *keyval;
@@ -226,6 +227,7 @@ static int ec_keyval_testcase(void)
 
 	return 0;
 }
+/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_keyval_test = {
 	.name = "keyval",

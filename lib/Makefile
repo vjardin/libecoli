@@ -30,8 +30,16 @@ include $(ECOLI)/mk/ecoli-pre.mk
 # output path with trailing slash
 O ?= build/
 
+# XXX -O0
 CFLAGS  = -g -O0 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
 CFLAGS += -I.
+
+# XXX coverage
+CFLAGS += --coverage -fprofile-arcs -ftest-coverage
+LDFLAGS += --coverage
+#  rm -rf build; rm -rf result; make && ./build/test
+#  lcov -d build -c -t build/test -o test.info && genhtml -o result test.info
+
 
 srcs :=
 srcs += ecoli_completed.c
@@ -45,6 +53,7 @@ srcs += ecoli_node_cmd.c
 srcs += ecoli_node_empty.c
 srcs += ecoli_node_expr.c
 srcs += ecoli_node_expr_test.c
+srcs += ecoli_node_file.c
 srcs += ecoli_node_int.c
 srcs += ecoli_node_many.c
 srcs += ecoli_node_once.c
@@ -59,6 +68,7 @@ srcs += ecoli_node_str.c
 srcs += ecoli_node_subset.c
 srcs += ecoli_node_weakref.c
 srcs += ecoli_parsed.c
+srcs += ecoli_vec.c
 
 shlib-y-$(O)libecoli.so := $(srcs)
 
