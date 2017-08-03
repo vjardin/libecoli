@@ -77,7 +77,8 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	struct ec_node *node = NULL;
 	char buf[256]; // XXX
 
-	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n", type->name, id);
+	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n",
+		type->name, id);
 
 	node = ec_calloc(1, type->size);
 	if (node == NULL)
@@ -171,6 +172,8 @@ struct ec_keyval *ec_node_attrs(const struct ec_node *node)
 
 const char *ec_node_id(const struct ec_node *node)
 {
+	if (node->id == NULL)
+		return "None";
 	return node->id;
 }
 
@@ -182,13 +185,13 @@ struct ec_node *ec_node_parent(const struct ec_node *node)
 static void __ec_node_dump(FILE *out,
 	const struct ec_node *node, size_t indent)
 {
+	const char *id, *typename, *desc;
 	struct ec_node *child;
 	size_t i;
-	const char *id = "None", *typename = "None";
 
-	if (node->id != NULL)
-		id = node->id;
+	id = ec_node_id(node);
 	typename = node->type->name;
+	desc = ec_node_desc(node);
 
 	/* XXX enhance */
 	for (i = 0; i < indent; i++) {
@@ -198,7 +201,8 @@ static void __ec_node_dump(FILE *out,
 			fprintf(out, "|");
 	}
 
-	fprintf(out, "node_type=%s id=%s\n", typename, id);
+	fprintf(out, "node %p type=%s id=%s desc=%s\n",
+		node, typename, id, desc);
 	TAILQ_FOREACH(child, &node->children, next)
 		__ec_node_dump(out, child, indent + 2);
 }
