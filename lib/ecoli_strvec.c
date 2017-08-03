@@ -161,14 +161,19 @@ void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 	size_t i;
 
 	if (strvec == NULL) {
-		fprintf(out, "empty strvec\n");
+		fprintf(out, "none\n");
 		return;
 	}
 
-	fprintf(out, "strvec:\n");
-	for (i = 0; i < ec_strvec_len(strvec); i++)
-		fprintf(out, "  %zd: %s (refcnt=%d)\n", i,
-			strvec->vec[i]->str, strvec->vec[i]->refcnt);
+	fprintf(out, "strvec (len=%zu) [", strvec->len);
+	for (i = 0; i < ec_strvec_len(strvec); i++) {
+		if (i == 0)
+			fprintf(out, "%s", strvec->vec[i]->str);
+		else
+			fprintf(out, ", %s", strvec->vec[i]->str);
+	}
+	fprintf(out, "]\n");
+
 }
 
 /* XXX test case */
