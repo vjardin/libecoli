@@ -60,6 +60,7 @@ typedef int (*ec_node_parse_t)(const struct ec_node *node,
 typedef struct ec_completed *(*ec_node_complete_t)(const struct ec_node *node,
 						struct ec_parsed *state,
 						const struct ec_strvec *strvec);
+typedef size_t (*ec_node_get_max_parse_len_t)(const struct ec_node *node);
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
 typedef void (*ec_node_init_priv_t)(struct ec_node *);
 typedef void (*ec_node_free_priv_t)(struct ec_node *);
@@ -73,6 +74,7 @@ struct ec_node_type {
 	ec_node_build_t build; /* (re)build the node, called by generic parse */
 	ec_node_parse_t parse;
 	ec_node_complete_t complete;
+	ec_node_get_max_parse_len_t get_max_parse_len;
 	ec_node_desc_t desc;
 	size_t size;
 	ec_node_init_priv_t init_priv;
@@ -131,6 +133,13 @@ struct ec_node *ec_node(const char *typename, const char *id);
 
 struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_node_free(struct ec_node *node);
+
+/**
+ * Get the max len of strvec that can be parsed by this node
+ *
+ * If there is no maximum, return SIZE_MAX.
+ */
+size_t ec_node_get_max_parse_len(const struct ec_node *node);
 
 /* XXX add more accessors */
 struct ec_keyval *ec_node_attrs(const struct ec_node *node);
