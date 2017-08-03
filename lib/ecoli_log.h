@@ -46,7 +46,9 @@ int ec_log_register(ec_log_t usr_log, void *opaque);
 void ec_log_unregister(void);
 
 /* same api than printf */
-int ec_log(unsigned int level, const char *format, ...);
+int ec_log(unsigned int level, const char *format, ...)
+	__attribute__((format(__printf__, 2, 3)));
+
 int ec_vlog(unsigned int level, const char *format, va_list ap);
 
 /* default log handler for the library, use printf */
