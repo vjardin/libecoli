@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
@@ -200,19 +201,7 @@ static void __ec_parsed_dump(FILE *out,
 
 	fprintf(out, "node_type=%s id=%s vec=", typename, id);
 	vec = ec_parsed_strvec(parsed);
-	if (vec == NULL) {
-		fprintf(out, "none\n");
-	} else {
-		for (i = 0; i < ec_strvec_len(vec); i++)
-			fprintf(out, "%s<%s>",
-				i == 0 ? "" : ",",
-				ec_strvec_val(vec, i));
-		// XXX
-		if (!strcmp(typename, "int") || !strcmp(typename, "str"))
-			fprintf(out, "] <<<<<\n");
-		else
-			fprintf(out, "]\n");
-	}
+	ec_strvec_dump(out, vec);
 
 	TAILQ_FOREACH(child, &parsed->children, next)
 		__ec_parsed_dump(out, child, indent + 2);
@@ -241,7 +230,7 @@ void ec_parsed_add_child(struct ec_parsed *parsed,
 	child->parent = parsed;
 }
 
-void ec_parsed_del_child(struct ec_parsed *parsed,
+void ec_parsed_del_child(struct ec_parsed *parsed, // XXX rename del in unlink?
 	struct ec_parsed *child)
 {
 	TAILQ_REMOVE(&parsed->children, child, next);
@@ -254,7 +243,7 @@ ec_parsed_get_last_child(struct ec_parsed *parsed)
 	return TAILQ_LAST(&parsed->children, ec_parsed_list);
 }
 
-void ec_parsed_del_last_child(struct ec_parsed *parsed)
+void ec_parsed_del_last_child(struct ec_parsed *parsed) // rename in free
 {
 	struct ec_parsed *child;
 
