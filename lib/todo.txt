@@ -35,6 +35,10 @@ X rename:
 - save node path in completion to fix help string
 - code coverage
 - try to hide structures
+- anything better than weakref?
+- add get_max_parse_len() for all relevant nodes
+- add ec_node_defaults.[ch] providing usual implementations of node methods
+- use vec for strvec
 
 dependencies
 ============
