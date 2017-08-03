@@ -498,7 +498,7 @@ static int ec_node_cmd_testcase(void)
 	int ret = 0;
 
 	node = EC_NODE_CMD(NULL,
-		"command [option] (subset1, subset2, subset3) x | y",
+		"command [option] (subset1, subset2, subset3) x|y",
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
 	);
