@@ -42,6 +42,7 @@
 static int log_level = EC_LOG_INFO;
 static int alloc_fail_proba = 0;
 static int seed = 0;
+static size_t alloc_success = 0;
 
 static const char ec_short_options[] =
 	"h"  /* help */
@@ -201,6 +202,8 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	ec_log(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p\n",
 		file, line, size, ret);
 
+	if (ret)
+		alloc_success++;
 	return ret;
 }
 
@@ -313,6 +316,8 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 	ec_log(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p\n",
 		file, line, ptr, size, ret);
 
+	if (ret)
+		alloc_success++;
 	return ret;
 }
 
@@ -321,6 +326,8 @@ static int debug_alloc_dump_leaks(void)
 	struct debug_alloc_hdr *hdr;
 	int i;
 	char **buffer;
+
+	ec_log(EC_LOG_INFO, "%zd successful allocations\n", alloc_success);
 
 	if (TAILQ_EMPTY(&debug_alloc_hdr_list))
 		return 0;
