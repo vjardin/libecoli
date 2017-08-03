@@ -201,8 +201,10 @@ static int launch_test(const char *name)
 		}
 	}
 
-	if (name != NULL && count == 0)
+	if (name != NULL && count == 0) {
 		ec_log(EC_LOG_WARNING, "== test %s not found\n", name);
+		ret = -1;
+	}
 
 	return ret;
 }
