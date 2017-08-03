@@ -209,6 +209,7 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	weak = NULL;
 
 	node->child = expr;
+	ec_node_dump(stdout, node->child); //XXX
 
 	return 0;
 
