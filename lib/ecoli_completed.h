@@ -34,8 +34,15 @@
 
 struct ec_node;
 
+enum ec_completed_type {
+	EC_NO_MATCH = 1,
+	EC_MATCH = 2,
+	EC_PARTIAL = 4,
+};
+
 struct ec_completed_elt {
 	TAILQ_ENTRY(ec_completed_elt) next;
+	enum ec_completed_type type;
 	const struct ec_node *node;
 	char *add;
 
@@ -69,10 +76,12 @@ struct ec_completed *ec_node_complete_child(struct ec_node *node,
 
 struct ec_completed *ec_completed(void);
 
-/* XXX add completion type: full, partial, none */
-int ec_completed_add_elt(struct ec_completed *completed,
-			struct ec_parsed *parsed,
+int ec_completed_add_match(struct ec_completed *completed,
+			struct ec_parsed *state,
 			const struct ec_node *node, const char *add);
+int ec_completed_add_no_match(struct ec_completed *completed,
+			struct ec_parsed *state, const struct ec_node *node);
+
 void ec_completed_elt_free(struct ec_completed_elt *elt);
 void ec_completed_merge(struct ec_completed *completed1,
 	struct ec_completed *completed2);
@@ -87,24 +96,19 @@ struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
 const char *ec_completed_smallest_start(
 	const struct ec_completed *completed);
 
-enum ec_completed_filter_flags {
-	EC_MATCH = 1,
-	EC_NO_MATCH = 2,
-};
-
 unsigned int ec_completed_count(
 	const struct ec_completed *completed,
-	enum ec_completed_filter_flags flags);
+	enum ec_completed_type flags);
 
 struct ec_completed_iter {
-	enum ec_completed_filter_flags flags;
+	enum ec_completed_type type;
 	const struct ec_completed *completed;
 	const struct ec_completed_elt *cur;
 };
 
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
-	enum ec_completed_filter_flags flags);
+	enum ec_completed_type type);
 
 const struct ec_completed_elt *ec_completed_iter_next(
 	struct ec_completed_iter *iter);

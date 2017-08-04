@@ -143,31 +143,6 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 	return NULL;
 }
 
-/* default completion function: return a no-match element */
-struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-					struct ec_parsed *state,
-					const struct ec_strvec *strvec)
-{
-	struct ec_completed *completed;
-
-	(void)strvec;
-	(void)state;
-
-	completed = ec_completed();
-	if (completed == NULL)
-		return NULL;
-
-	if (ec_strvec_len(strvec) != 1)
-		return completed;
-
-	if (ec_completed_add_elt(completed, state, gen_node, NULL) < 0) {
-		ec_completed_free(completed);
-		return NULL;
-	}
-
-	return completed;
-}
-
 /* count the number of identical chars at the beginning of 2 strings */
 static size_t strcmp_count(const char *s1, const char *s2)
 {
@@ -180,7 +155,7 @@ static size_t strcmp_count(const char *s1, const char *s2)
 }
 
 static struct ec_completed_elt *
-ec_completed_elt(struct ec_parsed *parsed,
+ec_completed_elt(enum ec_completed_type type, struct ec_parsed *state,
 		const struct ec_node *node, const char *add)
 {
 	struct ec_completed_elt *elt = NULL;
@@ -189,12 +164,13 @@ ec_completed_elt(struct ec_parsed *parsed,
 	if (elt == NULL)
 		return NULL;
 
-	if (parsed != NULL) {
+	/* XXX can state be NULL? */
+	if (state != NULL) {
 		struct ec_parsed *p;
 		size_t len;
 
 		/* get path len */
-		for (p = parsed, len = 0; p != NULL;
+		for (p = state, len = 0; p != NULL;
 		     p = ec_parsed_get_parent(p), len++)
 			;
 
@@ -205,11 +181,12 @@ ec_completed_elt(struct ec_parsed *parsed,
 		elt->pathlen = len;
 
 		/* write path in array */
-		for (p = parsed, len = 0; p != NULL;
+		for (p = state, len = 0; p != NULL;
 		     p = ec_parsed_get_parent(p), len++)
 			elt->path[len] = p->node;
 	}
 
+	elt->type = type;
 	elt->node = node;
 	if (add != NULL) {
 		elt->add = ec_strdup(add);
@@ -229,38 +206,66 @@ fail:
 	return NULL;
 }
 
-static int __ec_completed_add_elt(struct ec_completed *completed,
+static int ec_completed_add_elt(struct ec_completed *completed,
 				struct ec_completed_elt *elt)
 {
 	size_t n;
 
-	TAILQ_INSERT_TAIL(&completed->elts, elt, next);
-	completed->count++;
 	if (elt->add != NULL) {
-		completed->count_match++;
 		if (completed->smallest_start == NULL) {
 			completed->smallest_start = ec_strdup(elt->add);
+			if (completed->smallest_start == NULL)
+				return -ENOMEM;
 		} else {
 			n = strcmp_count(elt->add,
 				completed->smallest_start);
 			completed->smallest_start[n] = '\0';
 		}
+		completed->count_match++;
+	}
+	TAILQ_INSERT_TAIL(&completed->elts, elt, next);
+	completed->count++;
+
+	return 0;
+}
+
+int ec_completed_add_match(struct ec_completed *completed,
+			struct ec_parsed *state,
+			const struct ec_node *node, const char *add)
+{
+	struct ec_completed_elt *elt;
+	int ret;
+
+	elt = ec_completed_elt(EC_MATCH, state, node, add);
+	if (elt == NULL)
+		return -ENOMEM;
+
+	ret = ec_completed_add_elt(completed, elt);
+	if (ret < 0) {
+		ec_completed_elt_free(elt);
+		return ret;
 	}
 
 	return 0;
 }
 
-int ec_completed_add_elt(struct ec_completed *completed,
-			struct ec_parsed *parsed,
-			const struct ec_node *node, const char *add)
+int ec_completed_add_no_match(struct ec_completed *completed,
+			struct ec_parsed *state, const struct ec_node *node)
 {
 	struct ec_completed_elt *elt;
+	int ret;
 
-	elt = ec_completed_elt(parsed, node, add);
+	elt = ec_completed_elt(EC_NO_MATCH, state, node, NULL);
 	if (elt == NULL)
 		return -ENOMEM;
 
-	return __ec_completed_add_elt(completed, elt);
+	ret = ec_completed_add_elt(completed, elt);
+	if (ret < 0) {
+		ec_completed_elt_free(elt);
+		return ret;
+	}
+
+	return 0;
 }
 
 void ec_completed_elt_free(struct ec_completed_elt *elt)
@@ -268,6 +273,31 @@ void ec_completed_elt_free(struct ec_completed_elt *elt)
 	ec_free(elt->add);
 	ec_free(elt->path);
 	ec_free(elt);
+}
+
+/* default completion function: return a no-match element */
+struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
+					struct ec_parsed *state,
+					const struct ec_strvec *strvec)
+{
+	struct ec_completed *completed;
+
+	(void)strvec;
+	(void)state;
+
+	completed = ec_completed();
+	if (completed == NULL)
+		return NULL;
+
+	if (ec_strvec_len(strvec) != 1)
+		return completed;
+
+	if (ec_completed_add_no_match(completed, state, gen_node) < 0) {
+		ec_completed_free(completed);
+		return NULL;
+	}
+
+	return completed;
 }
 
 void ec_completed_merge(struct ec_completed *completed1,
@@ -281,7 +311,7 @@ void ec_completed_merge(struct ec_completed *completed1,
 	while (!TAILQ_EMPTY(&completed2->elts)) {
 		elt = TAILQ_FIRST(&completed2->elts);
 		TAILQ_REMOVE(&completed2->elts, elt, next);
-		__ec_completed_add_elt(completed1, elt);
+		ec_completed_add_elt(completed1, elt);
 	}
 
 	ec_completed_free(completed2);
@@ -333,16 +363,16 @@ const char *ec_completed_smallest_start(
 
 unsigned int ec_completed_count(
 	const struct ec_completed *completed,
-	enum ec_completed_filter_flags flags)
+	enum ec_completed_type type)
 {
 	unsigned int count = 0;
 
 	if (completed == NULL)
 		return count;
 
-	if (flags & EC_MATCH)
+	if (type & EC_MATCH)
 		count += completed->count_match;
-	if (flags & EC_NO_MATCH)
+	if (type & EC_NO_MATCH)
 		count += (completed->count - completed->count_match); //XXX
 
 	return count;
@@ -350,7 +380,7 @@ unsigned int ec_completed_count(
 
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
-	enum ec_completed_filter_flags flags)
+	enum ec_completed_type type)
 {
 	struct ec_completed_iter *iter;
 
@@ -359,7 +389,7 @@ ec_completed_iter(struct ec_completed *completed,
 		return NULL;
 
 	iter->completed = completed;
-	iter->flags = flags;
+	iter->type = type;
 	iter->cur = NULL;
 
 	return iter;
@@ -381,11 +411,11 @@ const struct ec_completed_elt *ec_completed_iter_next(
 			break;
 
 		if (iter->cur->add == NULL &&
-				(iter->flags & EC_NO_MATCH))
+				(iter->type & EC_NO_MATCH))
 			break;
 
 		if (iter->cur->add != NULL &&
-				(iter->flags & EC_MATCH))
+				(iter->type & EC_MATCH))
 			break;
 
 	} while (iter->cur != NULL);

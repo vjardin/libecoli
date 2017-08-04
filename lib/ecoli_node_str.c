@@ -72,7 +72,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
 	struct ec_completed *completed;
-	const char *str, *add;
+	const char *str;
 	size_t n = 0;
 
 	(void)state;
@@ -90,14 +90,17 @@ ec_node_str_complete(const struct ec_node *gen_node,
 			break;
 	}
 
-	if (str[n] != '\0')
-		add = NULL;
-	else
-		add = node->string + n;
-
-	if (ec_completed_add_elt(completed, state, gen_node, add) < 0) {
-		ec_completed_free(completed);
-		return NULL;
+	if (str[n] != '\0') {
+		if (ec_completed_add_no_match(completed, state, gen_node) < 0) {
+			ec_completed_free(completed);
+			return NULL;
+		}
+	} else {
+		if (ec_completed_add_match(completed, state, gen_node,
+						node->string + n) < 0) {
+			ec_completed_free(completed);
+			return NULL;
+		}
 	}
 
 	return completed;
