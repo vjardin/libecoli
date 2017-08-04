@@ -97,10 +97,17 @@ static int ec_node_int_parse(const struct ec_node *gen_node,
 	return 1;
 }
 
+static size_t ec_node_int_get_max_parse_len(const struct ec_node *gen_node)
+{
+	(void)gen_node;
+	return 1;
+}
+
 static struct ec_node_type ec_node_int_type = {
 	.name = "int",
 	.parse = ec_node_int_parse,
 	.complete = ec_node_default_complete,
+	.get_max_parse_len = ec_node_int_get_max_parse_len,
 	.size = sizeof(struct ec_node_int),
 };
 
