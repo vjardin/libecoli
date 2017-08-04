@@ -55,7 +55,7 @@ ec_node_str_parse(const struct ec_node *gen_node,
 
 	(void)state;
 
-	if (ec_strvec_len(strvec) != 1)
+	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSED_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
