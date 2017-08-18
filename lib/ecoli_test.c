@@ -101,7 +101,7 @@ out:
 int ec_test_check_complete(struct ec_node *tk, ...)
 {
 	struct ec_completed *c = NULL;
-	struct ec_completed_elt *elt;
+	struct ec_completed_item *item;
 	struct ec_strvec *vec = NULL;
 	const char *s, *expected;
 	int ret = 0;
@@ -140,13 +140,13 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		}
 
 		count++;
-		TAILQ_FOREACH(elt, &c->elts, next) {
+		TAILQ_FOREACH(item, &c->items, next) {
 			/* only check matching completions */
-			if (elt->add != NULL && strcmp(elt->add, s) == 0)
+			if (item->add != NULL && strcmp(item->add, s) == 0)
 				break;
 		}
 
-		if (elt == NULL) {
+		if (item == NULL) {
 			ec_log(EC_LOG_ERR,
 				"completion <%s> not in list\n", s);
 			ret = -1;

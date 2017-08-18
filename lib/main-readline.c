@@ -54,7 +54,7 @@ static char *my_completion_entry(const char *s, int state)
 {
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
-	static const struct ec_completed_elt *elt;
+	static const struct ec_completed_item *item;
 	char *out_string;
 
 
@@ -79,11 +79,11 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 	}
 
-	elt = ec_completed_iter_next(iter);
-	if (elt == NULL)
+	item = ec_completed_iter_next(iter);
+	if (item == NULL)
 		return NULL;
 
-	if (asprintf(&out_string, "%s%s", s, elt->add) < 0)
+	if (asprintf(&out_string, "%s%s", s, item->add) < 0)
 		return NULL;
 
 	return out_string;
@@ -101,7 +101,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_elt *elt)
+static char *get_node_help(const struct ec_completed_item *item)
 {
 	const struct ec_node *node;
 	char *help = NULL;
@@ -109,8 +109,8 @@ static char *get_node_help(const struct ec_completed_elt *elt)
 	const char *node_desc = NULL;
 	size_t i;
 
-	for (i = 0; i < elt->pathlen; i++) {
-		node = elt->path[i];
+	for (i = 0; i < item->pathlen; i++) {
+		node = item->path[i];
 		if (node_help == NULL)
 			node_help = ec_keyval_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -130,7 +130,7 @@ static char *get_node_help(const struct ec_completed_elt *elt)
 
 static int show_help(int ignore, int invoking_key)
 {
-	const struct ec_completed_elt *elt;
+	const struct ec_completed_item *item;
 	struct ec_completed_iter *iter;
 	struct ec_completed *c;
 	struct ec_parsed *p;
@@ -173,10 +173,10 @@ static int show_help(int ignore, int invoking_key)
 		goto fail;
 
 	/* strangely, rl_display_match_list() expects first index at 1 */
-	for (i = match + 1, elt = ec_completed_iter_next(iter);
-	     i < count + match + 1 && elt != NULL;
-	     i++, elt = ec_completed_iter_next(iter)) {
-		helps[i] = get_node_help(elt);
+	for (i = match + 1, item = ec_completed_iter_next(iter);
+	     i < count + match + 1 && item != NULL;
+	     i++, item = ec_completed_iter_next(iter)) {
+		helps[i] = get_node_help(item);
 	}
 
 	ec_completed_free(c);

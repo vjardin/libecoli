@@ -40,8 +40,8 @@ enum ec_completed_type {
 	EC_PARTIAL = 4,
 };
 
-struct ec_completed_elt {
-	TAILQ_ENTRY(ec_completed_elt) next;
+struct ec_completed_item {
+	TAILQ_ENTRY(ec_completed_item) next;
 	enum ec_completed_type type;
 	const struct ec_node *node;
 	char *add;
@@ -51,17 +51,17 @@ struct ec_completed_elt {
 	size_t pathlen;
 };
 
-TAILQ_HEAD(ec_completed_elt_list, ec_completed_elt);
+TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
 struct ec_completed {
-	struct ec_completed_elt_list elts;
+	struct ec_completed_item_list items;
 	unsigned count;
 	unsigned count_match;
 	char *smallest_start;
 };
 
 /*
- * return a completed object filled with elts
+ * return a completed object filled with items
  * return NULL on error (nomem?)
  */
 struct ec_completed *ec_node_complete(struct ec_node *node,
@@ -82,7 +82,7 @@ int ec_completed_add_match(struct ec_completed *completed,
 int ec_completed_add_no_match(struct ec_completed *completed,
 			struct ec_parsed *state, const struct ec_node *node);
 
-void ec_completed_elt_free(struct ec_completed_elt *elt);
+void ec_completed_item_free(struct ec_completed_item *item);
 void ec_completed_merge(struct ec_completed *completed1,
 	struct ec_completed *completed2);
 void ec_completed_free(struct ec_completed *completed);
@@ -103,14 +103,14 @@ unsigned int ec_completed_count(
 struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
-	const struct ec_completed_elt *cur;
+	const struct ec_completed_item *cur;
 };
 
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_type type);
 
-const struct ec_completed_elt *ec_completed_iter_next(
+const struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter);
 
 void ec_completed_iter_free(struct ec_completed_iter *iter);
