@@ -104,7 +104,7 @@ unsigned int ec_completed_count(
 struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
-	const struct ec_completed_item *cur;
+	const struct ec_completed_item *cur_item;
 };
 
 struct ec_completed_iter *

@@ -391,7 +391,7 @@ ec_completed_iter(struct ec_completed *completed,
 
 	iter->completed = completed;
 	iter->type = type;
-	iter->cur = NULL;
+	iter->cur_item = NULL;
 
 	return iter;
 }
@@ -399,29 +399,31 @@ ec_completed_iter(struct ec_completed *completed,
 const struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter)
 {
-	if (iter->completed == NULL)
+	const struct ec_completed *completed = iter->completed;
+
+	if (completed == NULL)
 		return NULL;
 
 	do {
-		if (iter->cur == NULL)
-			iter->cur = TAILQ_FIRST(&completed->match_items);
+		if (iter->cur_item == NULL)
+			iter->cur_item = TAILQ_FIRST(&completed->match_items);
 		else
-			iter->cur = TAILQ_NEXT(iter->cur, next);
+			iter->cur_item = TAILQ_NEXT(iter->cur_item, next);
 
-		if (iter->cur == NULL)
+		if (iter->cur_item == NULL)
 			break;
 
-		if (iter->cur->add == NULL &&
+		if (iter->cur_item->add == NULL &&
 				(iter->type & EC_NO_MATCH))
 			break;
 
-		if (iter->cur->add != NULL &&
+		if (iter->cur_item->add != NULL &&
 				(iter->type & EC_MATCH))
 			break;
 
-	} while (iter->cur != NULL);
+	} while (iter->cur_item != NULL);
 
-	return iter->cur;
+	return iter->cur_item;
 }
 
 void ec_completed_iter_free(struct ec_completed_iter *iter)
