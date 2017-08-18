@@ -31,7 +31,7 @@ X rename:
   X ec_completed_tk -> ec_completed
   X tk, gen_tk, token, ... -> node
   X tokens -> input_str / input_strvec ?
-- use is_err() or errno for funcs returning ptrs
+- use is_err() or errno for funcs returning ptrs, or use errno for all funcs
 - save node path in completion to fix help string
 - code coverage
 - try to hide structures
