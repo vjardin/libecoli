@@ -54,10 +54,11 @@ struct ec_completed_item {
 TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
 struct ec_completed {
-	struct ec_completed_item_list items;
 	unsigned count;
 	unsigned count_match;
 	char *smallest_start;
+	struct ec_completed_item_list match_items;
+	struct ec_completed_item_list no_match_items;
 };
 
 /*
