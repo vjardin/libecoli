@@ -100,29 +100,24 @@ fail:
 	return ret;
 }
 
-static struct ec_completed *
+static int
 __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
-			struct ec_parsed *state, const struct ec_strvec *strvec)
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
+			const struct ec_strvec *strvec)
 {
-	struct ec_completed *completed, *child_completed;
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
 
-	completed = ec_completed();
-	if (completed == NULL)
-		return NULL;
-
 	/* first, try to complete with the child node */
-	child_completed = ec_node_complete_child(node->child, state, strvec);
-	if (child_completed == NULL)
+	ret = ec_node_complete_child(node->child, completed, parsed, strvec);
+	if (ret < 0)
 		goto fail;
-	ec_completed_merge(completed, child_completed);
-	child_completed = NULL;
 
 	/* we're done, we reached the max number of nodes */
 	if (max == 1)
-		return completed;
+		return 0;
 
 	/* if there is a maximum, decrease it before recursion */
 	if (max != 0)
@@ -135,7 +130,7 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(node->child, state, childvec);
+		ret = ec_node_parse_child(node->child, parsed, childvec);
 		if (ret < 0 && ret != EC_PARSED_NOMATCH)
 			goto fail;
 
@@ -144,46 +139,43 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 
 		if ((unsigned int)ret != i) {
 			if (ret != EC_PARSED_NOMATCH)
-				ec_parsed_del_last_child(state);
+				ec_parsed_del_last_child(parsed);
 			continue;
 		}
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
 		if (childvec == NULL) {
-			ec_parsed_del_last_child(state);
+			ec_parsed_del_last_child(parsed);
 			goto fail;
 		}
 
-		child_completed = __ec_node_many_complete(node, max,
-							state, childvec);
-		ec_parsed_del_last_child(state);
+		ret = __ec_node_many_complete(node, max, completed,
+					parsed, childvec);
+		ec_parsed_del_last_child(parsed);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (child_completed == NULL)
+		if (ret < 0)
 			goto fail;
-
-		ec_completed_merge(completed, child_completed);
-		child_completed = NULL;
 	}
 
-	return completed;
+	return 0;
 
 fail:
 	ec_strvec_free(childvec);
-	ec_completed_free(child_completed);
-	ec_completed_free(completed);
-	return NULL;
+	return -1;
 }
 
-static struct ec_completed *
+static int
 ec_node_many_complete(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_completed *completed,
+		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_many *node = (struct ec_node_many *)gen_node;
 
-	return __ec_node_many_complete(node, node->max,	state, strvec);
+	return __ec_node_many_complete(node, node->max,	completed,
+				parsed, strvec);
 }
 
 static void ec_node_many_free_priv(struct ec_node *gen_node)

@@ -173,14 +173,13 @@ ec_node_subset_parse(const struct ec_node *gen_node,
 	return ret;
 }
 
-static struct ec_completed *
+static int
 __ec_node_subset_complete(struct ec_node **table, size_t table_len,
-			struct ec_parsed *state, const struct ec_strvec *strvec)
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
+			const struct ec_strvec *strvec)
 {
-	struct ec_completed *completed = NULL;
-	struct ec_completed *child_completed = NULL;
 	struct ec_strvec *childvec = NULL;
-	struct ec_parsed *parsed = NULL;
 	struct ec_node *save;
 	size_t i, len;
 	int ret;
@@ -194,23 +193,15 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 	 *   + __subset_complete([a, b], childvec) if c matches
 	 */
 
-	completed = ec_completed();
-	if (completed == NULL)
-		goto fail;
-
 	/* first, try to complete with each node of the table */
 	for (i = 0; i < table_len; i++) {
 		if (table[i] == NULL)
 			continue;
 
-		child_completed = ec_node_complete_child(table[i],
-			state, strvec);
-
-		if (child_completed == NULL)
+		ret = ec_node_complete_child(table[i],
+					completed, parsed, strvec);
+		if (ret < 0)
 			goto fail;
-
-		ec_completed_merge(completed, child_completed);
-		child_completed = NULL;
 	}
 
 	/* then, if a node matches, advance in strvec and try to complete with
@@ -219,7 +210,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 		if (table[i] == NULL)
 			continue;
 
-		ret = ec_node_parse_child(table[i], state, strvec);
+		ret = ec_node_parse_child(table[i], parsed, strvec);
 		if (ret == EC_PARSED_NOMATCH)
 			continue;
 		else if (ret < 0)
@@ -229,46 +220,39 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 		childvec = ec_strvec_ndup(strvec, len,
 					ec_strvec_len(strvec) - len);
 		if (childvec == NULL) {
-			ec_parsed_del_last_child(state);
+			ec_parsed_del_last_child(parsed);
 			goto fail;
 		}
 
 		save = table[i];
 		table[i] = NULL;
-		child_completed = __ec_node_subset_complete(table, table_len,
-							state, childvec);
+		ret = __ec_node_subset_complete(table, table_len,
+						completed, parsed, childvec);
 		table[i] = save;
 		ec_strvec_free(childvec);
 		childvec = NULL;
-		ec_parsed_del_last_child(state);
+		ec_parsed_del_last_child(parsed);
 
-		if (child_completed == NULL)
+		if (ret < 0)
 			goto fail;
-
-		ec_completed_merge(completed, child_completed);
-		child_completed = NULL;
-
-		ec_parsed_free(parsed);
-		parsed = NULL;
 	}
 
-	return completed;
-fail:
-	ec_parsed_free(parsed);
-	ec_completed_free(child_completed);
-	ec_completed_free(completed);
+	return 0;
 
-	return NULL;
+fail:
+	return -1;
 }
 
-static struct ec_completed *
+static int
 ec_node_subset_complete(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
 
-	return __ec_node_subset_complete(node->table, node->len, state, strvec);
+	return __ec_node_subset_complete(node->table, node->len, completed,
+					parsed, strvec);
 }
 
 static void ec_node_subset_free_priv(struct ec_node *gen_node)

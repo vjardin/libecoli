@@ -58,14 +58,15 @@ ec_node_weakref_parse(const struct ec_node *gen_node,
 	return ec_node_parse_child(node->child, state, strvec);
 }
 
-static struct ec_completed *
+static int
 ec_node_weakref_complete(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_weakref *node = (struct ec_node_weakref *)gen_node;
 
-	return ec_node_complete_child(node->child, state, strvec);
+	return ec_node_complete_child(node->child, completed, parsed, strvec);
 }
 
 static struct ec_node_type ec_node_weakref_type = {

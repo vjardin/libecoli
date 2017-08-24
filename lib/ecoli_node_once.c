@@ -85,36 +85,28 @@ ec_node_once_parse(const struct ec_node *gen_node,
 	return ec_node_parse_child(node->child, state, strvec);
 }
 
-static struct ec_completed *
+static int
 ec_node_once_complete(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_completed *completed,
+		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
-	struct ec_completed *completed = NULL, *child_completed = NULL;
 	unsigned int count;
-
-	completed = ec_completed();
-	if (completed == NULL)
-		goto fail;
+	int ret;
 
 	/* count the number of occurences of the node: if already parsed,
 	 * do not match
 	 */
-	count = count_node(ec_parsed_get_root(state), node->child); //XXX
+	count = count_node(ec_parsed_get_root(parsed), node->child); //XXX
 	if (count > 0)
-		return completed;
+		return 0;
 
-	child_completed = ec_node_complete_child(node->child, state, strvec);
-	if (child_completed == NULL)
-		goto fail;
+	ret = ec_node_complete_child(node->child, completed, parsed, strvec);
+	if (ret < 0)
+		return ret;
 
-	ec_completed_merge(completed, child_completed);
-	return completed;
-
-fail:
-	ec_completed_free(completed);
-	return NULL;
+	return 0;
 }
 
 static void ec_node_once_free_priv(struct ec_node *gen_node)

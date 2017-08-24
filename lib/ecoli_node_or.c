@@ -67,30 +67,24 @@ ec_node_or_parse(const struct ec_node *gen_node,
 	return EC_PARSED_NOMATCH;
 }
 
-static struct ec_completed *
+static int
 ec_node_or_complete(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_completed *completed,
+		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
-	struct ec_completed *completed, *child_completed;
+	int ret;
 	size_t n;
 
-	completed = ec_completed();
-	if (completed == NULL)
-		return NULL;
-
 	for (n = 0; n < node->len; n++) {
-		child_completed = ec_node_complete_child(node->table[n],
-			state, strvec);
-
-		if (child_completed == NULL) // XXX fail instead?
-			continue;
-
-		ec_completed_merge(completed, child_completed);
+		ret = ec_node_complete_child(node->table[n],
+					completed, parsed, strvec);
+		if (ret < 0)
+			return ret;
 	}
 
-	return completed;
+	return 0;
 }
 
 static size_t ec_node_or_get_max_parse_len(const struct ec_node *gen_node)

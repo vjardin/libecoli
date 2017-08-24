@@ -79,11 +79,11 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 	}
 
-	item = ec_completed_iter_next(iter);
-	if (item == NULL)
+	elt = ec_completed_iter_next(iter);
+	if (elt == NULL)
 		return NULL;
 
-	if (asprintf(&out_string, "%s%s", s, item->add) < 0)
+	if (asprintf(&out_string, "%s%s", s, elt->add) < 0)
 		return NULL;
 
 	return out_string;
@@ -101,7 +101,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_item *item)
+static char *get_node_help(const struct ec_completed_elt *elt)
 {
 	const struct ec_node *node;
 	char *help = NULL;
@@ -109,8 +109,8 @@ static char *get_node_help(const struct ec_completed_item *item)
 	const char *node_desc = NULL;
 	size_t i;
 
-	for (i = 0; i < item->pathlen; i++) {
-		node = item->path[i];
+	for (i = 0; i < elt->pathlen; i++) {
+		node = elt->path[i];
 		if (node_help == NULL)
 			node_help = ec_keyval_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)

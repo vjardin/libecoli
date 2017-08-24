@@ -35,9 +35,9 @@
 struct ec_node;
 
 enum ec_completed_type {
-	EC_NO_MATCH = 1,
-	EC_MATCH = 2,
-	EC_PARTIAL = 4,
+	EC_NO_MATCH,
+	EC_MATCH,
+	EC_PARTIAL,
 };
 
 struct ec_completed_item {
@@ -77,17 +77,21 @@ struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	const struct ec_strvec *strvec);
 
 /* internal: used by nodes */
-struct ec_completed *ec_node_complete_child(struct ec_node *node,
-					struct ec_parsed *state,
-					const struct ec_strvec *strvec);
+int ec_node_complete_child(struct ec_node *node,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed_state,
+			const struct ec_strvec *strvec);
 
 struct ec_completed *ec_completed(void);
 
 int ec_completed_add_match(struct ec_completed *completed,
 			struct ec_parsed *state,
 			const struct ec_node *node, const char *add);
-int ec_completed_add_no_match(struct ec_completed *completed,
+int ec_completed_add_node(struct ec_completed *completed,
 			struct ec_parsed *state, const struct ec_node *node);
+int ec_completed_add_partial(struct ec_completed *completed,
+			struct ec_parsed *state, const struct ec_node *node,
+			const char *add);
 
 void ec_completed_item_free(struct ec_completed_item *item);
 void ec_completed_merge(struct ec_completed *completed1,
@@ -95,9 +99,11 @@ void ec_completed_merge(struct ec_completed *completed1,
 void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
-struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-					struct ec_parsed *state,
-					const struct ec_strvec *strvec);
+int
+ec_node_default_complete(const struct ec_node *gen_node,
+			struct ec_completed *completed,
+			struct ec_parsed *state,
+			const struct ec_strvec *strvec);
 
 /* cannot return NULL */
 const char *ec_completed_smallest_start(

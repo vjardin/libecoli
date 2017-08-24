@@ -75,13 +75,15 @@ static int ec_node_expr_parse(const struct ec_node *gen_node,
 	return ec_node_parse_child(node->child, state, strvec);
 }
 
-static struct ec_completed *ec_node_expr_complete(const struct ec_node *gen_node,
-						struct ec_parsed *state,
-						const struct ec_strvec *strvec)
+static int
+ec_node_expr_complete(const struct ec_node *gen_node,
+		struct ec_completed *completed,
+		struct ec_parsed *parsed,
+		const struct ec_strvec *strvec)
 {
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 
-	return ec_node_complete_child(node->child, state, strvec);
+	return ec_node_complete_child(node->child, completed, parsed, strvec);
 }
 
 static void ec_node_expr_free_priv(struct ec_node *gen_node)

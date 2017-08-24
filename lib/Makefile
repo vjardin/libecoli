@@ -76,7 +76,7 @@ ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(srcs) main.c
 
 ldflags-$(O)readline = -lreadline -ltermcap
-exe-y-$(O)readline = $(srcs) main-readline.c
+#exe-y-$(O)readline = $(srcs) main-readline.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 

@@ -101,7 +101,6 @@ out:
 int ec_test_check_complete(struct ec_node *tk, ...)
 {
 	struct ec_completed *c = NULL;
-	struct ec_completed_item *item;
 	struct ec_strvec *vec = NULL;
 	const char *s, *expected;
 	int ret = 0;
@@ -131,17 +130,23 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		goto out;
 	}
 
+	/* for each expected completion, check it is there */
 	for (s = va_arg(ap, const char *);
 	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
+		struct ec_completed_iter *iter;
+		const struct ec_completed_item *item;
+
 		if (s == NULL) {
 			ret = -1;
 			goto out;
 		}
 
 		count++;
-		TAILQ_FOREACH(item, &c->matches, next) {
-			/* only check matching completions */
+
+		/* only check matching completions */
+		iter = ec_completed_iter(c, EC_MATCH);
+		while ((item = ec_completed_iter_next(iter)) != NULL) {
 			if (item->add != NULL && strcmp(item->add, s) == 0)
 				break;
 		}
@@ -151,8 +156,10 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 				"completion <%s> not in list\n", s);
 			ret = -1;
 		}
+		ec_completed_iter_free(iter);
 	}
 
+	/* check if we have more completions (or less) than expected */
 	if (count != ec_completed_count(c, EC_MATCH)) {
 		ec_log(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
@@ -161,7 +168,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		ret = -1;
 	}
 
-
+	/* check the expected smallest start */
 	expected = va_arg(ap, const char *);
 	s = ec_completed_smallest_start(c);
 	if (strcmp(s, expected)) {

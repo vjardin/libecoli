@@ -53,68 +53,88 @@ struct ec_completed *ec_completed(void)
 	return completed;
 }
 
-struct ec_completed *
+/* XXX on error, states are not freed ?
+ * they can be left in a bad state and should not be reused */
+int
 ec_node_complete_child(struct ec_node *node,
-		struct ec_parsed *state,
+		struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_completed *completed;
-	struct ec_parsed *child;
+	struct ec_parsed *child_state = NULL;
 	int ret;
 
 	/* build the node if required */
 	if (node->type->build != NULL) {
 		if ((node->flags & EC_NODE_F_BUILT) == 0) {
 			ret = node->type->build(node);
-			if (ret < 0) {
-				errno = -ret;
-				return NULL;
-			}
+			if (ret < 0)
+				return ret;
 		}
 	}
 	node->flags |= EC_NODE_F_BUILT;
 
-	if (node->type->complete == NULL) {
-		errno = ENOTSUP;
-		return NULL;
-	}
+	if (node->type->complete == NULL)
+		return -ENOTSUP;
 
-	child = ec_parsed();
-	if (child == NULL)
-		return NULL;
+	child_state = ec_parsed();
+	if (child_state == NULL)
+		return -ENOMEM;
+	child_state->node = node;
+	ec_parsed_add_child(parsed_state, child_state);
 
-	child->node = node;
-	ec_parsed_add_child(state, child);
-	completed = node->type->complete(node, child, strvec);
+	ret = ec_completed_add_node(completed, child_state, node);
+	if (ret < 0)
+		return ret;
+
+	ret = node->type->complete(node, completed,
+					child_state, strvec);
+	if (ret < 0)
+		return ret;
 
 #if 0 // XXX dump
 	printf("----------------------------------------------------------\n");
 	ec_node_dump(stdout, node);
 	ec_strvec_dump(stdout, strvec);
 	ec_completed_dump(stdout, completed);
-	ec_parsed_dump(stdout, state);
+	ec_parsed_dump(stdout, parsed_state);
 #endif
 
-	ec_parsed_del_child(state, child);
-	assert(TAILQ_EMPTY(&child->children));
-	ec_parsed_free(child);
+	ec_parsed_del_child(parsed_state, child_state);
+	assert(TAILQ_EMPTY(&child_state->children));
+	ec_parsed_free(child_state);
 
-	return completed;
+	return 0;
 }
 
 struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	const struct ec_strvec *strvec)
 {
-	struct ec_parsed *state = ec_parsed();
-	struct ec_completed *completed;
+	struct ec_parsed *parsed_state = NULL;
+	struct ec_completed *completed = NULL;
+	int ret;
 
-	if (state == NULL)
-		return NULL;
+	parsed_state = ec_parsed();
+	if (parsed_state == NULL)
+		goto fail;
 
-	completed = ec_node_complete_child(node, state, strvec);
-	ec_parsed_free(state);
+	completed = ec_completed();
+	if (completed == NULL)
+		goto fail;
+
+	ret = ec_node_complete_child(node, completed,
+				parsed_state, strvec);
+	if (ret < 0)
+		goto fail;
+
+	ec_parsed_free(parsed_state);
 
 	return completed;
+
+fail:
+	ec_parsed_free(parsed_state);
+	ec_completed_free(completed);
+	return NULL;
 }
 
 struct ec_completed *ec_node_complete(struct ec_node *node,
@@ -206,16 +226,24 @@ fail:
 	return NULL;
 }
 
-static int ec_completed_add_item(struct ec_completed *completed,
-				struct ec_completed_item *item)
+int
+ec_completed_add_match(struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
+		const struct ec_node *node, const char *add)
 {
+	struct ec_completed_item *item = NULL;
+	int ret = -ENOMEM;
 	size_t n;
+
+	item = ec_completed_item(EC_MATCH, parsed_state, node, add);
+	if (item == NULL)
+		goto fail;
 
 	if (item->add != NULL) {
 		if (completed->smallest_start == NULL) {
 			completed->smallest_start = ec_strdup(item->add);
 			if (completed->smallest_start == NULL)
-				return -ENOMEM;
+				goto fail;
 		} else {
 			n = strcmp_count(item->add,
 				completed->smallest_start);
@@ -228,16 +256,22 @@ static int ec_completed_add_item(struct ec_completed *completed,
 	completed->count++;
 
 	return 0;
+
+fail:
+	ec_completed_item_free(item);
+	return ret;
 }
 
-int ec_completed_add_match(struct ec_completed *completed,
-			struct ec_parsed *state,
-			const struct ec_node *node, const char *add)
+int
+ec_completed_add_node(struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
+		const struct ec_node *node)
 {
-	struct ec_completed_item *item;
+#if 0
+	struct ec_completed_item *item = NULL;
 	int ret;
 
-	item = ec_completed_item(EC_MATCH, state, node, add);
+	item = ec_completed_item(EC_NO_MATCH, parsed_state, node, NULL);
 	if (item == NULL)
 		return -ENOMEM;
 
@@ -246,26 +280,10 @@ int ec_completed_add_match(struct ec_completed *completed,
 		ec_completed_item_free(item);
 		return ret;
 	}
-
-	return 0;
-}
-
-int ec_completed_add_no_match(struct ec_completed *completed,
-			struct ec_parsed *state, const struct ec_node *node)
-{
-	struct ec_completed_item *item;
-	int ret;
-
-	item = ec_completed_item(EC_NO_MATCH, state, node, NULL);
-	if (item == NULL)
-		return -ENOMEM;
-
-	ret = ec_completed_add_item(completed, item);
-	if (ret < 0) {
-		ec_completed_item_free(item);
-		return ret;
-	}
-
+#endif
+	(void)completed;
+	(void)parsed_state;
+	(void)node;
 	return 0;
 }
 
@@ -276,29 +294,22 @@ void ec_completed_item_free(struct ec_completed_item *item)
 	ec_free(item);
 }
 
-/* default completion function: return a no-match element */
-struct ec_completed *ec_node_default_complete(const struct ec_node *gen_node,
-					struct ec_parsed *state,
-					const struct ec_strvec *strvec)
+/* default completion function: return a no-item element */
+int
+ec_node_default_complete(const struct ec_node *gen_node,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
+			const struct ec_strvec *strvec)
 {
-	struct ec_completed *completed;
-
 	(void)strvec;
-	(void)state;
 
-	completed = ec_completed();
-	if (completed == NULL)
-		return NULL;
+	if (ec_strvec_len(strvec) != 1) //XXX needed?
+		return 0;
 
-	if (ec_strvec_len(strvec) != 1)
-		return completed;
+	if (ec_completed_add_node(completed, parsed, gen_node) < 0)
+		return -1;
 
-	if (ec_completed_add_no_match(completed, state, gen_node) < 0) {
-		ec_completed_free(completed);
-		return NULL;
-	}
-
-	return completed;
+	return 0;
 }
 
 void ec_completed_merge(struct ec_completed *completed1,
@@ -312,7 +323,7 @@ void ec_completed_merge(struct ec_completed *completed1,
 	while (!TAILQ_EMPTY(&completed2->matches)) {
 		item = TAILQ_FIRST(&completed2->matches);
 		TAILQ_REMOVE(&completed2->matches, item, next);
-		ec_completed_add_item(completed1, item);
+		//ec_completed_add_item(completed1, item);
 	}
 
 	ec_completed_free(completed2);

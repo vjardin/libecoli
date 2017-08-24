@@ -279,46 +279,37 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	return ret;
 }
 
-static struct ec_completed *
+static int
 ec_node_sh_lex_complete(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
-	struct ec_completed *completed, *child_completed = NULL;
 	struct ec_strvec *new_vec = NULL;
 	const char *str;
 	char missing_quote;
-
-//	printf("==================\n");
-	completed = ec_completed();
-	if (completed == NULL)
-		return NULL;
+	int ret;
 
 	if (ec_strvec_len(strvec) != 1)
-		return completed;
+		return 0;
 
 	str = ec_strvec_val(strvec, 0);
 	new_vec = tokenize(str, 1, 1, &missing_quote);
 	if (new_vec == NULL)
 		goto fail;
 
-//	ec_strvec_dump(new_vec, stdout);
-
-	child_completed = ec_node_complete_child(node->child, state, new_vec);
-	if (child_completed == NULL)
+	ret = ec_node_complete_child(node->child, completed, parsed, new_vec);
+	if (ret < 0)
 		goto fail;
 
 	ec_strvec_free(new_vec);
-	new_vec = NULL;
-	ec_completed_merge(completed, child_completed);
 
-	return completed;
+	return 0;
 
  fail:
 	ec_strvec_free(new_vec);
-	ec_completed_free(completed);
-	return NULL;
+	return -1;
 }
 
 static void ec_node_sh_lex_free_priv(struct ec_node *gen_node)

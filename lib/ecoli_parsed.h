@@ -80,6 +80,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
  * EC_PARSED_NOMATCH (negative) if it does not match
  * any other negative value (-errno) for other errors
  * the number of matched strings in strvec
+ * XXX state is not freed on error ?
  */
 int ec_node_parse_child(struct ec_node *node,
 			struct ec_parsed *state,
