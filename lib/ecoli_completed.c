@@ -47,8 +47,8 @@ struct ec_completed *ec_completed(void)
 	if (completed == NULL)
 		return NULL;
 
-	TAILQ_INIT(&completed->match_items);
-	TAILQ_INIT(&completed->no_match_items);
+	TAILQ_INIT(&completed->nodes);
+	TAILQ_INIT(&completed->matches);
 
 	return completed;
 }
@@ -224,7 +224,7 @@ static int ec_completed_add_item(struct ec_completed *completed,
 		completed->count_match++;
 	}
 
-	TAILQ_INSERT_TAIL(&completed->match_items, item, next);
+	TAILQ_INSERT_TAIL(&completed->matches, item, next);
 	completed->count++;
 
 	return 0;
@@ -309,9 +309,9 @@ void ec_completed_merge(struct ec_completed *completed1,
 	assert(completed1 != NULL);
 	assert(completed2 != NULL);
 
-	while (!TAILQ_EMPTY(&completed2->match_items)) {
-		item = TAILQ_FIRST(&completed2->match_items);
-		TAILQ_REMOVE(&completed2->match_items, item, next);
+	while (!TAILQ_EMPTY(&completed2->matches)) {
+		item = TAILQ_FIRST(&completed2->matches);
+		TAILQ_REMOVE(&completed2->matches, item, next);
 		ec_completed_add_item(completed1, item);
 	}
 
@@ -325,9 +325,9 @@ void ec_completed_free(struct ec_completed *completed)
 	if (completed == NULL)
 		return;
 
-	while (!TAILQ_EMPTY(&completed->match_items)) {
-		item = TAILQ_FIRST(&completed->match_items);
-		TAILQ_REMOVE(&completed->match_items, item, next);
+	while (!TAILQ_EMPTY(&completed->matches)) {
+		item = TAILQ_FIRST(&completed->matches);
+		TAILQ_REMOVE(&completed->matches, item, next);
 		ec_completed_item_free(item);
 	}
 	ec_free(completed->smallest_start);
@@ -347,7 +347,7 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 		completed->count, completed->count_match,
 		completed->smallest_start);
 
-	TAILQ_FOREACH(item, &completed->match_items, next) {
+	TAILQ_FOREACH(item, &completed->matches, next) {
 		fprintf(out, "add=<%s>, node=%p, node_type=%s\n",
 			item->add, item->node, item->node->type->name);
 	}
@@ -406,7 +406,7 @@ const struct ec_completed_item *ec_completed_iter_next(
 
 	do {
 		if (iter->cur_item == NULL)
-			iter->cur_item = TAILQ_FIRST(&completed->match_items);
+			iter->cur_item = TAILQ_FIRST(&completed->matches);
 		else
 			iter->cur_item = TAILQ_NEXT(iter->cur_item, next);
 

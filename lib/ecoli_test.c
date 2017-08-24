@@ -140,7 +140,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		}
 
 		count++;
-		TAILQ_FOREACH(item, &c->match_items, next) {
+		TAILQ_FOREACH(item, &c->matches, next) {
 			/* only check matching completions */
 			if (item->add != NULL && strcmp(item->add, s) == 0)
 				break;

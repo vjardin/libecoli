@@ -53,12 +53,18 @@ struct ec_completed_item {
 
 TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
+struct ec_completed_node {
+	const struct ec_node *node;
+};
+
+TAILQ_HEAD(ec_completed_node_list, ec_completed_node);
+
 struct ec_completed {
 	unsigned count;
 	unsigned count_match;
 	char *smallest_start;
-	struct ec_completed_item_list match_items;
-	struct ec_completed_item_list no_match_items;
+	struct ec_completed_node_list nodes;
+	struct ec_completed_item_list matches;
 };
 
 /*
