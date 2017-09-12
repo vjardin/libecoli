@@ -388,6 +388,10 @@ static int ec_node_subset_testcase(void)
 		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST,
 		"");
 	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"", EC_NODE_ENDLIST,
+		"bar2", "bar", "foo", "toto", "titi", EC_NODE_ENDLIST,
+		"");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", "bar2", "", EC_NODE_ENDLIST,
 		"foo", "toto", "titi", EC_NODE_ENDLIST,
 		"");

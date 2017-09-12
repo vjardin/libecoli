@@ -40,8 +40,8 @@ enum ec_completed_type {
 	EC_PARTIAL,
 };
 
-struct ec_completed_item {
-	TAILQ_ENTRY(ec_completed_item) next;
+struct ec_completed_match {
+	TAILQ_ENTRY(ec_completed_match) next;
 	enum ec_completed_type type;
 	const struct ec_node *node;
 	char *add;
@@ -51,10 +51,12 @@ struct ec_completed_item {
 	size_t pathlen;
 };
 
-TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
+TAILQ_HEAD(ec_completed_match_list, ec_completed_match);
 
 struct ec_completed_node {
+	TAILQ_ENTRY(ec_completed_node) next;
 	const struct ec_node *node;
+	struct ec_completed_match_list matches;
 };
 
 TAILQ_HEAD(ec_completed_node_list, ec_completed_node);
@@ -64,7 +66,6 @@ struct ec_completed {
 	unsigned count_match;
 	char *smallest_start;
 	struct ec_completed_node_list nodes;
-	struct ec_completed_item_list matches;
 };
 
 /*
@@ -88,14 +89,12 @@ int ec_completed_add_match(struct ec_completed *completed,
 			struct ec_parsed *state,
 			const struct ec_node *node, const char *add);
 int ec_completed_add_node(struct ec_completed *completed,
-			struct ec_parsed *state, const struct ec_node *node);
+			const struct ec_node *node);
 int ec_completed_add_partial(struct ec_completed *completed,
 			struct ec_parsed *state, const struct ec_node *node,
 			const char *add);
 
-void ec_completed_item_free(struct ec_completed_item *item);
-void ec_completed_merge(struct ec_completed *completed1,
-	struct ec_completed *completed2);
+void ec_completed_match_free(struct ec_completed_match *item);
 void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
@@ -116,14 +115,15 @@ unsigned int ec_completed_count(
 struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
-	const struct ec_completed_item *cur_item;
+	const struct ec_completed_node *cur_node;
+	const struct ec_completed_match *cur_match;
 };
 
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_type type);
 
-const struct ec_completed_item *ec_completed_iter_next(
+const struct ec_completed_match *ec_completed_iter_next(
 	struct ec_completed_iter *iter);
 
 void ec_completed_iter_free(struct ec_completed_iter *iter);

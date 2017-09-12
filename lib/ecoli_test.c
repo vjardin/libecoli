@@ -135,7 +135,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
 		struct ec_completed_iter *iter;
-		const struct ec_completed_item *item;
+		const struct ec_completed_match *item;
 
 		if (s == NULL) {
 			ret = -1;
