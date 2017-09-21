@@ -44,7 +44,7 @@ struct ec_completed_item {
 	TAILQ_ENTRY(ec_completed_item) next;
 	enum ec_completed_type type;
 	const struct ec_node *node;
-	char *add;
+	char *str;
 
 	/* reverse order: [0] = last, [len-1] = root */
 	const struct ec_node **path;
@@ -56,7 +56,7 @@ TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 struct ec_completed_node {
 	TAILQ_ENTRY(ec_completed_node) next;
 	const struct ec_node *node;
-	struct ec_completed_item_list matches;
+	struct ec_completed_item_list items;
 };
 
 TAILQ_HEAD(ec_completed_node_list, ec_completed_node);

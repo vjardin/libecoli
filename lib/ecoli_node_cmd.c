@@ -525,16 +525,13 @@ static int ec_node_cmd_testcase(void)
 
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"good", EC_NODE_ENDLIST,
-		"good");
+		"good", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"g", EC_NODE_ENDLIST,
-		"ood", EC_NODE_ENDLIST,
-		"ood");
+		"good", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"good", "morning", "", EC_NODE_ENDLIST,
-		"bob", "bobby", "michael", EC_NODE_ENDLIST,
-		"");
+		"bob", "bobby", "michael", EC_NODE_ENDLIST);
 
 	ec_node_free(node);
 

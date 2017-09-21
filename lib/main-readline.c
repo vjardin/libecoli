@@ -56,7 +56,8 @@ static char *my_completion_entry(const char *s, int state)
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
 	static const struct ec_completed_item *item;
-	char *out_string;
+
+	(void)s;
 
 	/* don't append a quote */
 	rl_completion_suppress_quote = 1;
@@ -98,10 +99,7 @@ static char *my_completion_entry(const char *s, int state)
 	//XXX see printable_part() and rl_display_match_list()
 	//XXX or: if match count > 1, strip beginning (in node_file)
 
-	if (asprintf(&out_string, "%s%s", s, item->add) < 0) // XXX ec_asprintf (check all in code)
-		return NULL;
-
-	return out_string;
+	return strdup(item->str);
 }
 
 static char **my_attempted_completion(const char *text, int start, int end)
@@ -200,7 +198,7 @@ static int show_help(int ignore, int invoking_key)
 #else
 	count = 0;
 	TAILQ_FOREACH(compnode, &c->nodes, next) {
-		if (TAILQ_EMPTY(&compnode->matches))
+		if (TAILQ_EMPTY(&compnode->items))
 			continue;
 		count++;
 	}
@@ -212,12 +210,13 @@ static int show_help(int ignore, int invoking_key)
 	if (match)
 		helps[1] = "<return>";
 
+	/* strangely, rl_display_match_list() expects first index at 1 */
 	i = match + 1;
 	TAILQ_FOREACH(compnode, &c->nodes, next) {
-		if (TAILQ_EMPTY(&compnode->matches))
+		if (TAILQ_EMPTY(&compnode->items))
 			continue;
 		// we should pass compnode instead
-		helps[i++] = get_node_help(TAILQ_FIRST(&compnode->matches)); //XXX
+		helps[i++] = get_node_help(TAILQ_FIRST(&compnode->items)); //XXX
 	}
 #endif
 

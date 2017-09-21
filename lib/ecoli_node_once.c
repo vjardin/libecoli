@@ -206,12 +206,10 @@ static int ec_node_once_testcase(void)
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST,
-		"");
+		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
-		"oo", EC_NODE_ENDLIST,
-		"oo");
+		"foo", EC_NODE_ENDLIST);
 	ec_node_free(node);
 #endif
 	return ret;

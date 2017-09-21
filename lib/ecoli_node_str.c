@@ -88,7 +88,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 
 	if (str[n] == '\0') {
 		if (ec_completed_add_match(completed, parsed, gen_node,
-						node->string + n) < 0)
+						node->string) < 0)
 			return -1;
 	}
 
@@ -221,12 +221,12 @@ static int ec_node_str_testcase(void)
 		"foo");
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
-		"oo", EC_NODE_ENDLIST,
-		"oo");
+		"foo", EC_NODE_ENDLIST,
+		"foo");
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", EC_NODE_ENDLIST,
-		"", EC_NODE_ENDLIST,
-		"");
+		"foo", EC_NODE_ENDLIST,
+		"foo");
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"x", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST,

@@ -385,44 +385,34 @@ static int ec_node_subset_testcase(void)
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST,
-		"");
+		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"bar2", "bar", "foo", "toto", "titi", EC_NODE_ENDLIST,
-		"");
+		"bar2", "bar", "foo", "toto", "titi", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", "bar2", "", EC_NODE_ENDLIST,
-		"foo", "toto", "titi", EC_NODE_ENDLIST,
-		"");
+		"foo", "toto", "titi", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
-		"oo", EC_NODE_ENDLIST,
-		"oo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"b", EC_NODE_ENDLIST,
-		"ar", "ar2", EC_NODE_ENDLIST,
-		"ar");
+		"bar", "bar2", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", EC_NODE_ENDLIST,
-		"", "2", EC_NODE_ENDLIST,
-		"");
+		"bar", "bar2", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", "b", EC_NODE_ENDLIST,
-		"ar2", EC_NODE_ENDLIST,
-		"ar2");
+		"bar2", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"t", EC_NODE_ENDLIST,
-		"oto", "iti", EC_NODE_ENDLIST,
-		"");
+		"toto", "titi", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"to", EC_NODE_ENDLIST,
-		"to", EC_NODE_ENDLIST,
-		"to");
+		"toto", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"x", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
 	return ret;

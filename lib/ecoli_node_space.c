@@ -99,18 +99,16 @@ static int ec_node_space_testcase(void)
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
+	/* never completes whatever the input */
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		" ", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
 	return ret;

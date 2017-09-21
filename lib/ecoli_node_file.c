@@ -63,12 +63,12 @@ ec_node_file_parse(const struct ec_node *gen_node,
 }
 
 /*
- * Almost the same than dirname (3) and basename (3) except that
- * it always returns a substring of the given path, which can
- * be empty.
+ * Almost the same than dirname (3) and basename (3) except that:
+ * - it always returns a substring of the given path, which can
+ *   be empty.
  * - the behavior is different when the path finishes with a '/'
- * - the argument is not modified
- * - the output is allocated and must be freed with ec_free().
+ * - the path argument is not modified
+ * - the outputs are allocated and must be freed with ec_free().
  *
  *   path       dirname   basename       split_path
  *   /usr/lib   /usr      lib          /usr/     lib
@@ -196,7 +196,8 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		}
 
 		if (is_dir) {
-			if (asprintf(&add, "%s/", &de->d_name[bname_len]) < 0) {
+			if (asprintf(&add, "%s%s/", path,
+					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
 				goto out;
 			}
@@ -207,7 +208,8 @@ ec_node_file_complete(const struct ec_node *gen_node,
 				goto out;
 			}
 		} else {
-			if (asprintf(&add, "%s", &de->d_name[bname_len]) < 0) {
+			if (asprintf(&add, "%s%s", path,
+					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
 				goto out;
 			}
@@ -260,28 +262,22 @@ static int ec_node_file_testcase(void)
 #if 0 // XXX how to properly test file completion?
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"/", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/.", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 #endif
 	ec_node_free(node);
 

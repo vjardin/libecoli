@@ -265,32 +265,25 @@ static int ec_node_many_testcase(void)
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST,
-		"foo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
-		"oo", EC_NODE_ENDLIST,
-		"oo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", EC_NODE_ENDLIST,
-		"", EC_NODE_ENDLIST,
-		"");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST,
-		"foo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST,
-		"foo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "foo", "foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST,
-		"foo");
+		"foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "foo", "foo", "foo", "", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST,
-		"");
+		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
 	return ret;

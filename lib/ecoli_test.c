@@ -102,8 +102,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 {
 	struct ec_completed *c = NULL;
 	struct ec_strvec *vec = NULL;
-	const char *expected, *s;
-	char *smallest_start = NULL;
+	const char *s;
 	int ret = 0;
 	unsigned int count = 0;
 	va_list ap;
@@ -148,7 +147,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		/* only check matching completions */
 		iter = ec_completed_iter(c, EC_MATCH);
 		while ((item = ec_completed_iter_next(iter)) != NULL) {
-			if (item->add != NULL && strcmp(item->add, s) == 0)
+			if (item->str != NULL && strcmp(item->str, s) == 0)
 				break;
 		}
 
@@ -170,22 +169,9 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	} else
 		ec_completed_dump(stdout, c); //XXX
 
-	/* check the expected smallest start */
-	expected = va_arg(ap, const char *);
-	smallest_start = ec_completed_smallest_start(c);
-	if (smallest_start == NULL)
-		goto out;
-	if (strcmp(smallest_start, expected)) {
-		ret = -1;
-		ec_log(EC_LOG_ERR,
-			"should complete with <%s> but completes with <%s>\n",
-			expected, s);
-	}
-
 out:
 	ec_strvec_free(vec);
 	ec_completed_free(c);
-	ec_free(smallest_start);
 	va_end(ap);
 	return ret;
 }
