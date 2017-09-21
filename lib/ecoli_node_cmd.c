@@ -515,16 +515,28 @@ static int ec_node_cmd_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
 	ec_node_free(node);
 
-	node = EC_NODE_CMD(NULL, "good morning bob|bobby|michael [count]",
+	node = EC_NODE_CMD(NULL, "good morning [count] bob|bobby|michael",
 			ec_node_int("count", 0, 10, 10));
 	if (node == NULL) {
 		ec_log(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "bob", "1");
-	ec_node_free(node);
+	ret |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "1", "bob");
 
-	// XXX completion
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"", EC_NODE_ENDLIST,
+		"good", EC_NODE_ENDLIST,
+		"good");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"g", EC_NODE_ENDLIST,
+		"ood", EC_NODE_ENDLIST,
+		"ood");
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"good", "morning", "", EC_NODE_ENDLIST,
+		"bob", "bobby", "michael", EC_NODE_ENDLIST,
+		"");
+
+	ec_node_free(node);
 
 	return ret;
 }

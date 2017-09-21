@@ -166,7 +166,8 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 			count, ec_completed_count(c, EC_MATCH));
 		ec_completed_dump(stdout, c);
 		ret = -1;
-	}
+	} else
+		ec_completed_dump(stdout, c); //XXX
 
 	/* check the expected smallest start */
 	expected = va_arg(ap, const char *);

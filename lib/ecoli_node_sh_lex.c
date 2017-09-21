@@ -141,8 +141,9 @@ static size_t eat_str(const char *str)
 {
 	size_t i = 0;
 
-	/* skip spaces */
-	while (!isblank(str[i]) && str[i] != '\0')
+	/* eat chars until we find a quote, space, or end of string  */
+	while (!isblank(str[i]) && str[i] != '\0' &&
+			str[i] != '"' && str[i] != '\'')
 		i++;
 
 	return i;
@@ -295,10 +296,14 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 		return 0;
 
 	str = ec_strvec_val(strvec, 0);
+//	printf("\nold:%s\n", str);
 	new_vec = tokenize(str, 1, 1, &missing_quote);
 	if (new_vec == NULL)
 		goto fail;
+//	printf("new:%s\n", ec_strvec_val(new_vec, 0));
 
+	// XXX: complete should add the quotes for !EC_PARTIAL: use another
+	// completed object
 	ret = ec_node_complete_child(node->child, completed, parsed, new_vec);
 	if (ret < 0)
 		goto fail;
@@ -370,6 +375,7 @@ static int ec_node_sh_lex_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "  foo   bar");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "  'foo' \"bar\"");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "  'f'oo 'toto' bar");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "  foo toto bar'");
 	ec_node_free(node);
 
 	/* test completion */

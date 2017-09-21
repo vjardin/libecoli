@@ -53,7 +53,7 @@ srcs += ecoli_node_cmd.c
 srcs += ecoli_node_empty.c
 srcs += ecoli_node_expr.c
 srcs += ecoli_node_expr_test.c
-#srcs += ecoli_node_file.c
+srcs += ecoli_node_file.c
 srcs += ecoli_node_int.c
 srcs += ecoli_node_many.c
 srcs += ecoli_node_once.c
@@ -76,7 +76,7 @@ ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(srcs) main.c
 
 ldflags-$(O)readline = -lreadline -ltermcap
-#exe-y-$(O)readline = $(srcs) main-readline.c
+exe-y-$(O)readline = $(srcs) main-readline.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 

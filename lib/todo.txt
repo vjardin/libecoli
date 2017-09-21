@@ -9,7 +9,10 @@ X tk_re
 cleanup / rework
 ================
 
+- add_no_match
+- add_partial_match
 - check XXX in code
+- properly manage quotes in shlex
 X remove the _new() functions
 - iterate children nodes without chaining them
 - add a tk vector type: will be used in several nodes (ex: or, seq, ...)
@@ -126,3 +129,21 @@ netconf example
 ===============
 
 - demonstration example that parses yang file and generate cli
+
+
+
+-----------------------
+
+readline:
+
+[tab]  list possible completions (matches only)
+[?]    list what is expected, example:
+
+"command [foo] toto|titi|<int>"
+
+help("command f") ->
+  foo     (help of foo)
+  toto    (help of toto)
+  titi    (help of titi)
+  <int>   (help of int)
+

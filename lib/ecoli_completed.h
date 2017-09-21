@@ -37,7 +37,7 @@ struct ec_node;
 enum ec_completed_type {
 	EC_NO_MATCH,
 	EC_MATCH,
-	EC_PARTIAL,
+	EC_PARTIAL_MATCH,
 };
 
 struct ec_completed_match {
@@ -46,7 +46,7 @@ struct ec_completed_match {
 	const struct ec_node *node;
 	char *add;
 
-	/* reverse order: [0] = last parsed, [len-1] = root */
+	/* reverse order: [0] = last, [len-1] = root */
 	const struct ec_node **path;
 	size_t pathlen;
 };
@@ -88,11 +88,15 @@ struct ec_completed *ec_completed(void);
 int ec_completed_add_match(struct ec_completed *completed,
 			struct ec_parsed *state,
 			const struct ec_node *node, const char *add);
-int ec_completed_add_node(struct ec_completed *completed,
+int ec_completed_add_no_match(struct ec_completed *completed,
+			struct ec_parsed *parsed_state,
 			const struct ec_node *node);
-int ec_completed_add_partial(struct ec_completed *completed,
+int ec_completed_add_partial_match(struct ec_completed *completed,
 			struct ec_parsed *state, const struct ec_node *node,
 			const char *add);
+
+int ec_completed_add_node(struct ec_completed *completed,
+			const struct ec_node *node);
 
 void ec_completed_match_free(struct ec_completed_match *item);
 void ec_completed_free(struct ec_completed *completed);

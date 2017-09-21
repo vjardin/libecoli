@@ -193,32 +193,26 @@ ec_completed_match(enum ec_completed_type type, struct ec_parsed *state,
 		const struct ec_node *node, const char *add)
 {
 	struct ec_completed_match *item = NULL;
+	struct ec_parsed *p;
+	size_t len;
 
 	item = ec_calloc(1, sizeof(*item));
 	if (item == NULL)
 		return NULL;
 
-	/* XXX can state be NULL? */
-	if (state != NULL) {
-		struct ec_parsed *p;
-		size_t len;
-
-		/* get path len */
-		for (p = state, len = 0; p != NULL;
-		     p = ec_parsed_get_parent(p), len++)
-			;
-
-		item->path = ec_calloc(len, sizeof(*item->path));
-		if (item->path == NULL)
-			goto fail;
-
-		item->pathlen = len;
-
-		/* write path in array */
-		for (p = state, len = 0; p != NULL;
-		     p = ec_parsed_get_parent(p), len++)
-			item->path[len] = p->node;
-	}
+	/* get path len */
+	for (p = state, len = 0; p != NULL;
+	     p = ec_parsed_get_parent(p), len++)
+		;
+	/* allocate room for path */
+	item->path = ec_calloc(len, sizeof(*item->path));
+	if (item->path == NULL)
+		goto fail;
+	item->pathlen = len;
+	/* write path in array */
+	for (p = state, len = 0; p != NULL;
+	     p = ec_parsed_get_parent(p), len++)
+		item->path[len] = p->node;
 
 	item->type = type;
 	item->node = node;
@@ -240,16 +234,18 @@ fail:
 	return NULL;
 }
 
-int
-ec_completed_add_match(struct ec_completed *completed,
-		struct ec_parsed *parsed_state,
-		const struct ec_node *node, const char *add)
+static int
+__ec_completed_add_match(enum ec_completed_type type,
+			struct ec_completed *completed,
+			struct ec_parsed *parsed_state,
+			const struct ec_node *node, const char *add)
 {
 	struct ec_completed_node *compnode = NULL;
-	struct ec_completed_match *item = NULL;
+	struct ec_completed_match *match = NULL;
 	int ret = -ENOMEM;
 	size_t n;
 
+	/* find the compnode entry corresponding to this node */
 	TAILQ_FOREACH(compnode, &completed->nodes, next) {
 		if (compnode->node == node)
 			break;
@@ -257,67 +253,96 @@ ec_completed_add_match(struct ec_completed *completed,
 	if (compnode == NULL)
 		return -ENOENT;
 
-	item = ec_completed_match(EC_MATCH, parsed_state, node, add);
-	if (item == NULL)
+	match = ec_completed_match(type, parsed_state, node, add);
+	if (match == NULL)
 		goto fail;
 
-	if (item->add != NULL) {
+	if (match->add != NULL) {
 		if (completed->smallest_start == NULL) {
-			completed->smallest_start = ec_strdup(item->add);
+			completed->smallest_start = ec_strdup(match->add);
 			if (completed->smallest_start == NULL)
 				goto fail;
 		} else {
-			n = strcmp_count(item->add,
+			n = strcmp_count(match->add,
 				completed->smallest_start);
 			completed->smallest_start[n] = '\0';
 		}
 		completed->count_match++;
 	}
 
-	TAILQ_INSERT_TAIL(&compnode->matches, item, next);
+	TAILQ_INSERT_TAIL(&compnode->matches, match, next);
 	completed->count++;
 
 	return 0;
 
 fail:
-	ec_completed_match_free(item);
+	ec_completed_match_free(match);
 	return ret;
+}
+
+int
+ec_completed_add_match(struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
+		const struct ec_node *node, const char *add)
+{
+	return __ec_completed_add_match(EC_MATCH, completed, parsed_state,
+					node, add);
+}
+
+int
+ec_completed_add_no_match(struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
+		const struct ec_node *node)
+{
+	return __ec_completed_add_match(EC_NO_MATCH, completed, parsed_state,
+					node, NULL);
+}
+
+int
+ec_completed_add_partial_match(struct ec_completed *completed,
+		struct ec_parsed *parsed_state,
+		const struct ec_node *node, const char *add)
+{
+	return __ec_completed_add_match(EC_PARTIAL_MATCH, completed, parsed_state,
+					node, add);
 }
 
 int
 ec_completed_add_node(struct ec_completed *completed,
 		const struct ec_node *node)
 {
-	struct ec_completed_node *item = NULL;
+	struct ec_completed_node *compnode = NULL;
 
-	item = ec_completed_node(node);
-	if (item == NULL)
+	compnode = ec_completed_node(node);
+	if (compnode == NULL)
 		return -ENOMEM;
 
-	TAILQ_INSERT_TAIL(&completed->nodes, item, next);
+	TAILQ_INSERT_TAIL(&completed->nodes, compnode, next);
 	return 0;
 }
 
-void ec_completed_match_free(struct ec_completed_match *item)
+void ec_completed_match_free(struct ec_completed_match *match)
 {
-	ec_free(item->add);
-	ec_free(item->path);
-	ec_free(item);
+	ec_free(match->add);
+	ec_free(match->path);
+	ec_free(match);
 }
 
-/* default completion function: return a no-item element */
+/* default completion function: return a no-match element */
 int
 ec_node_default_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed,
+			struct ec_parsed *parsed_state,
 			const struct ec_strvec *strvec)
 {
-	(void)gen_node;
-	(void)completed;
-	(void)parsed;
+	int ret;
 
-	if (ec_strvec_len(strvec) != 1) //XXX needed?
+	if (ec_strvec_len(strvec) != 1)
 		return 0;
+
+	ret = ec_completed_add_no_match(completed, parsed_state, gen_node);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -363,7 +388,16 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 		fprintf(out, "node=%p, node_type=%s\n",
 			compnode->node, compnode->node->type->name);
 		TAILQ_FOREACH(item, &compnode->matches, next) {
-			fprintf(out, "add=<%s>\n", item->add); /* XXX comp type */
+			const char *typestr;
+
+			switch (item->type) {
+			case EC_NO_MATCH: typestr = "no-match"; break;
+			case EC_MATCH: typestr = "match"; break;
+			case EC_PARTIAL_MATCH: typestr = "partial-match"; break;
+			default: typestr = "unknown"; break;
+			}
+
+			fprintf(out, "  type=%s add=<%s>\n", typestr, item->add);
 		}
 	}
 }
@@ -429,19 +463,22 @@ const struct ec_completed_match *ec_completed_iter_next(
 	if (cur_node == NULL) {
 		TAILQ_FOREACH(cur_node, &completed->nodes, next) {
 			TAILQ_FOREACH(cur_match, &cur_node->matches, next) {
-				if (cur_match != NULL)
+				if (cur_match != NULL &&
+						cur_match->type & iter->type)
 					goto found;
 			}
 		}
 		return NULL;
 	} else {
 		cur_match = TAILQ_NEXT(cur_match, next);
-		if (cur_match != NULL)
+		if (cur_match != NULL &&
+				cur_match->type & iter->type)
 			goto found;
 		cur_node = TAILQ_NEXT(cur_node, next);
 		while (cur_node != NULL) {
 			cur_match = TAILQ_FIRST(&cur_node->matches);
-			if (cur_match != NULL)
+			if (cur_match != NULL &&
+					cur_match->type & iter->type)
 				goto found;
 			cur_node = TAILQ_NEXT(cur_node, next);
 		}

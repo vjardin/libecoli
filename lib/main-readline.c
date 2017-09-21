@@ -47,6 +47,7 @@
 #include <ecoli_node_cmd.h>
 #include <ecoli_node_many.h>
 #include <ecoli_node_once.h>
+#include <ecoli_node_file.h>
 
 static struct ec_node *commands;
 
@@ -54,9 +55,12 @@ static char *my_completion_entry(const char *s, int state)
 {
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
-	static const struct ec_completed_item *item;
+	static const struct ec_completed_match *item;
 	char *out_string;
 
+	/* don't append a quote */
+	rl_completion_suppress_quote = 1;
+	rl_basic_quote_characters = "";
 
 	if (state == 0) {
 		char *line;
@@ -74,16 +78,27 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 
 		ec_completed_iter_free(iter);
-		iter = ec_completed_iter(c, EC_MATCH);
+		iter = ec_completed_iter(c, EC_MATCH | EC_PARTIAL_MATCH);
 		if (iter == NULL)
 			return NULL;
 	}
 
-	elt = ec_completed_iter_next(iter);
-	if (elt == NULL)
+	item = ec_completed_iter_next(iter);
+	if (item == NULL)
 		return NULL;
 
-	if (asprintf(&out_string, "%s%s", s, elt->add) < 0)
+	/* don't add the trailing space for partial completions */
+	if (state == 0) {
+		if (item->type == EC_MATCH)
+			rl_completion_suppress_append = 0;
+		else
+			rl_completion_suppress_append = 1;
+	}
+
+	//XXX see printable_part() and rl_display_match_list()
+	//XXX or: if match count > 1, strip beginning (in node_file)
+
+	if (asprintf(&out_string, "%s%s", s, item->add) < 0) // XXX ec_asprintf (check all in code)
 		return NULL;
 
 	return out_string;
@@ -101,7 +116,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_elt *elt)
+static char *get_node_help(const struct ec_completed_match *elt)
 {
 	const struct ec_node *node;
 	char *help = NULL;
@@ -130,8 +145,9 @@ static char *get_node_help(const struct ec_completed_elt *elt)
 
 static int show_help(int ignore, int invoking_key)
 {
-	const struct ec_completed_item *item;
-	struct ec_completed_iter *iter;
+	const struct ec_completed_node *compnode;
+//	const struct ec_completed_match *item;
+//	struct ec_completed_iter *iter;
 	struct ec_completed *c;
 	struct ec_parsed *p;
 	char *line;
@@ -160,7 +176,9 @@ static int show_help(int ignore, int invoking_key)
 	if (c == NULL)
 		return 1;
 
-	count = ec_completed_count(c, EC_MATCH | EC_NO_MATCH);
+#if 0 // old method
+	count = ec_completed_count(c, EC_MATCH | EC_NO_MATCH |
+				EC_PARTIAL_MATCH);
 	helps = calloc(count + match + 1, sizeof(char *));
 	if (helps == NULL)
 		return 1;
@@ -168,7 +186,8 @@ static int show_help(int ignore, int invoking_key)
 	if (match)
 		helps[1] = "<return>";
 
-	iter = ec_completed_iter(c, EC_MATCH | EC_NO_MATCH);
+	iter = ec_completed_iter(c, EC_MATCH | EC_NO_MATCH |
+				EC_PARTIAL_MATCH);
 	if (iter == NULL)
 		goto fail;
 
@@ -178,7 +197,31 @@ static int show_help(int ignore, int invoking_key)
 	     i++, item = ec_completed_iter_next(iter)) {
 		helps[i] = get_node_help(item);
 	}
+#else
+	count = 0;
+	TAILQ_FOREACH(compnode, &c->nodes, next) {
+		if (TAILQ_EMPTY(&compnode->matches))
+			continue;
+		count++;
+	}
 
+	helps = calloc(count + match + 1, sizeof(char *));
+	if (helps == NULL)
+		return 1;
+
+	if (match)
+		helps[1] = "<return>";
+
+	i = match + 1;
+	TAILQ_FOREACH(compnode, &c->nodes, next) {
+		if (TAILQ_EMPTY(&compnode->matches))
+			continue;
+		// we should pass compnode instead
+		helps[i++] = get_node_help(TAILQ_FIRST(&compnode->matches)); //XXX
+	}
+#endif
+
+	ec_completed_dump(stdout, c);
 	ec_completed_free(c);
 
 	rl_display_match_list(helps, count + match, 1000); /* XXX 1000 */
@@ -187,7 +230,7 @@ static int show_help(int ignore, int invoking_key)
 
 	return 0;
 
-fail:
+//fail:
 	free(helps);
 	// free helps[n] XXX
 	return 1;
@@ -275,6 +318,15 @@ static int create_commands(void)
 		goto fail;
 
 
+	cmd = EC_NODE_SEQ(NULL,
+		ec_node_str(NULL, "load"),
+		ec_node("file", NULL)
+	);
+	ec_keyval_set(ec_node_attrs(cmd), "help", "load a file", NULL);
+	if (ec_node_or_add(cmdlist, cmd) < 0)
+		goto fail;
+
+
 	commands = ec_node_sh_lex(NULL, cmdlist);
 	if (commands == NULL)
 		goto fail;
@@ -290,9 +342,7 @@ static int create_commands(void)
 int main(void)
 {
 	struct ec_parsed *p;
-//	const char *name;
 	char *line;
-
 
 	if (create_commands() < 0)
 		return 1;
