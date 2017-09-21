@@ -243,7 +243,6 @@ __ec_completed_add_match(enum ec_completed_type type,
 	struct ec_completed_node *compnode = NULL;
 	struct ec_completed_match *match = NULL;
 	int ret = -ENOMEM;
-	size_t n;
 
 	/* find the compnode entry corresponding to this node */
 	TAILQ_FOREACH(compnode, &completed->nodes, next) {
@@ -257,18 +256,8 @@ __ec_completed_add_match(enum ec_completed_type type,
 	if (match == NULL)
 		goto fail;
 
-	if (match->add != NULL) {
-		if (completed->smallest_start == NULL) {
-			completed->smallest_start = ec_strdup(match->add);
-			if (completed->smallest_start == NULL)
-				goto fail;
-		} else {
-			n = strcmp_count(match->add,
-				completed->smallest_start);
-			completed->smallest_start[n] = '\0';
-		}
+	if (match->add != NULL)
 		completed->count_match++;
-	}
 
 	TAILQ_INSERT_TAIL(&compnode->matches, match, next);
 	completed->count++;
@@ -366,7 +355,6 @@ void ec_completed_free(struct ec_completed *completed)
 		}
 		ec_free(compnode);
 	}
-	ec_free(completed->smallest_start);
 	ec_free(completed);
 }
 
@@ -380,9 +368,8 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 		return;
 	}
 
-	fprintf(out, "completion: count=%u match=%u smallest_start=<%s>\n",
-		completed->count, completed->count_match,
-		completed->smallest_start);
+	fprintf(out, "completion: count=%u match=%u\n",
+		completed->count, completed->count_match);
 
 	TAILQ_FOREACH(compnode, &completed->nodes, next) {
 		fprintf(out, "node=%p, node_type=%s\n",
@@ -402,13 +389,36 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 	}
 }
 
-const char *ec_completed_smallest_start(
-	const struct ec_completed *completed)
+char *ec_completed_smallest_start(const struct ec_completed *completed)
 {
-	if (completed == NULL || completed->smallest_start == NULL)
-		return "";
+	struct ec_completed_node *compnode;
+	struct ec_completed_match *item;
+	char *smallest_start = NULL;
+	size_t n;
 
-	return completed->smallest_start;
+	if (completed == NULL)
+		goto fail;
+
+	TAILQ_FOREACH(compnode, &completed->nodes, next) {
+		TAILQ_FOREACH(item, &compnode->matches, next) {
+			if (item->add == NULL)
+				continue;
+			if (smallest_start == NULL) {
+				smallest_start = ec_strdup(item->add);
+				if (smallest_start == NULL)
+					goto fail;
+			} else {
+				n = strcmp_count(item->add, smallest_start);
+				smallest_start[n] = '\0';
+			}
+		}
+	}
+
+	return smallest_start;
+
+fail:
+	ec_free(smallest_start);
+	return NULL;
 }
 
 unsigned int ec_completed_count(

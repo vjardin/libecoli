@@ -64,7 +64,6 @@ TAILQ_HEAD(ec_completed_node_list, ec_completed_node);
 struct ec_completed {
 	unsigned count;
 	unsigned count_match;
-	char *smallest_start;
 	struct ec_completed_node_list nodes;
 };
 
@@ -108,9 +107,8 @@ ec_node_default_complete(const struct ec_node *gen_node,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 
-/* cannot return NULL */
-const char *ec_completed_smallest_start(
-	const struct ec_completed *completed);
+/* return the smallest string start, or NULL on error */
+char *ec_completed_smallest_start(const struct ec_completed *completed);
 
 unsigned int ec_completed_count(
 	const struct ec_completed *completed,
