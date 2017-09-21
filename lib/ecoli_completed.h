@@ -40,8 +40,8 @@ enum ec_completed_type {
 	EC_PARTIAL_MATCH,
 };
 
-struct ec_completed_match {
-	TAILQ_ENTRY(ec_completed_match) next;
+struct ec_completed_item {
+	TAILQ_ENTRY(ec_completed_item) next;
 	enum ec_completed_type type;
 	const struct ec_node *node;
 	char *add;
@@ -51,12 +51,12 @@ struct ec_completed_match {
 	size_t pathlen;
 };
 
-TAILQ_HEAD(ec_completed_match_list, ec_completed_match);
+TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
 struct ec_completed_node {
 	TAILQ_ENTRY(ec_completed_node) next;
 	const struct ec_node *node;
-	struct ec_completed_match_list matches;
+	struct ec_completed_item_list matches;
 };
 
 TAILQ_HEAD(ec_completed_node_list, ec_completed_node);
@@ -97,7 +97,7 @@ int ec_completed_add_partial_match(struct ec_completed *completed,
 int ec_completed_add_node(struct ec_completed *completed,
 			const struct ec_node *node);
 
-void ec_completed_match_free(struct ec_completed_match *item);
+void ec_completed_item_free(struct ec_completed_item *item);
 void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
@@ -118,14 +118,14 @@ struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
 	const struct ec_completed_node *cur_node;
-	const struct ec_completed_match *cur_match;
+	const struct ec_completed_item *cur_match;
 };
 
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_type type);
 
-const struct ec_completed_match *ec_completed_iter_next(
+const struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter);
 
 void ec_completed_iter_free(struct ec_completed_iter *iter);

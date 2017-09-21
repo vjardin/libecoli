@@ -55,7 +55,7 @@ static char *my_completion_entry(const char *s, int state)
 {
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
-	static const struct ec_completed_match *item;
+	static const struct ec_completed_item *item;
 	char *out_string;
 
 	/* don't append a quote */
@@ -116,7 +116,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_match *elt)
+static char *get_node_help(const struct ec_completed_item *item)
 {
 	const struct ec_node *node;
 	char *help = NULL;
@@ -124,8 +124,8 @@ static char *get_node_help(const struct ec_completed_match *elt)
 	const char *node_desc = NULL;
 	size_t i;
 
-	for (i = 0; i < elt->pathlen; i++) {
-		node = elt->path[i];
+	for (i = 0; i < item->pathlen; i++) {
+		node = item->path[i];
 		if (node_help == NULL)
 			node_help = ec_keyval_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -146,7 +146,7 @@ static char *get_node_help(const struct ec_completed_match *elt)
 static int show_help(int ignore, int invoking_key)
 {
 	const struct ec_completed_node *compnode;
-//	const struct ec_completed_match *item;
+//	const struct ec_completed_item *item;
 //	struct ec_completed_iter *iter;
 	struct ec_completed *c;
 	struct ec_parsed *p;
