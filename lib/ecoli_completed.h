@@ -45,6 +45,7 @@ struct ec_completed_item {
 	enum ec_completed_type type;
 	const struct ec_node *node;
 	char *str;
+	char *display;
 
 	/* reverse order: [0] = last, [len-1] = root */
 	const struct ec_node **path;
@@ -84,20 +85,17 @@ int ec_node_complete_child(struct ec_node *node,
 
 struct ec_completed *ec_completed(void);
 
-int ec_completed_add_match(struct ec_completed *completed,
-			struct ec_parsed *state,
-			const struct ec_node *node, const char *add);
-int ec_completed_add_no_match(struct ec_completed *completed,
-			struct ec_parsed *parsed_state,
-			const struct ec_node *node);
-int ec_completed_add_partial_match(struct ec_completed *completed,
-			struct ec_parsed *state, const struct ec_node *node,
-			const char *add);
-
-int ec_completed_add_node(struct ec_completed *completed,
-			const struct ec_node *node);
-
+struct ec_completed_item *
+ec_completed_item(struct ec_parsed *state, const struct ec_node *node);
+int ec_completed_item_set(struct ec_completed_item *item,
+			enum ec_completed_type type, const char *str);
+int ec_completed_item_add(struct ec_completed *completed,
+			struct ec_completed_item *item);
 void ec_completed_item_free(struct ec_completed_item *item);
+
+int ec_completed_item_set_display(struct ec_completed_item *item,
+				const char *display);
+
 void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
@@ -106,9 +104,6 @@ ec_node_default_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
-
-/* return the smallest string start, or NULL on error */
-char *ec_completed_smallest_start(const struct ec_completed *completed);
 
 unsigned int ec_completed_count(
 	const struct ec_completed *completed,

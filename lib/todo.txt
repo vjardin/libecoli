@@ -9,6 +9,9 @@ X tk_re
 cleanup / rework
 ================
 
+- ec_completed_item_update()
+- ec_completed_item_set_display_value()
+
 - add_no_match
 - add_partial_match
 - check XXX in code

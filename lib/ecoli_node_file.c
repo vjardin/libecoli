@@ -39,6 +39,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
+#include <ecoli_string.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
 #include <ecoli_completed.h>
@@ -116,13 +117,15 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		struct ec_parsed *state,
 		const struct ec_strvec *strvec)
 {
+	struct ec_completed_item *item = NULL;
 	struct stat st;
-	const char *path;
+	const char *input;
 	size_t bname_len;
 	struct dirent *de = NULL;
 	DIR *dir = NULL;
 	char *dname = NULL, *bname = NULL, *effective_dir;
-	char *add = NULL;
+	char *comp_str = NULL;
+	char *disp_str = NULL;
 	int ret;
 	int is_dir = 0;
 
@@ -151,8 +154,8 @@ ec_node_file_complete(const struct ec_node *gen_node,
 	if (ec_strvec_len(strvec) != 1)
 		goto out;
 
-	path = ec_strvec_val(strvec, 0);
-	ret = split_path(path, &dname, &bname);
+	input = ec_strvec_val(strvec, 0);
+	ret = split_path(input, &dname, &bname);
 	if (ret < 0) {
 		ec_completed_free(completed);
 		completed = NULL;
@@ -182,7 +185,7 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		if (de == NULL)
 			goto out;
 
-		if (strncmp(bname, de->d_name, bname_len))
+		if (!ec_str_startswith(de->d_name, bname))
 			continue;
 		if (bname[0] != '.' && de->d_name[0] == '.')
 			continue;
@@ -195,36 +198,60 @@ ec_node_file_complete(const struct ec_node *gen_node,
 			is_dir = 0;
 		}
 
-		if (is_dir) {
-			if (asprintf(&add, "%s%s/", path,
-					&de->d_name[bname_len]) < 0) {
-				ret = -errno;
-				goto out;
-			}
-			if (ec_completed_add_partial_match(
-					completed, state, gen_node, add) < 0) {
-				ec_completed_free(completed);
-				completed = NULL;
-				goto out;
-			}
-		} else {
-			if (asprintf(&add, "%s%s", path,
-					&de->d_name[bname_len]) < 0) {
-				ret = -errno;
-				goto out;
-			}
-			if (ec_completed_add_match(completed, state, gen_node,
-							add) < 0) {
-				ec_completed_free(completed);
-				completed = NULL;
-				goto out;
-			}
+		item = ec_completed_item(state, gen_node);
+		if (item == NULL) {
+			ret = -ENOMEM;
+			goto out;
 		}
+
+		if (is_dir) {
+			if (asprintf(&comp_str, "%s%s/", input,
+					&de->d_name[bname_len]) < 0) {
+				ret = -errno;
+				goto out;
+			}
+			if (asprintf(&disp_str, "%s/", de->d_name) < 0) {
+				ret = -errno;
+				goto out;
+			}
+			ret = ec_completed_item_set(item, EC_PARTIAL_MATCH,
+						comp_str);
+			if (ret < 0)
+				goto out;
+		} else {
+			if (asprintf(&comp_str, "%s%s", input,
+					&de->d_name[bname_len]) < 0) {
+				ret = -errno;
+				goto out;
+			}
+			if (asprintf(&disp_str, "%s", de->d_name) < 0) {
+				ret = -errno;
+				goto out;
+			}
+			ret = ec_completed_item_set(item, EC_MATCH,
+						comp_str);
+			if (ret < 0)
+				goto out;
+		}
+		ret = ec_completed_item_set_display(item, disp_str);
+		if (ret < 0)
+			goto out;
+		ret = ec_completed_item_add(completed, item);
+		if (ret < 0)
+			goto out;
+
+		item = NULL;
+		free(comp_str);
+		comp_str = NULL;
+		free(disp_str);
+		disp_str = NULL;
 	}
 	ret = 0;
 
 out:
-	free(add);
+	ec_completed_item_free(item);
+	free(comp_str);
+	free(disp_str);
 	ec_free(dname);
 	ec_free(bname);
 	if (dir != NULL)

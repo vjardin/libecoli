@@ -88,16 +88,21 @@ static char *my_completion_entry(const char *s, int state)
 	if (item == NULL)
 		return NULL;
 
-	/* don't add the trailing space for partial completions */
-	if (state == 0) {
-		if (item->type == EC_MATCH)
-			rl_completion_suppress_append = 0;
-		else
-			rl_completion_suppress_append = 1;
-	}
+	if (c->count_match == 1) {
 
-	//XXX see printable_part() and rl_display_match_list()
-	//XXX or: if match count > 1, strip beginning (in node_file)
+		/* don't add the trailing space for partial completions */
+		if (state == 0) {
+			if (item->type == EC_MATCH)
+				rl_completion_suppress_append = 0;
+			else
+				rl_completion_suppress_append = 1;
+		}
+
+		return strdup(item->str);
+	} else if (rl_completion_type == '?') {
+		/* on second try only show the display part */
+		return strdup(item->display);
+	}
 
 	return strdup(item->str);
 }
@@ -114,14 +119,19 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_item *item)
+static char *get_node_help(const struct ec_completed_node *compnode)
 {
+	const struct ec_completed_item *item;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
 	size_t i;
 
+	/* Since we display only one help per node, only look at the first item
+	 * to get the path. The objective is to retrieve the most precise
+	 * help for this node. */
+	item = TAILQ_FIRST(&compnode->items);
 	for (i = 0; i < item->pathlen; i++) {
 		node = item->path[i];
 		if (node_help == NULL)
@@ -144,8 +154,6 @@ static char *get_node_help(const struct ec_completed_item *item)
 static int show_help(int ignore, int invoking_key)
 {
 	const struct ec_completed_node *compnode;
-//	const struct ec_completed_item *item;
-//	struct ec_completed_iter *iter;
 	struct ec_completed *c;
 	struct ec_parsed *p;
 	char *line;
@@ -174,28 +182,7 @@ static int show_help(int ignore, int invoking_key)
 	if (c == NULL)
 		return 1;
 
-#if 0 // old method
-	count = ec_completed_count(c, EC_MATCH | EC_NO_MATCH |
-				EC_PARTIAL_MATCH);
-	helps = calloc(count + match + 1, sizeof(char *));
-	if (helps == NULL)
-		return 1;
-
-	if (match)
-		helps[1] = "<return>";
-
-	iter = ec_completed_iter(c, EC_MATCH | EC_NO_MATCH |
-				EC_PARTIAL_MATCH);
-	if (iter == NULL)
-		goto fail;
-
-	/* strangely, rl_display_match_list() expects first index at 1 */
-	for (i = match + 1, item = ec_completed_iter_next(iter);
-	     i < count + match + 1 && item != NULL;
-	     i++, item = ec_completed_iter_next(iter)) {
-		helps[i] = get_node_help(item);
-	}
-#else
+	/* let's display one contextual help per node */
 	count = 0;
 	TAILQ_FOREACH(compnode, &c->nodes, next) {
 		if (TAILQ_EMPTY(&compnode->items))
@@ -215,10 +202,8 @@ static int show_help(int ignore, int invoking_key)
 	TAILQ_FOREACH(compnode, &c->nodes, next) {
 		if (TAILQ_EMPTY(&compnode->items))
 			continue;
-		// we should pass compnode instead
-		helps[i++] = get_node_help(TAILQ_FIRST(&compnode->items)); //XXX
+		helps[i++] = get_node_help(compnode);
 	}
-#endif
 
 	ec_completed_dump(stdout, c);
 	ec_completed_free(c);
@@ -229,10 +214,7 @@ static int show_help(int ignore, int invoking_key)
 
 	return 0;
 
-//fail:
-	free(helps);
-	// free helps[n] XXX
-	return 1;
+	// free helps[n] XXX on error ?
 }
 
 static int create_commands(void)
@@ -262,7 +244,7 @@ static int create_commands(void)
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")),
 		"help", "the name of the person", NULL);
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "int")),
-		"help", "an integer", NULL);
+		"help", "an integer (0-10)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
