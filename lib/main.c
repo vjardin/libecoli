@@ -365,7 +365,10 @@ static int debug_log(int type, unsigned int level, void *opaque,
 	if (level > (unsigned int)log_level)
 		return 0;
 
-	return printf("%s", str);
+	if (printf("%s", str) < 0)
+		return -1;
+
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -381,7 +384,7 @@ int main(int argc, char **argv)
 
 	srandom(seed);
 
-	if (0) ec_log_fct_register(debug_log, NULL);
+	ec_log_fct_register(debug_log, NULL);
 
 	/* register a new malloc to track memleaks */
 	TAILQ_INIT(&debug_alloc_hdr_list);

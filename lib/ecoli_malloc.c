@@ -49,6 +49,7 @@ int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
 
 void ec_malloc_unregister(void)
 {
+	/* XXX handlers must set errno on error */
 	ec_malloc_handler.malloc = NULL;
 	ec_malloc_handler.free = NULL;
 	ec_malloc_handler.realloc = NULL;
@@ -80,6 +81,7 @@ void *__ec_calloc(size_t nmemb, size_t size, const char *file,
 	void *ptr;
 	size_t total;
 
+	/* check overflow */
 	total = size * nmemb;
 	if (nmemb != 0 && size != (total / nmemb)) {
 		errno = ENOMEM;

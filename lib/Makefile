@@ -42,6 +42,7 @@ LDFLAGS += --coverage
 
 
 srcs :=
+srcs += ecoli_assert.c
 srcs += ecoli_completed.c
 srcs += ecoli_keyval.c
 srcs += ecoli_log.c
