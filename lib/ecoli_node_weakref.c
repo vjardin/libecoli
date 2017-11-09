@@ -43,6 +43,8 @@
 #include <ecoli_node_option.h>
 #include <ecoli_node_weakref.h>
 
+EC_LOG_TYPE_REGISTER(node_weakref);
+
 struct ec_node_weakref {
 	struct ec_node gen;
 	struct ec_node *child;

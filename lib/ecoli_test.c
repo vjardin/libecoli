@@ -41,6 +41,8 @@
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 
+EC_LOG_TYPE_REGISTER(test);
+
 /* register a driver */
 void ec_test_register(struct ec_test *test)
 {
@@ -76,7 +78,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 	p = ec_node_parse_strvec(tk, vec);
 	ec_parsed_dump(stdout, p); /* XXX only for debug */
 	if (p == NULL) {
-		ec_log(EC_LOG_ERR, "parsed is NULL\n");
+		EC_LOG(EC_LOG_ERR, "parsed is NULL\n");
 	}
 	if (ec_parsed_matches(p))
 		match = ec_parsed_len(p);
@@ -85,7 +87,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 	if (expected == match) {
 		ret = 0;
 	} else {
-		ec_log(EC_LOG_ERR,
+		EC_LOG(EC_LOG_ERR,
 			"tk parsed len (%d) does not match expected (%d)\n",
 			match, expected);
 	}
@@ -152,7 +154,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		}
 
 		if (item == NULL) {
-			ec_log(EC_LOG_ERR,
+			EC_LOG(EC_LOG_ERR,
 				"completion <%s> not in list\n", s);
 			ret = -1;
 		}
@@ -161,7 +163,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 
 	/* check if we have more completions (or less) than expected */
 	if (count != ec_completed_count(c, EC_MATCH)) {
-		ec_log(EC_LOG_ERR,
+		EC_LOG(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
 			count, ec_completed_count(c, EC_MATCH));
 		ec_completed_dump(stdout, c);
@@ -186,21 +188,25 @@ static int launch_test(const char *name)
 		if (name != NULL && strcmp(name, test->name))
 			continue;
 
-		ec_log(EC_LOG_INFO, "== starting test %-20s\n", test->name);
+		EC_LOG(EC_LOG_INFO, "== starting test %-20s\n",
+			test->name);
 
 		count++;
 		if (test->test() == 0) {
-			ec_log(EC_LOG_INFO, "== test %-20s success\n",
+			EC_LOG(EC_LOG_INFO,
+				"== test %-20s success\n",
 				test->name);
 		} else {
-			ec_log(EC_LOG_INFO, "== test %-20s failed\n",
+			EC_LOG(EC_LOG_INFO,
+				"== test %-20s failed\n",
 				test->name);
 			ret = -1;
 		}
 	}
 
 	if (name != NULL && count == 0) {
-		ec_log(EC_LOG_WARNING, "== test %s not found\n", name);
+		EC_LOG(EC_LOG_WARNING,
+			"== test %s not found\n", name);
 		ret = -1;
 	}
 

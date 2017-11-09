@@ -39,19 +39,39 @@
 
 #include <stdarg.h>
 
-/* return -1 on error, len(s) on success */
-typedef int (*ec_log_t)(unsigned int level, void *opaque, const char *str);
+#define EC_LOG_TYPE_REGISTER(name)					\
+	static int name##_log_type;					\
+	static int local_log_type;					\
+	__attribute__((constructor, used))				\
+	static void ec_log_register_##name(void)			\
+	{								\
+		local_log_type = ec_log_type_register(#name);		\
+		name##_log_type = local_log_type;			\
+	}
 
-int ec_log_register(ec_log_t usr_log, void *opaque);
-void ec_log_unregister(void);
+
+/* return -1 on error, len(s) on success */
+typedef int (*ec_log_t)(int type, unsigned int level, void *opaque,
+			const char *str);
+
+int ec_log_fct_register(ec_log_t usr_log, void *opaque);
+void ec_log_fct_unregister(void);
+
+int ec_log_type_register(const char *name);
+
+const char *ec_log_name(int type);
 
 /* same api than printf */
-int ec_log(unsigned int level, const char *format, ...)
-	__attribute__((format(__printf__, 2, 3)));
+int ec_log(int type, unsigned int level, const char *format, ...)
+	__attribute__((format(__printf__, 3, 4)));
 
-int ec_vlog(unsigned int level, const char *format, va_list ap);
+int ec_vlog(int type, unsigned int level, const char *format, va_list ap);
+
+/* to use the macros, the user must have called EC_LOG_TYPE_REGISTER */
+#define EC_LOG(level, args...) ec_log(local_log_type, level, args)
+#define EC_VLOG(level, fmt, ap) ec_vlog(local_log_type, level, fmt, ap)
 
 /* default log handler for the library, use printf */
-int ec_log_default(unsigned int level, void *opaque, const char *str);
+int ec_log_default(int type, unsigned int level, void *opaque, const char *str);
 
 #endif

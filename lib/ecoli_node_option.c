@@ -41,6 +41,8 @@
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
 
+EC_LOG_TYPE_REGISTER(node_option);
+
 struct ec_node_option {
 	struct ec_node gen;
 	struct ec_node *child;
@@ -122,7 +124,7 @@ static int ec_node_option_testcase(void)
 
 	node = ec_node_option(NULL, ec_node_str(NULL, "foo"));
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
@@ -134,7 +136,7 @@ static int ec_node_option_testcase(void)
 	/* test completion */
 	node = ec_node_option(NULL, ec_node_str(NULL, "foo"));
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

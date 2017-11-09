@@ -53,6 +53,8 @@
 #include <ecoli_node_re_lex.h>
 #include <ecoli_node_cmd.h>
 
+EC_LOG_TYPE_REGISTER(node_cmd);
+
 struct ec_node_cmd {
 	struct ec_node gen;
 	char *cmd_str;           /* the command string. */
@@ -505,7 +507,7 @@ static int ec_node_cmd_testcase(void)
 		ec_node_int("y", 20, 30, 10)
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "1");
@@ -518,7 +520,7 @@ static int ec_node_cmd_testcase(void)
 	node = EC_NODE_CMD(NULL, "good morning [count] bob|bobby|michael",
 			ec_node_int("count", 0, 10, 10));
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "1", "bob");

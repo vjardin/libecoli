@@ -46,6 +46,7 @@ struct ec_completed_item {
 	const struct ec_node *node;
 	char *str;
 	char *display;
+	/* XXX add a keyval (attrs) */
 
 	/* reverse order: [0] = last, [len-1] = root */
 	const struct ec_node **path;

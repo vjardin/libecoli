@@ -74,10 +74,10 @@ int ec_test_one(const char *name);
 int ec_test_check_parse(struct ec_node *node, int expected, ...);
 
 #define EC_TEST_ERR(fmt, ...)						\
-	ec_log(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
+	EC_LOG(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
 		__FILE__, __LINE__, ##__VA_ARGS__);			\
 
-#define EC_TEST_ASSERT(cond, args...)					\
+#define EC_TEST_ASSERT(cond)						\
 	do {								\
 		if (!(cond))						\
 			EC_TEST_ERR("assertion failure: " #cond);	\

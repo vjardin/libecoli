@@ -45,6 +45,8 @@
 #include <ecoli_node_option.h>
 #include <ecoli_node_sh_lex.h>
 
+EC_LOG_TYPE_REGISTER(node_sh_lex);
+
 struct ec_node_sh_lex {
 	struct ec_node gen;
 	struct ec_node *child;
@@ -157,8 +159,6 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 	char *word = NULL, *concat = NULL, *tmp;
 	int last_is_space = 1;
 
-//	printf("str=%s\n", str);
-
 	strvec = ec_strvec();
 	if (strvec == NULL)
 		goto fail;
@@ -167,7 +167,6 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 		len = eat_spaces(&str[off]);
 		if (len > 0)
 			last_is_space = 1;
-//		printf("space=%zd\n", len);
 		off += len;
 
 		len = 0;
@@ -176,12 +175,10 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 			last_is_space = 0;
 			if (str[suboff] == '"' || str[suboff] == '\'') {
 				sublen = eat_quoted_str(&str[suboff]);
-//				printf("sublen=%zd\n", sublen);
 				word = unquote_str(&str[suboff], sublen,
 					allow_missing_quote, missing_quote);
 			} else {
 				sublen = eat_str(&str[suboff]);
-//				printf("sublen=%zd\n", sublen);
 				if (sublen == 0)
 					break;
 				word = ec_strndup(&str[suboff], sublen);
@@ -189,7 +186,6 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 
 			if (word == NULL)
 				goto fail;
-//			printf("word=%s\n", word);
 
 			len += sublen;
 			suboff += sublen;
@@ -302,8 +298,8 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 		goto fail;
 //	printf("new:%s\n", ec_strvec_val(new_vec, 0));
 
-	// XXX: complete should add the quotes for !EC_PARTIAL: use another
-	// completed object
+	// XXX: complete should add the quotes for !EC_PARTIAL
+	// XXX: if no quotes, replace " " by "\ "
 	ret = ec_node_complete_child(node->child, completed, parsed, new_vec);
 	if (ret < 0)
 		goto fail;
@@ -368,7 +364,7 @@ static int ec_node_sh_lex_testcase(void)
 		)
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo bar");
@@ -390,7 +386,7 @@ static int ec_node_sh_lex_testcase(void)
 		)
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

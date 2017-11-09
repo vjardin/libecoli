@@ -44,6 +44,8 @@
 #include <ecoli_node_or.h>
 #include <ecoli_test.h>
 
+EC_LOG_TYPE_REGISTER(node_subset);
+
 struct ec_node_subset {
 	struct ec_node gen;
 	struct ec_node **table;
@@ -356,7 +358,7 @@ static int ec_node_subset_testcase(void)
 		ec_node_str(NULL, "toto")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 0);
@@ -380,7 +382,7 @@ static int ec_node_subset_testcase(void)
 		ec_node_str(NULL, "titi")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

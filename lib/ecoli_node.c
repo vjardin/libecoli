@@ -38,6 +38,8 @@
 #include <ecoli_log.h>
 #include <ecoli_node.h>
 
+EC_LOG_TYPE_REGISTER(node);
+
 static struct ec_node_type_list node_type_list =
 	TAILQ_HEAD_INITIALIZER(node_type_list);
 
@@ -78,7 +80,7 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	struct ec_node *node = NULL;
 	char buf[256]; // XXX
 
-	ec_log(EC_LOG_DEBUG, "create node type=%s id=%s\n",
+	EC_LOG(EC_LOG_DEBUG, "create node type=%s id=%s\n",
 		type->name, id);
 
 	node = ec_calloc(1, type->size);
@@ -117,7 +119,8 @@ struct ec_node *ec_node(const char *typename, const char *id)
 
 	type = ec_node_type_lookup(typename);
 	if (type == NULL) {
-		ec_log(EC_LOG_ERR, "type=%s does not exist\n", typename);
+		EC_LOG(EC_LOG_ERR, "type=%s does not exist\n",
+			typename);
 		return NULL;
 	}
 

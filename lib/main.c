@@ -36,6 +36,8 @@
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
 
+EC_LOG_TYPE_REGISTER(main);
+
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
 		((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
@@ -199,7 +201,7 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 		ftr->cookie = 0x87654321;
 	}
 
-	ec_log(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p\n",
+	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p\n",
 		file, line, size, ret);
 
 	if (ret)
@@ -215,21 +217,21 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	(void)file;
 	(void)line;
 
-	ec_log(EC_LOG_DEBUG, "%s:%d: info: free(%p)\n", file, line, ptr);
+	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: free(%p)\n", file, line, ptr);
 
 	if (ptr == NULL)
 		return;
 
 	hdr = (ptr - sizeof(*hdr));
 	if (hdr->cookie != 0x12345678) {
-		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad start cookie\n",
+		EC_LOG(EC_LOG_ERR, "%s:%d: error: free(%p): bad start cookie\n",
 			file, line, ptr);
 		abort();
 	}
 
 	ftr = (ptr + hdr->size);
 	if (ftr->cookie != 0x87654321) {
-		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad end cookie\n",
+		EC_LOG(EC_LOG_ERR, "%s:%d: error: free(%p): bad end cookie\n",
 			file, line, ptr);
 		abort();
 	}
@@ -240,7 +242,7 @@ static void debug_free(void *ptr, const char *file, unsigned int line)
 	}
 
 	if (h == NULL) {
-		ec_log(EC_LOG_ERR, "%s:%d: error: free(%p): bad ptr\n",
+		EC_LOG(EC_LOG_ERR, "%s:%d: error: free(%p): bad ptr\n",
 			file, line, ptr);
 		abort();
 	}
@@ -260,7 +262,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 	if (ptr != NULL) {
 		hdr =  (ptr - sizeof(*hdr));
 		if (hdr->cookie != 0x12345678) {
-			ec_log(EC_LOG_ERR,
+			EC_LOG(EC_LOG_ERR,
 				"%s:%d: error: realloc(%p): bad start cookie\n",
 				file, line, ptr);
 			abort();
@@ -268,7 +270,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 
 		ftr = (ptr + hdr->size);
 		if (ftr->cookie != 0x87654321) {
-			ec_log(EC_LOG_ERR,
+			EC_LOG(EC_LOG_ERR,
 				"%s:%d: error: realloc(%p): bad end cookie\n",
 				file, line, ptr);
 			abort();
@@ -280,7 +282,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 		}
 
 		if (h == NULL) {
-			ec_log(EC_LOG_ERR, "%s:%d: error: realloc(%p): bad ptr\n",
+			EC_LOG(EC_LOG_ERR, "%s:%d: error: realloc(%p): bad ptr\n",
 				file, line, ptr);
 			abort();
 		}
@@ -313,7 +315,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 		ftr->cookie = 0x87654321;
 	}
 
-	ec_log(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p\n",
+	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p\n",
 		file, line, ptr, size, ret);
 
 	if (ret)
@@ -327,35 +329,37 @@ static int debug_alloc_dump_leaks(void)
 	int i;
 	char **buffer;
 
-	ec_log(EC_LOG_INFO, "%zd successful allocations\n", alloc_success);
+	EC_LOG(EC_LOG_INFO, "%zd successful allocations\n", alloc_success);
 
 	if (TAILQ_EMPTY(&debug_alloc_hdr_list))
 		return 0;
 
 	TAILQ_FOREACH(hdr, &debug_alloc_hdr_list, next) {
-		ec_log(EC_LOG_ERR,
+		EC_LOG(EC_LOG_ERR,
 			"%s:%d: error: memory leak size=%zd ptr=%p\n",
 			hdr->file, hdr->line, hdr->size, hdr + 1);
 		buffer = backtrace_symbols(hdr->stack, hdr->stacklen);
 		if (buffer == NULL) {
 			for (i = 0; i < hdr->stacklen; i++)
-				ec_log(EC_LOG_ERR, "  %p\n", hdr->stack[i]);
+				EC_LOG(EC_LOG_ERR, "  %p\n", hdr->stack[i]);
 		} else {
 			for (i = 0; i < hdr->stacklen; i++)
-				ec_log(EC_LOG_ERR, "  %s\n",
+				EC_LOG(EC_LOG_ERR, "  %s\n",
 					buffer ? buffer[i] : "unknown");
 		}
 		free(buffer);
 	}
 
-	ec_log(EC_LOG_ERR,
+	EC_LOG(EC_LOG_ERR,
 		"  missing static syms, use: addr2line -f -e <prog> <addr>\n");
 
 	return -1;
 }
 
-static int debug_log(unsigned int level, void *opaque, const char *str)
+static int debug_log(int type, unsigned int level, void *opaque,
+		const char *str)
 {
+	(void)type;
 	(void)opaque;
 
 	if (level > (unsigned int)log_level)
@@ -377,12 +381,12 @@ int main(int argc, char **argv)
 
 	srandom(seed);
 
-	ec_log_register(debug_log, NULL);
+	if (0) ec_log_fct_register(debug_log, NULL);
 
 	/* register a new malloc to track memleaks */
 	TAILQ_INIT(&debug_alloc_hdr_list);
 	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
-		ec_log(EC_LOG_ERR, "cannot register new malloc\n");
+		EC_LOG(EC_LOG_ERR, "cannot register new malloc\n");
 		return -1;
 	}
 

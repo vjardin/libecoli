@@ -40,6 +40,8 @@
 #include <ecoli_node_re_lex.h>
 #include <ecoli_node_expr.h>
 
+EC_LOG_TYPE_REGISTER(node_expr);
+
 struct my_eval_result {
 	int val;
 };

@@ -205,7 +205,6 @@ static int show_help(int ignore, int invoking_key)
 		helps[i++] = get_node_help(compnode);
 	}
 
-	ec_completed_dump(stdout, c);
 	ec_completed_free(c);
 
 	rl_display_match_list(helps, count + match, 1000); /* XXX 1000 */

@@ -31,20 +31,28 @@
 #include <string.h>
 #include <errno.h>
 
+#include <ecoli_malloc.h>
 #include <ecoli_log.h>
 
 static ec_log_t ec_log_fct = ec_log_default;
 static void *ec_log_opaque;
 
-int ec_log_default(unsigned int level, void *opaque, const char *str)
+struct ec_log_type {
+	char *name;
+	unsigned int level;
+};
+
+static struct ec_log_type *log_types;
+static size_t log_types_len;
+
+int ec_log_default(int type, unsigned int level, void *opaque, const char *str)
 {
 	(void)opaque;
-	(void)level;
 
-	return printf("%s", str);
+	return printf("[%d] %-12s %s", level, ec_log_name(type), str);
 }
 
-int ec_log_register(ec_log_t usr_log, void *opaque)
+int ec_log_fct_register(ec_log_t usr_log, void *opaque)
 {
 	if (usr_log == NULL)
 		return -1;
@@ -55,12 +63,63 @@ int ec_log_register(ec_log_t usr_log, void *opaque)
 	return 0;
 }
 
-void ec_log_unregister(void)
+void ec_log_fct_unregister(void)
 {
 	ec_log_fct = NULL;
 }
 
-int ec_vlog(unsigned int level, const char *format, va_list ap)
+static int
+ec_log_lookup(const char *name)
+{
+	size_t i;
+
+	for (i = 0; i < log_types_len; i++) {
+		if (log_types[i].name == NULL)
+			continue;
+		if (strcmp(name, log_types[i].name) == 0)
+			return i;
+	}
+
+	return -1;
+}
+
+const char *
+ec_log_name(int type)
+{
+	if (type < 0 || (unsigned int)type >= log_types_len)
+		return "unknown";
+	return log_types[type].name;
+}
+
+int
+ec_log_type_register(const char *name)
+{
+	struct ec_log_type *new_types;
+	char *copy;
+	int id;
+
+	id = ec_log_lookup(name);
+	if (id >= 0)
+		return id;
+
+	new_types = ec_realloc(log_types,
+		sizeof(*new_types) * (log_types_len + 1));
+	if (new_types == NULL)
+		return -ENOMEM;
+	log_types = new_types;
+
+	copy = ec_strdup(name);
+	if (copy == NULL)
+		return -ENOMEM;
+
+	id = log_types_len++;
+	log_types[id].name = copy;
+	log_types[id].level = EC_LOG_DEBUG;
+
+	return id;
+}
+
+int ec_vlog(int type, unsigned int level, const char *format, va_list ap)
 {
 	char *s;
 	int ret;
@@ -74,19 +133,19 @@ int ec_vlog(unsigned int level, const char *format, va_list ap)
 	if (ret < 0)
 		return ret;
 
-	ret = ec_log_fct(level, ec_log_opaque, s);
+	ret = ec_log_fct(type, level, ec_log_opaque, s);
 	free(s);
 
 	return ret;
 }
 
-int ec_log(unsigned int level, const char *format, ...)
+int ec_log(int type, unsigned int level, const char *format, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, format);
-	ret = ec_vlog(level, format, ap);
+	ret = ec_vlog(type, level, format, ap);
 	va_end(ap);
 
 	return ret;

@@ -35,6 +35,8 @@
 #include <ecoli_test.h>
 #include <ecoli_keyval.h>
 
+EC_LOG_TYPE_REGISTER(keyval);
+
 struct ec_keyval_elt {
 	char *key;
 	void *val;
@@ -195,7 +197,7 @@ static int ec_keyval_testcase(void)
 
 	keyval = ec_keyval();
 	if (keyval == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create keyval\n");
+		EC_LOG(EC_LOG_ERR, "cannot create keyval\n");
 		return -1;
 	}
 

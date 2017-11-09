@@ -47,6 +47,8 @@
 #include <ecoli_node_weakref.h>
 #include <ecoli_node_expr.h>
 
+EC_LOG_TYPE_REGISTER(node_expr);
+
 struct ec_node_expr {
 	struct ec_node gen;
 
@@ -91,7 +93,7 @@ static void ec_node_expr_free_priv(struct ec_node *gen_node)
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 	unsigned int i;
 
-	ec_log(EC_LOG_DEBUG, "free %p %p %p\n", node, node->child, node->val_node);
+	EC_LOG(EC_LOG_DEBUG, "free %p %p %p\n", node, node->child, node->val_node);
 	ec_node_free(node->val_node);
 
 	for (i = 0; i < node->bin_ops_len; i++)

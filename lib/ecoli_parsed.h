@@ -39,6 +39,7 @@ TAILQ_HEAD(ec_parsed_list, ec_parsed);
 
 /*
   node == NULL + empty children list means "no match"
+  XXX still valid?
 */
 struct ec_parsed {
 	TAILQ_ENTRY(ec_parsed) next;
@@ -46,6 +47,7 @@ struct ec_parsed {
 	struct ec_parsed *parent;
 	const struct ec_node *node;
 	struct ec_strvec *strvec;
+	/* XXX add a keyval (attrs) */
 };
 
 struct ec_parsed *ec_parsed(void);
@@ -56,7 +58,8 @@ const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
 
 /* XXX we could use a cache to store possible completions or match: the
  * cache would be per-node, and would be reset for each call to parse()
- * or complete() ? */
+ * or complete() ? ... not sure, since parse result can depend on state
+ */
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
 */

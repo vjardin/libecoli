@@ -46,6 +46,8 @@
 #include <ecoli_node_many.h>
 #include <ecoli_node_seq.h>
 
+EC_LOG_TYPE_REGISTER(node_seq);
+
 struct ec_node_seq {
 	struct ec_node gen;
 	struct ec_node **table;
@@ -293,7 +295,7 @@ static int ec_node_seq_testcase(void)
 		ec_node_str(NULL, "bar")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
@@ -312,7 +314,7 @@ static int ec_node_seq_testcase(void)
 		ec_node_str(NULL, "bar")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

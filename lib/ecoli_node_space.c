@@ -39,6 +39,8 @@
 #include <ecoli_completed.h>
 #include <ecoli_node_space.h>
 
+EC_LOG_TYPE_REGISTER(node_space);
+
 struct ec_node_space {
 	struct ec_node gen;
 };
@@ -83,7 +85,7 @@ static int ec_node_space_testcase(void)
 
 	node = ec_node("space", NULL);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, " ");
@@ -96,7 +98,7 @@ static int ec_node_space_testcase(void)
 	/* test completion */
 	node = ec_node("space", NULL);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	/* never completes whatever the input */

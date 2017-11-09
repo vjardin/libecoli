@@ -40,6 +40,8 @@
 #include <ecoli_completed.h>
 #include <ecoli_node_re.h>
 
+EC_LOG_TYPE_REGISTER(node_re);
+
 struct ec_node_re {
 	struct ec_node gen;
 	char *re_str;
@@ -146,7 +148,7 @@ static int ec_node_re_testcase(void)
 
 	node = ec_node_re(NULL, "fo+|bar");
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");

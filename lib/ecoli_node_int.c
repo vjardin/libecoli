@@ -43,6 +43,8 @@
 #include <ecoli_node_int.h>
 #include <ecoli_test.h>
 
+EC_LOG_TYPE_REGISTER(node_int);
+
 struct ec_node_int {
 	struct ec_node gen;
 	bool check_min;
@@ -156,7 +158,7 @@ static int ec_node_int_testcase(void)
 
 	node = ec_node_int(NULL, 0, 256, 0);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
@@ -179,7 +181,7 @@ static int ec_node_int_testcase(void)
 
 	node = ec_node_int(NULL, -1, LLONG_MAX, 16);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
@@ -196,7 +198,7 @@ static int ec_node_int_testcase(void)
 
 	node = ec_node_int(NULL, LLONG_MIN, 0, 10);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
@@ -209,7 +211,7 @@ static int ec_node_int_testcase(void)
 	/* test completion */
 	node = ec_node_int(NULL, 0, 10, 0);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

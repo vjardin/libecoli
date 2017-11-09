@@ -17,6 +17,8 @@
 #include <ecoli_node_int.h>
 #include <ecoli_node_re_lex.h>
 
+EC_LOG_TYPE_REGISTER(node_re_lex);
+
 struct regexp_pattern {
 	char *pattern;
 	regex_t r;
@@ -65,7 +67,7 @@ tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 
 			c = dup[pos.rm_eo + off];
 			dup[pos.rm_eo + off] = '\0';
-			ec_log(EC_LOG_DEBUG, "re_lex match <%s>\n", &dup[off]);
+			EC_LOG(EC_LOG_DEBUG, "re_lex match <%s>\n", &dup[off]);
 			if (ec_strvec_add(strvec, &dup[off]) < 0)
 				goto fail;
 
@@ -175,7 +177,7 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 
 	ret = regcomp(&table[node->len].r, pattern, REG_EXTENDED);
 	if (ret != 0) {
-		ec_log(EC_LOG_ERR,
+		EC_LOG(EC_LOG_ERR,
 			"Regular expression <%s> compilation failed: %d\n",
 			pattern, ret);
 		if (ret == REG_ESPACE)
@@ -232,7 +234,7 @@ static int ec_node_re_lex_testcase(void)
 		)
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 
@@ -244,7 +246,7 @@ static int ec_node_re_lex_testcase(void)
 	ret |= ec_node_re_lex_add(node, "\\+", 1);
 	ret |= ec_node_re_lex_add(node, "[ 	]+", 0);
 	if (ret != 0) {
-		ec_log(EC_LOG_ERR, "cannot add regexp to node\n");
+		EC_LOG(EC_LOG_ERR, "cannot add regexp to node\n");
 		ec_node_free(node);
 		return -1;
 	}

@@ -39,6 +39,8 @@
 #include <ecoli_completed.h>
 #include <ecoli_node_str.h>
 
+EC_LOG_TYPE_REGISTER(node_str);
+
 struct ec_node_str {
 	struct ec_node gen;
 	char *string;
@@ -186,7 +188,7 @@ static int ec_node_str_testcase(void)
 	/* XXX use EC_NO_ID instead of NULL */
 	node = ec_node_str(NULL, "foo");
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
@@ -198,7 +200,7 @@ static int ec_node_str_testcase(void)
 
 	node = ec_node_str(NULL, "Здравствуйте");
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "Здравствуйте");
@@ -211,7 +213,7 @@ static int ec_node_str_testcase(void)
 	/* an empty string node always matches */
 	node = ec_node_str(NULL, "");
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "");
@@ -222,7 +224,7 @@ static int ec_node_str_testcase(void)
 	/* test completion */
 	node = ec_node_str(NULL, "foo");
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

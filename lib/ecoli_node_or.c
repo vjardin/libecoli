@@ -42,6 +42,8 @@
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
 
+EC_LOG_TYPE_REGISTER(node_or);
+
 struct ec_node_or {
 	struct ec_node gen;
 	struct ec_node **table;
@@ -200,7 +202,7 @@ static int ec_node_or_testcase(void)
 		ec_node_str(NULL, "bar")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
@@ -221,7 +223,7 @@ static int ec_node_or_testcase(void)
 		ec_node_str(NULL, "titi")
 	);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,

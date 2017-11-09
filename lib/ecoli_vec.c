@@ -37,6 +37,8 @@
 #include <ecoli_test.h>
 #include <ecoli_vec.h>
 
+EC_LOG_TYPE_REGISTER(vec);
+
 struct ec_vec {
 	size_t len;
 	size_t size;
@@ -223,7 +225,7 @@ static void str_free(void *elt)
 }
 
 #define GOTO_FAIL do {					     \
-		ec_log(EC_LOG_ERR, "%s:%d: test failed\n",   \
+		EC_LOG(EC_LOG_ERR, "%s:%d: test failed\n",   \
 			__FILE__, __LINE__);		     \
 		goto fail;				     \
 	} while(0)

@@ -45,6 +45,8 @@
 #include <ecoli_completed.h>
 #include <ecoli_node_file.h>
 
+EC_LOG_TYPE_REGISTER(node_file);
+
 struct ec_node_file {
 	struct ec_node gen;
 };
@@ -277,7 +279,7 @@ static int ec_node_file_testcase(void)
 
 	node = ec_node("file", NULL);
 	if (node == NULL) {
-		ec_log(EC_LOG_ERR, "cannot create node\n");
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
 	/* any string matches */
