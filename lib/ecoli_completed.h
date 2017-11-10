@@ -46,7 +46,7 @@ struct ec_completed_item {
 	const struct ec_node *node;
 	char *str;
 	char *display;
-	/* XXX add a keyval (attrs) */
+	struct ec_keyval *attrs;
 
 	/* reverse order: [0] = last, [len-1] = root */
 	const struct ec_node **path;
@@ -67,6 +67,7 @@ struct ec_completed {
 	unsigned count;
 	unsigned count_match;
 	struct ec_completed_node_list nodes;
+	struct ec_keyval *attrs; // XXX per node instead?
 };
 
 /*

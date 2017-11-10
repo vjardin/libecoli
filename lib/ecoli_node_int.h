@@ -28,12 +28,20 @@
 #ifndef ECOLI_NODE_INT_
 #define ECOLI_NODE_INT_
 
+#include <stdint.h>
+
 #include <ecoli_node.h>
 
 // XXX remove min, max, base from new(), and add ec_node_int_set_limits() +
 // XXX ec_node_int_set_base() ?
-struct ec_node *ec_node_int(const char *id, long long int min,
-	long long int max, unsigned int base);
-long long ec_node_int_getval(struct ec_node *node, const char *str);
+
+struct ec_node *ec_node_int(const char *id, int64_t min,
+			int64_t max, unsigned int base);
+int64_t ec_node_int_getval(struct ec_node *node, const char *str);
+
+struct ec_node *ec_node_uint(const char *id, uint64_t min,
+			uint64_t max, unsigned int base);
+uint64_t ec_node_uint_getval(struct ec_node *node, const char *str);
+
 
 #endif

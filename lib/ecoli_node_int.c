@@ -47,24 +47,32 @@ EC_LOG_TYPE_REGISTER(node_int);
 
 struct ec_node_int {
 	struct ec_node gen;
+	bool is_signed;
 	bool check_min;
-	long long int min;
 	bool check_max;
-	long long int max;
+	union {
+		int64_t min;
+		uint64_t umin;
+	};
+	union {
+		int64_t max;
+		uint64_t umax;
+	};
 	unsigned int base;
 };
 
 static int parse_llint(struct ec_node_int *node, const char *str,
-	long long *val)
+	int64_t *val)
 {
 	char *endptr;
 
 	errno = 0;
 	*val = strtoll(str, &endptr, node->base);
 
-	/* out of range */
-	if ((errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN)) ||
-			(errno != 0 && *val == 0))
+	if (errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN))
+		return -1;
+
+	if (errno != 0 && *val == 0)
 		return -1;
 
 	if (node->check_min && *val < node->min)
@@ -79,13 +87,44 @@ static int parse_llint(struct ec_node_int *node, const char *str,
 	return 0;
 }
 
+static int parse_ullint(struct ec_node_int *node, const char *str,
+			uint64_t *val)
+{
+	char *endptr;
+
+	/* since a negative input is silently converted to a positive
+	 * one by strtoull(), first check that it is positive */
+	if (strchr(str, '-'))
+		return -1;
+
+	errno = 0;
+	*val = strtoull(str, &endptr, node->base);
+
+	if (errno == ERANGE && *val == ULLONG_MAX)
+		return -1;
+
+	if (errno != 0 && *val == 0)
+		return -1;
+
+	if (node->check_min && *val < node->umin)
+		return -1;
+
+	if (node->check_max && *val > node->umax)
+		return -1;
+
+	if (*endptr != 0)
+		return -1;
+
+	return 0;
+}
+
 static int ec_node_int_parse(const struct ec_node *gen_node,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_int *node = (struct ec_node_int *)gen_node;
 	const char *str;
-	long long val;
+	int64_t val;
 
 	(void)state;
 
@@ -115,11 +154,14 @@ static struct ec_node_type ec_node_int_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_int_type);
 
-struct ec_node *ec_node_int(const char *id, long long int min,
-	long long int max, unsigned int base)
+struct ec_node *ec_node_int(const char *id, int64_t min,
+	int64_t max, unsigned int base)
 {
 	struct ec_node *gen_node = NULL;
 	struct ec_node_int *node = NULL;
+
+	if (min > max)
+		return NULL;
 
 	gen_node = __ec_node(&ec_node_int_type, id);
 	if (gen_node == NULL)
@@ -131,19 +173,57 @@ struct ec_node *ec_node_int(const char *id, long long int min,
 	node->check_max = true;
 	node->max = max;
 	node->base = base;
+	node->is_signed = true;
 
 	return &node->gen;
 }
 
-long long ec_node_int_getval(struct ec_node *gen_node, const char *str)
+struct ec_node *ec_node_uint(const char *id, uint64_t min,
+	uint64_t max, unsigned int base)
+{
+	struct ec_node *gen_node = NULL;
+	struct ec_node_int *node = NULL;
+
+	if (min > max)
+		return NULL;
+
+	gen_node = __ec_node(&ec_node_int_type, id);
+	if (gen_node == NULL)
+		return NULL;
+	node = (struct ec_node_int *)gen_node;
+
+	node->check_min = true;
+	node->min = min;
+	node->check_max = true;
+	node->max = max;
+	node->base = base;
+	node->is_signed = true;
+
+	return &node->gen;
+}
+
+int64_t ec_node_int_getval(struct ec_node *gen_node, const char *str)
 {
 	struct ec_node_int *node = (struct ec_node_int *)gen_node;
-	long long val = 0;
+	int64_t val = 0;
 
 	// XXX check type here
 	// if gen_node->type != int fail
 
 	parse_llint(node, str, &val);
+
+	return val;
+}
+
+uint64_t ec_node_uint_getval(struct ec_node *gen_node, const char *str)
+{
+	struct ec_node_int *node = (struct ec_node_int *)gen_node;
+	uint64_t val = 0;
+
+	// XXX check type here
+	// if gen_node->type != int fail
+
+	parse_ullint(node, str, &val);
 
 	return val;
 }
@@ -156,7 +236,7 @@ static int ec_node_int_testcase(void)
 	const char *s;
 	int ret = 0;
 
-	node = ec_node_int(NULL, 0, 256, 0);
+	node = ec_node_uint(NULL, 0, 256, 0);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -175,7 +255,7 @@ static int ec_node_int_testcase(void)
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL && ec_node_int_getval(node, s) == 10);
+	EC_TEST_ASSERT(s != NULL && ec_node_uint_getval(node, s) == 10);
 	ec_parsed_free(p);
 	ec_node_free(node);
 

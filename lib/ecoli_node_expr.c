@@ -213,7 +213,7 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	weak = NULL;
 
 	node->child = expr;
-	ec_node_dump(stdout, node->child); //XXX
+	//ec_node_dump(stdout, node->child); //XXX
 
 	return 0;
 
@@ -595,7 +595,7 @@ int ec_node_expr_eval(void **user_result, const struct ec_node *node,
 	if (!ec_parsed_matches(parsed))
 		return -EINVAL;
 
-	ec_parsed_dump(stdout, parsed); //XXX
+	//ec_parsed_dump(stdout, parsed); //XXX
 	ret = eval_expression(&result, userctx, ops, node, parsed);
 	if (ret < 0)
 		return ret;

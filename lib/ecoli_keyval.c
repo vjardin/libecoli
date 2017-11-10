@@ -87,6 +87,11 @@ static void ec_keyval_elt_free(struct ec_keyval_elt *elt)
 		elt->free(elt->val);
 }
 
+bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key)
+{
+	return !!ec_keyval_lookup(keyval, key);
+}
+
 void *ec_keyval_get(const struct ec_keyval *keyval, const char *key)
 {
 	struct ec_keyval_elt *elt;

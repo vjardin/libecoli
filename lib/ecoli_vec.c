@@ -93,6 +93,7 @@ int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr)
 		new_vec = ec_realloc(vec->vec, vec->elt_size * (vec->len + 1));
 		if (new_vec == NULL)
 			return -ENOMEM;
+		vec->size = vec->len + 1;
 	}
 
 	vec->vec = new_vec;

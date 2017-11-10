@@ -55,7 +55,7 @@ static char *my_completion_entry(const char *s, int state)
 {
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
-	static const struct ec_completed_item *item;
+	const struct ec_completed_item *item;
 
 	(void)s;
 

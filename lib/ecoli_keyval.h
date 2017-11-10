@@ -29,6 +29,7 @@
 #define ECOLI_KEYVAL_
 
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef void (*ec_keyval_elt_free_t)(void *);
 
@@ -37,6 +38,7 @@ struct ec_keyval;
 struct ec_keyval *ec_keyval(void);
 
 void *ec_keyval_get(const struct ec_keyval *keyval, const char *key);
+bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key);
 int ec_keyval_del(struct ec_keyval *keyval, const char *key);
 int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 	ec_keyval_elt_free_t free_cb);

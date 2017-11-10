@@ -47,7 +47,7 @@ struct ec_parsed {
 	struct ec_parsed *parent;
 	const struct ec_node *node;
 	struct ec_strvec *strvec;
-	/* XXX add a keyval (attrs) */
+	struct ec_keyval *attrs;
 };
 
 struct ec_parsed *ec_parsed(void);

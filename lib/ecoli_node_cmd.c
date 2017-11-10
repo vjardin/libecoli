@@ -85,7 +85,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 	for (i = 0; i < node->len; i++) {
 		id = ec_node_id(node->table[i]);
-		printf("i=%d id=%s\n", i, id);
+		//printf("i=%d id=%s\n", i, id);
 		if (id == NULL)
 			continue;
 		if (strcmp(str, id))
@@ -104,7 +104,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 			return -ENOMEM;
 	}
 
-	printf("eval var %s %p\n", str, eval);
+	//printf("eval var %s %p\n", str, eval);
 	*result = eval;
 
 	return 0;
@@ -141,7 +141,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	else
 		return -EINVAL;
 
-	printf("eval post_op %p\n", eval);
+	//printf("eval post_op %p\n", eval);
 	*result = eval;
 
 	return 0;
@@ -159,7 +159,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 
 	(void)userctx;
 
-	printf("eval bin_op %p %p\n", in1, in2);
+	//printf("eval bin_op %p %p\n", in1, in2);
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_strvec(operator);
@@ -192,7 +192,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 		return -EINVAL;
 	}
 
-	printf("eval bin_op out %p\n", *result);
+	//printf("eval bin_op out %p\n", *result);
 
 	return 0;
 }
@@ -226,7 +226,7 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 		return -EINVAL;
 	}
 
-	printf("eval paren\n");
+	//printf("eval paren\n");
 	*result = out;
 
 	return 0;
@@ -374,7 +374,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	}
 	ec_parsed_free(p);
 	p = NULL;
-	ec_node_dump(stdout, cmd);
+	//ec_node_dump(stdout, cmd);
 
 	ec_node_free(node->expr);
 	node->expr = expr;
@@ -413,7 +413,6 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 
 	assert(node != NULL);
 
-	printf("add child %s\n", child->id);
 	if (child == NULL)
 		return -EINVAL;
 

@@ -45,11 +45,22 @@ struct ec_completed *ec_completed(void)
 
 	completed = ec_calloc(1, sizeof(*completed));
 	if (completed == NULL)
-		return NULL;
+		goto fail;
 
 	TAILQ_INIT(&completed->nodes);
 
+	completed->attrs = ec_keyval();
+	if (completed->attrs == NULL)
+		goto fail;
+
 	return completed;
+
+ fail:
+	if (completed != NULL)
+		ec_keyval_free(completed->attrs);
+	ec_free(completed);
+
+	return NULL;
 }
 
 /* XXX on error, states are not freed ?
@@ -181,7 +192,11 @@ ec_completed_item(struct ec_parsed *state, const struct ec_node *node)
 
 	item = ec_calloc(1, sizeof(*item));
 	if (item == NULL)
-		return NULL;
+		goto fail;
+
+	item->attrs = ec_keyval();
+	if (item->attrs == NULL)
+		goto fail;
 
 	/* get path len */
 	for (p = state, len = 0; p != NULL;
@@ -207,8 +222,9 @@ fail:
 		ec_free(item->path);
 		ec_free(item->str);
 		ec_free(item->display);
+		ec_keyval_free(item->attrs);
 	}
-	ec_completed_item_free(item);
+	ec_free(item);
 
 	return NULL;
 }
@@ -284,7 +300,6 @@ int ec_completed_item_set_display(struct ec_completed_item *item,
 fail:
 	ec_free(display_copy);
 	return ret;
-
 }
 
 int
@@ -333,6 +348,7 @@ void ec_completed_item_free(struct ec_completed_item *item)
 	ec_free(item->str);
 	ec_free(item->display);
 	ec_free(item->path);
+	ec_keyval_free(item->attrs);
 	ec_free(item);
 }
 
@@ -385,6 +401,7 @@ void ec_completed_free(struct ec_completed *completed)
 		}
 		ec_free(compnode);
 	}
+	ec_keyval_free(completed->attrs);
 	ec_free(completed);
 }
 

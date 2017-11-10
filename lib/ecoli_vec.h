@@ -62,6 +62,8 @@ struct ec_vec *ec_vec_dup(const struct ec_vec *vec);
 struct ec_vec *ec_vec_ndup(const struct ec_vec *vec,
 	size_t off, size_t len);
 void ec_vec_free(struct ec_vec *vec);
+
+__attribute__((pure))
 size_t ec_vec_len(const struct ec_vec *vec);
 
 #endif

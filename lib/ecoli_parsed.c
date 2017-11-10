@@ -147,9 +147,17 @@ struct ec_parsed *ec_parsed(void)
 
 	TAILQ_INIT(&parsed->children);
 
+	parsed->attrs = ec_keyval();
+	if (parsed->attrs == NULL)
+		goto fail;
+
 	return parsed;
 
  fail:
+	if (parsed != NULL)
+		ec_keyval_free(parsed->attrs);
+	ec_free(parsed);
+
 	return NULL;
 }
 
@@ -174,6 +182,7 @@ void ec_parsed_free(struct ec_parsed *parsed)
 
 	ec_parsed_free_children(parsed);
 	ec_strvec_free(parsed->strvec);
+	ec_keyval_free(parsed->attrs);
 	ec_free(parsed);
 }
 
