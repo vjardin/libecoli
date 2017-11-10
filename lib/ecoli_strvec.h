@@ -25,19 +25,103 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Vectors of strings.
+ *
+ * The ec_strvec API provide helpers to manipulate string vectors.
+ * When duplicating vectors, the strings are not duplicated in memory,
+ * a reference counter is used.
+ */
+
 #ifndef ECOLI_STRVEC_
 #define ECOLI_STRVEC_
 
 #include <stdio.h>
 
+/**
+ * Allocate a new empty string vector.
+ *
+ * @return
+ *   The new strvec object, or NULL on error (errno is set).
+ */
 struct ec_strvec *ec_strvec(void);
+
+/**
+ * Add a string in a vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param s
+ *   The string to be added at the end of the vector.
+ * @return
+ *   0 on success or -1 on error (errno is set).
+ */
 int ec_strvec_add(struct ec_strvec *strvec, const char *s);
+
+/**
+ * Duplicate a string vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @return
+ *   The duplicated strvec object, or NULL on error (errno is set).
+ */
 struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec);
+
+/**
+ * Duplicate a part of a string vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param off
+ *   The index of the first string to duplicate.
+ * @param
+ *   The number of strings to duplicate.
+ * @return
+ *   The duplicated strvec object, or NULL on error (errno is set).
+ */
 struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec,
 	size_t off, size_t len);
+
+/**
+ * Free a string vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ */
 void ec_strvec_free(struct ec_strvec *strvec);
+
+/**
+ * Get the length of a string vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @return
+ *   The length of the vector.
+ */
 size_t ec_strvec_len(const struct ec_strvec *strvec);
-char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
+
+/**
+ * Get a string element from a vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param idx
+ *   The index of the string to get.
+ * @return
+ *   The string stored at given index, or NULL on error (strvec is NULL
+ *   or invalid index).
+ */
+const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
+
+/**
+ * Dump a string vector.
+ *
+ * @param out
+ *   The stream where the dump is sent.
+ * @param strvec
+ *   The pointer to the string vector.
+ */
 void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec);
 
 #endif

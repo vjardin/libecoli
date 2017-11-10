@@ -32,6 +32,10 @@
 
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
+#include <ecoli_test.h>
+#include <ecoli_log.h>
+
+EC_LOG_TYPE_REGISTER(strvec);
 
 struct ec_strvec_elt {
 	unsigned int refcnt;
@@ -61,18 +65,18 @@ int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 	new_vec = ec_realloc(strvec->vec,
 		sizeof(*strvec->vec) * (strvec->len + 1));
 	if (new_vec == NULL)
-		return -ENOMEM;
+		return -1;
 
 	strvec->vec = new_vec;
 
 	elt = ec_malloc(sizeof(*elt));
 	if (elt == NULL)
-		return -ENOMEM;
+		return -1;
 
 	elt->str = ec_strdup(s);
 	if (elt->str == NULL) {
 		ec_free(elt);
-		return -ENOMEM;
+		return -1;
 	}
 	elt->refcnt = 1;
 
@@ -85,17 +89,16 @@ struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t off,
 	size_t len)
 {
 	struct ec_strvec *copy = NULL;
-	size_t i, veclen;
+	size_t i;
+
+	if (off + len > ec_strvec_len(strvec)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	copy = ec_strvec();
 	if (copy == NULL)
 		goto fail;
-
-	veclen = ec_strvec_len(strvec);
-	if (off >= veclen)
-		len = 0;
-	else if (off + len > veclen)
-		len -= (veclen - off);
 
 	if (len == 0)
 		return copy;
@@ -145,10 +148,13 @@ void ec_strvec_free(struct ec_strvec *strvec)
 
 size_t ec_strvec_len(const struct ec_strvec *strvec)
 {
+	if (strvec == NULL)
+		return 0;
+
 	return strvec->len;
 }
 
-char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
+const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
 {
 	if (strvec == NULL || idx >= strvec->len)
 		return NULL;
@@ -176,4 +182,131 @@ void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 
 }
 
-/* XXX test case */
+/* LCOV_EXCL_START */
+static int ec_strvec_testcase(void)
+{
+	struct ec_strvec *strvec = NULL;
+	struct ec_strvec *strvec2 = NULL;
+
+	strvec = ec_strvec();
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot create strvec\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec) != 0) {
+		EC_TEST_ERR("bad strvec len (0)\n");
+		goto fail;
+	}
+	if (ec_strvec_add(strvec, "0") < 0) {
+		EC_TEST_ERR("cannot add (0) in strvec\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec) != 1) {
+		EC_TEST_ERR("bad strvec len (1)\n");
+		goto fail;
+	}
+	if (ec_strvec_add(strvec, "1") < 0) {
+		EC_TEST_ERR("cannot add (1) in strvec\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec) != 2) {
+		EC_TEST_ERR("bad strvec len (2)\n");
+		goto fail;
+	}
+	if (strcmp(ec_strvec_val(strvec, 0), "0")) {
+		EC_TEST_ERR("invalid element in strvec (0)\n");
+		goto fail;
+	}
+	if (strcmp(ec_strvec_val(strvec, 1), "1")) {
+		EC_TEST_ERR("invalid element in strvec (1)\n");
+		goto fail;
+	}
+	if (ec_strvec_val(strvec, 2) != NULL) {
+		EC_TEST_ERR("strvec val should be NULL\n");
+		goto fail;
+	}
+
+	strvec2 = ec_strvec_dup(strvec);
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec2\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec2) != 2) {
+		EC_TEST_ERR("bad strvec2 len (2)\n");
+		goto fail;
+	}
+	if (strcmp(ec_strvec_val(strvec2, 0), "0")) {
+		EC_TEST_ERR("invalid element in strvec2 (0)\n");
+		goto fail;
+	}
+	if (strcmp(ec_strvec_val(strvec2, 1), "1")) {
+		EC_TEST_ERR("invalid element in strvec2 (1)\n");
+		goto fail;
+	}
+	if (ec_strvec_val(strvec2, 2) != NULL) {
+		EC_TEST_ERR("strvec2 val should be NULL\n");
+		goto fail;
+	}
+	ec_strvec_free(strvec2);
+
+	strvec2 = ec_strvec_ndup(strvec, 0, 0);
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec2\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec2) != 0) {
+		EC_TEST_ERR("bad strvec2 len (0)\n");
+		goto fail;
+	}
+	if (ec_strvec_val(strvec2, 0) != NULL) {
+		EC_TEST_ERR("strvec2 val should be NULL\n");
+		goto fail;
+	}
+	ec_strvec_free(strvec2);
+
+	strvec2 = ec_strvec_ndup(strvec, 1, 1);
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec2\n");
+		goto fail;
+	}
+	if (ec_strvec_len(strvec2) != 1) {
+		EC_TEST_ERR("bad strvec2 len (1)\n");
+		goto fail;
+	}
+	if (strcmp(ec_strvec_val(strvec2, 0), "1")) {
+		EC_TEST_ERR("invalid element in strvec2 (1)\n");
+		goto fail;
+	}
+	if (ec_strvec_val(strvec2, 1) != NULL) {
+		EC_TEST_ERR("strvec2 val should be NULL\n");
+		goto fail;
+	}
+	ec_strvec_free(strvec2);
+
+	strvec2 = ec_strvec_ndup(strvec, 3, 1);
+	if (strvec2 != NULL) {
+		EC_TEST_ERR("strvec2 should be NULL\n");
+		goto fail;
+	}
+	ec_strvec_free(strvec2);
+
+	ec_strvec_dump(stdout, strvec);
+	ec_strvec_dump(stdout, NULL);
+
+	ec_strvec_free(strvec);
+
+	return 0;
+
+fail:
+	ec_strvec_free(strvec);
+	ec_strvec_free(strvec2);
+	return -1;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_node_str_test = {
+	.name = "strvec",
+	.test = ec_strvec_testcase,
+};
+
+EC_TEST_REGISTER(ec_node_str_test);

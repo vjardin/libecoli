@@ -25,6 +25,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Vectors of objects.
+ *
+ * The ec_vec API provide helpers to manipulate vectors of objects
+ * of any kind.
+ */
+
 #ifndef ECOLI_VEC_
 #define ECOLI_VEC_
 
