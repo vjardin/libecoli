@@ -25,46 +25,39 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * Vectors of objects.
- *
- * The ec_vec API provide helpers to manipulate vectors of objects
- * of any kind.
- */
-
-#ifndef ECOLI_VEC_
-#define ECOLI_VEC_
-
-#include <sys/types.h>
 #include <stdint.h>
-#include <stdio.h>
 
-/* if NULL, default does nothing */
-typedef void (*ec_vec_elt_free_t)(void *ptr);
+#include <ecoli_murmurhash.h>
 
-/* if NULL, default is:
- * memcpy(dst, src, vec->elt_size)
- */
-typedef void (*ec_vec_elt_copy_t)(void *dst, void *src);
+uint32_t ec_murmurhash3(const void *key, int len, uint32_t seed)
+{
+	const uint8_t *data = (const uint8_t *)key;
+	const uint8_t *tail;
+	const int nblocks = len / 4;
+	uint32_t h1 = seed;
+	uint32_t k1;
+	const uint32_t *blocks = (const uint32_t *)(data + nblocks * 4);
+	int i;
 
-struct ec_vec *ec_vec(size_t elt_size, size_t size,
-		ec_vec_elt_copy_t copy, ec_vec_elt_free_t free);
-int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr);
+	for (i = -nblocks; i; i++) {
+		k1 = blocks[i];
 
-int ec_vec_add_ptr(struct ec_vec *vec, void *elt);
-int ec_vec_add_u8(struct ec_vec *vec, uint8_t elt);
-int ec_vec_add_u16(struct ec_vec *vec, uint16_t elt);
-int ec_vec_add_u32(struct ec_vec *vec, uint32_t elt);
-int ec_vec_add_u64(struct ec_vec *vec, uint64_t elt);
+		h1 = ec_murmurhash3_add32(h1, k1);
+		h1 = ec_murmurhash3_mix32(h1);
+	}
 
-int ec_vec_get(void *ptr, const struct ec_vec *vec, size_t idx);
+	tail = (const uint8_t *)(data + nblocks * 4);
+	k1 = 0;
 
-struct ec_vec *ec_vec_dup(const struct ec_vec *vec);
-struct ec_vec *ec_vec_ndup(const struct ec_vec *vec,
-	size_t off, size_t len);
-void ec_vec_free(struct ec_vec *vec);
+	switch(len & 3) {
+	case 3: k1 ^= tail[2] << 16;
+	case 2: k1 ^= tail[1] << 8;
+	case 1: k1 ^= tail[0];
+		h1 = ec_murmurhash3_add32(h1, k1);
+	};
 
-__attribute__((pure))
-size_t ec_vec_len(const struct ec_vec *vec);
-
-#endif
+	/* finalization */
+	h1 ^= len;
+	h1 = ec_murmurhash3_fmix32(h1);
+	return h1;
+}

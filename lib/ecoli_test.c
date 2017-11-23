@@ -43,7 +43,7 @@ static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 
 EC_LOG_TYPE_REGISTER(test);
 
-/* register a driver */
+/* register a test case */
 void ec_test_register(struct ec_test *test)
 {
 	TAILQ_INSERT_TAIL(&test_list, test, next);

@@ -45,8 +45,10 @@ srcs :=
 srcs += ecoli_assert.c
 srcs += ecoli_completed.c
 srcs += ecoli_keyval.c
+srcs += ecoli_init.c
 srcs += ecoli_log.c
 srcs += ecoli_malloc.c
+srcs += ecoli_murmurhash.c
 srcs += ecoli_strvec.c
 srcs += ecoli_test.c
 srcs += ecoli_node.c
@@ -79,7 +81,7 @@ ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(srcs) main.c
 
 ldflags-$(O)readline = -lreadline -ltermcap
-#exe-y-$(O)readline = $(srcs) main-readline.c
+exe-y-$(O)readline = $(srcs) main-readline.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 

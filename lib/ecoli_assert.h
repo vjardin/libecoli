@@ -26,45 +26,33 @@
  */
 
 /**
- * Vectors of objects.
+ * Assert API
  *
- * The ec_vec API provide helpers to manipulate vectors of objects
- * of any kind.
+ * Helpers to check at runtime if a condition is true, and abort
+ * otherwise.
  */
 
-#ifndef ECOLI_VEC_
-#define ECOLI_VEC_
+#ifndef ECOLI_ASSERT_
+#define ECOLI_ASSERT_
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <stdbool.h>
 
-/* if NULL, default does nothing */
-typedef void (*ec_vec_elt_free_t)(void *ptr);
-
-/* if NULL, default is:
- * memcpy(dst, src, vec->elt_size)
+/**
+ * Abort if the condition is false.
+ *
+ * If expression is false this macro will prints an error message to
+ * standard error and terminates the program by calling abort(3).
+ *
+ * @param expr
+ *   The expression to be checked.
+ * @param args
+ *   The format string, optionally followed by other arguments.
  */
-typedef void (*ec_vec_elt_copy_t)(void *dst, void *src);
+#define ec_assert_print(expr, args...) \
+	__ec_assert_print(expr, #expr, args)
 
-struct ec_vec *ec_vec(size_t elt_size, size_t size,
-		ec_vec_elt_copy_t copy, ec_vec_elt_free_t free);
-int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr);
-
-int ec_vec_add_ptr(struct ec_vec *vec, void *elt);
-int ec_vec_add_u8(struct ec_vec *vec, uint8_t elt);
-int ec_vec_add_u16(struct ec_vec *vec, uint16_t elt);
-int ec_vec_add_u32(struct ec_vec *vec, uint32_t elt);
-int ec_vec_add_u64(struct ec_vec *vec, uint64_t elt);
-
-int ec_vec_get(void *ptr, const struct ec_vec *vec, size_t idx);
-
-struct ec_vec *ec_vec_dup(const struct ec_vec *vec);
-struct ec_vec *ec_vec_ndup(const struct ec_vec *vec,
-	size_t off, size_t len);
-void ec_vec_free(struct ec_vec *vec);
-
-__attribute__((pure))
-size_t ec_vec_len(const struct ec_vec *vec);
+/* internal */
+void __ec_assert_print(bool expr, const char *expr_str,
+		const char *format, ...);
 
 #endif

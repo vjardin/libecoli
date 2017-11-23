@@ -31,7 +31,9 @@
 #include <getopt.h>
 #include <limits.h>
 #include <execinfo.h>
+#include <errno.h>
 
+#include <ecoli_init.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
@@ -384,13 +386,17 @@ int main(int argc, char **argv)
 
 	srandom(seed);
 
+	if (ec_init() < 0) {
+		fprintf(stderr, "cannot init ecoli: %s\n", strerror(errno));
+		return 1;
+	}
 	ec_log_fct_register(debug_log, NULL);
 
 	/* register a new malloc to track memleaks */
 	TAILQ_INIT(&debug_alloc_hdr_list);
 	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
 		EC_LOG(EC_LOG_ERR, "cannot register new malloc\n");
-		return -1;
+		return 1;
 	}
 
 	ret = 0;

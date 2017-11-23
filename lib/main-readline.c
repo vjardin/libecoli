@@ -28,11 +28,13 @@
 #define _GNU_SOURCE /* for asprintf */
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <assert.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include <ecoli_init.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
 #include <ecoli_completed.h>
@@ -323,6 +325,11 @@ int main(void)
 {
 	struct ec_parsed *p;
 	char *line;
+
+	if (ec_init() < 0) {
+		fprintf(stderr, "cannot init ecoli: %s\n", strerror(errno));
+		return 1;
+	}
 
 	if (create_commands() < 0)
 		return 1;

@@ -25,46 +25,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/**
- * Vectors of objects.
- *
- * The ec_vec API provide helpers to manipulate vectors of objects
- * of any kind.
- */
-
-#ifndef ECOLI_VEC_
-#define ECOLI_VEC_
-
-#include <sys/types.h>
-#include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
-/* if NULL, default does nothing */
-typedef void (*ec_vec_elt_free_t)(void *ptr);
+#include <ecoli_init.h>
 
-/* if NULL, default is:
- * memcpy(dst, src, vec->elt_size)
- */
-typedef void (*ec_vec_elt_copy_t)(void *dst, void *src);
+static struct ec_init_list init_list = TAILQ_HEAD_INITIALIZER(init_list);
 
-struct ec_vec *ec_vec(size_t elt_size, size_t size,
-		ec_vec_elt_copy_t copy, ec_vec_elt_free_t free);
-int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr);
+/* register an init function */
+void ec_init_register(struct ec_init *init)
+{
+	TAILQ_INSERT_TAIL(&init_list, init, next);
+}
 
-int ec_vec_add_ptr(struct ec_vec *vec, void *elt);
-int ec_vec_add_u8(struct ec_vec *vec, uint8_t elt);
-int ec_vec_add_u16(struct ec_vec *vec, uint16_t elt);
-int ec_vec_add_u32(struct ec_vec *vec, uint32_t elt);
-int ec_vec_add_u64(struct ec_vec *vec, uint64_t elt);
+int ec_init(void)
+{
+	struct ec_init *init;
 
-int ec_vec_get(void *ptr, const struct ec_vec *vec, size_t idx);
+	/* XXX sort list by priority */
 
-struct ec_vec *ec_vec_dup(const struct ec_vec *vec);
-struct ec_vec *ec_vec_ndup(const struct ec_vec *vec,
-	size_t off, size_t len);
-void ec_vec_free(struct ec_vec *vec);
+	TAILQ_FOREACH(init, &init_list, next) {
+		if (init->init() < 0)
+			return -1;
+	}
 
-__attribute__((pure))
-size_t ec_vec_len(const struct ec_vec *vec);
-
-#endif
+	return 0;
+}

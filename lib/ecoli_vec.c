@@ -97,10 +97,7 @@ int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr)
 	}
 
 	vec->vec = new_vec;
-	if (vec->copy)
-		vec->copy(get_obj(vec, vec->len), ptr);
-	else
-		memcpy(get_obj(vec, vec->len), ptr, vec->elt_size);
+	memcpy(get_obj(vec, vec->len), ptr, vec->elt_size);
 	vec->len++;
 
 	return 0;
@@ -181,6 +178,9 @@ fail:
 
 size_t ec_vec_len(const struct ec_vec *vec)
 {
+	if (vec == NULL)
+		return 0;
+
 	return vec->len;
 }
 
@@ -207,13 +207,12 @@ void ec_vec_free(struct ec_vec *vec)
 
 int ec_vec_get(void *ptr, const struct ec_vec *vec, size_t idx)
 {
-	if (vec == NULL || idx >= vec->len)
-		return -EINVAL;
+	if (vec == NULL || idx >= vec->len) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (vec->copy)
-		vec->copy(ptr, get_obj(vec, idx));
-	else
-		memcpy(ptr, get_obj(vec, idx), vec->elt_size);
+	memcpy(ptr, get_obj(vec, idx), vec->elt_size);
 
 	return 0;
 }

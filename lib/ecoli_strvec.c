@@ -31,9 +31,10 @@
 #include <errno.h>
 
 #include <ecoli_malloc.h>
-#include <ecoli_strvec.h>
 #include <ecoli_test.h>
 #include <ecoli_log.h>
+#include <ecoli_vec.h>
+#include <ecoli_strvec.h>
 
 EC_LOG_TYPE_REGISTER(strvec);
 
@@ -42,128 +43,97 @@ struct ec_strvec_elt {
 	char *str;
 };
 
-struct ec_strvec {
-	size_t len;
-	struct ec_strvec_elt **vec;
-};
+struct ec_strvec;
+
+static void ec_strvec_elt_free(void *ptr)
+{
+	struct ec_strvec_elt **p_elt = ptr;
+	struct ec_strvec_elt *elt = *p_elt;
+
+	elt->refcnt--;
+	if (elt->refcnt == 0) {
+		ec_free(elt->str);
+		ec_free(elt);
+	}
+}
+
+static void ec_strvec_elt_copy(void *dst, void *src)
+{
+	struct ec_strvec_elt **p_elt_dst = dst, **p_elt_src = src;
+	struct ec_strvec_elt *elt = *p_elt_src;
+
+	elt->refcnt++;
+	*p_elt_dst = elt;
+}
 
 struct ec_strvec *ec_strvec(void)
 {
-	struct ec_strvec *strvec;
+	struct ec_vec *vec;
 
-	strvec = ec_calloc(1, sizeof(*strvec));
-	if (strvec == NULL)
-		return NULL;
+	vec = ec_vec(sizeof(struct ec_strvec_elt *), 0,
+		ec_strvec_elt_copy, ec_strvec_elt_free);
 
-	return strvec;
+	return (struct ec_strvec *)vec;
 }
 
 int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 {
-	struct ec_strvec_elt *elt, **new_vec;
-
-	new_vec = ec_realloc(strvec->vec,
-		sizeof(*strvec->vec) * (strvec->len + 1));
-	if (new_vec == NULL)
-		return -1;
-
-	strvec->vec = new_vec;
+	struct ec_strvec_elt *elt = NULL;
 
 	elt = ec_malloc(sizeof(*elt));
 	if (elt == NULL)
-		return -1;
+		goto fail;
 
 	elt->str = ec_strdup(s);
-	if (elt->str == NULL) {
-		ec_free(elt);
-		return -1;
-	}
+	if (elt->str == NULL)
+		goto fail;
 	elt->refcnt = 1;
 
-	new_vec[strvec->len] = elt;
-	strvec->len++;
+	if (ec_vec_add_ptr((struct ec_vec *)strvec, elt) < 0)
+		goto fail;
+
 	return 0;
+
+fail:
+	ec_free(elt);
+	return -1;
 }
 
 struct ec_strvec *ec_strvec_ndup(const struct ec_strvec *strvec, size_t off,
 	size_t len)
 {
-	struct ec_strvec *copy = NULL;
-	size_t i;
-
-	if (off + len > ec_strvec_len(strvec)) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	copy = ec_strvec();
-	if (copy == NULL)
-		goto fail;
-
-	if (len == 0)
-		return copy;
-
-	copy->vec = ec_calloc(len, sizeof(*copy->vec));
-	if (copy->vec == NULL)
-		goto fail;
-
-	for (i = 0; i < len; i++) {
-		copy->vec[i] = strvec->vec[i + off];
-		copy->vec[i]->refcnt++;
-		copy->len++;
-	}
-
-	return copy;
-
-fail:
-	ec_strvec_free(copy);
-	return NULL;
+	return (struct ec_strvec *)ec_vec_ndup((struct ec_vec *)strvec,
+					off, len);
 }
 
 struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec)
 {
-	return ec_strvec_ndup(strvec, 0, ec_strvec_len(strvec));
+	return (struct ec_strvec *)ec_vec_dup((struct ec_vec *)strvec);
 }
 
 void ec_strvec_free(struct ec_strvec *strvec)
 {
-	struct ec_strvec_elt *elt;
-	size_t i;
-
-	if (strvec == NULL)
-		return;
-
-	for (i = 0; i < ec_strvec_len(strvec); i++) {
-		elt = strvec->vec[i];
-		elt->refcnt--;
-		if (elt->refcnt == 0) {
-			ec_free(elt->str);
-			ec_free(elt);
-		}
-	}
-
-	ec_free(strvec->vec);
-	ec_free(strvec);
+	ec_vec_free((struct ec_vec *)strvec);
 }
 
 size_t ec_strvec_len(const struct ec_strvec *strvec)
 {
-	if (strvec == NULL)
-		return 0;
-
-	return strvec->len;
+	return ec_vec_len((struct ec_vec *)strvec);
 }
 
 const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
 {
-	if (strvec == NULL || idx >= strvec->len)
+	struct ec_strvec_elt *elt;
+
+	if (ec_vec_get(&elt, (struct ec_vec *)strvec, idx) < 0)
 		return NULL;
 
-	return strvec->vec[idx]->str;
+	return elt->str;
 }
 
 void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 {
+	const char *s;
 	size_t i;
 
 	if (strvec == NULL) {
@@ -171,12 +141,13 @@ void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 		return;
 	}
 
-	fprintf(out, "strvec (len=%zu) [", strvec->len);
+	fprintf(out, "strvec (len=%zu) [", ec_strvec_len(strvec));
 	for (i = 0; i < ec_strvec_len(strvec); i++) {
+		s = ec_strvec_val(strvec, i);
 		if (i == 0)
-			fprintf(out, "%s", strvec->vec[i]->str);
+			fprintf(out, "%s", s);
 		else
-			fprintf(out, ", %s", strvec->vec[i]->str);
+			fprintf(out, ", %s", s);
 	}
 	fprintf(out, "]\n");
 

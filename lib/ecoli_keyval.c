@@ -26,26 +26,42 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/queue.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 
+#include <ecoli_init.h>
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
+#include <ecoli_murmurhash.h>
 #include <ecoli_keyval.h>
+
+#define FACTOR 3
 
 EC_LOG_TYPE_REGISTER(keyval);
 
+static uint32_t ec_keyval_seed;
+
 struct ec_keyval_elt {
+	LIST_ENTRY(ec_keyval_elt) next;
 	char *key;
 	void *val;
+	uint32_t hash;
 	ec_keyval_elt_free_t free;
 };
 
+LIST_HEAD(ec_keyval_elt_list, ec_keyval_elt);
+
 struct ec_keyval {
 	size_t len;
-	struct ec_keyval_elt *vec;
+	size_t table_size;
+	struct ec_keyval_elt_list *table;
 };
 
 struct ec_keyval *ec_keyval(void)
@@ -63,17 +79,26 @@ static struct ec_keyval_elt *ec_keyval_lookup(const struct ec_keyval *keyval,
 	const char *key)
 {
 	struct ec_keyval_elt *elt;
-	size_t i;
+	uint32_t h, mask = keyval->table_size - 1;
 
-	if (keyval == NULL || keyval->vec == NULL)
+	if (keyval == NULL || key == NULL) {
+		errno = EINVAL;
 		return NULL;
-
-	for (i = 0; i < ec_keyval_len(keyval); i++) {
-		elt = &keyval->vec[i];
-		if (strcmp(elt->key, key) == 0)
-			return elt;
+	}
+	if (keyval->table_size == 0) {
+		errno = ENOENT;
+		return NULL;
 	}
 
+	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
+	LIST_FOREACH(elt, &keyval->table[h & mask], next) {
+		if (strcmp(elt->key, key) == 0) {
+			errno = 0;
+			return elt;
+		}
+	}
+
+	errno = ENOENT;
 	return NULL;
 }
 
@@ -85,6 +110,7 @@ static void ec_keyval_elt_free(struct ec_keyval_elt *elt)
 	ec_free(elt->key);
 	if (elt->free != NULL)
 		elt->free(elt->val);
+	ec_free(elt);
 }
 
 bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key)
@@ -106,18 +132,47 @@ void *ec_keyval_get(const struct ec_keyval *keyval, const char *key)
 int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 {
 	struct ec_keyval_elt *elt;
-	struct ec_keyval_elt *last = &keyval->vec[keyval->len - 1];
 
 	elt = ec_keyval_lookup(keyval, key);
 	if (elt == NULL)
-		return -ENOENT;
+		return -1;
 
+	/* we could resize table here */
+
+	LIST_REMOVE(elt, next);
 	ec_keyval_elt_free(elt);
-
-	if (elt != last)
-		memcpy(elt, last, sizeof(*elt));
-
 	keyval->len--;
+
+	return 0;
+}
+
+static int ec_keyval_table_resize(struct ec_keyval *keyval, size_t new_size)
+{
+	struct ec_keyval_elt_list *new_table;
+	struct ec_keyval_elt *elt;
+	size_t i;
+
+	if (new_size == 0 || (new_size & (new_size - 1))) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	new_table = ec_calloc(new_size, sizeof(*keyval->table));
+	if (new_table == NULL)
+		return -1;
+
+	for (i = 0; i < keyval->table_size; i++) {
+		while (!LIST_EMPTY(&keyval->table[i])) {
+			elt = LIST_FIRST(&keyval->table[i]);
+			LIST_REMOVE(elt, next);
+			LIST_INSERT_HEAD(&new_table[elt->hash & (new_size - 1)],
+					elt, next);
+		}
+	}
+
+	ec_free(keyval->table);
+	keyval->table = new_table;
+	keyval->table_size = new_size;
 
 	return 0;
 }
@@ -125,35 +180,61 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 	ec_keyval_elt_free_t free_cb)
 {
-	struct ec_keyval_elt *elt, *new_vec;
+	struct ec_keyval_elt *elt;
+	uint32_t h, mask;
+	size_t new_size;
+	int ret;
 
-	assert(keyval != NULL);
-	assert(key != NULL);
+	if (keyval == NULL || key == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	ec_keyval_del(keyval, key);
+	elt = ec_keyval_lookup(keyval, key);
+	if (elt != NULL) {
+		if (elt->free != NULL)
+			elt->free(elt->val);
+		elt->val = val;
+		elt->free = free_cb;
+		return 0;
+	}
 
-	new_vec = ec_realloc(keyval->vec,
-		sizeof(*keyval->vec) * (keyval->len + 1));
-	if (new_vec == NULL)
+	if (keyval->len >= keyval->table_size) {
+		if (keyval->table_size != 0)
+			new_size =  keyval->table_size << FACTOR;
+		else
+			new_size =  1 << FACTOR;
+		ret = ec_keyval_table_resize(keyval, new_size);
+		if (ret < 0)
+			goto fail;
+	}
+
+	elt = ec_calloc(1, sizeof(*elt));
+	if (elt == NULL)
 		goto fail;
-
-	keyval->vec = new_vec;
-
-	elt = &new_vec[keyval->len];
 	elt->key = ec_strdup(key);
 	if (elt->key == NULL)
 		goto fail;
-
 	elt->val = val;
 	elt->free = free_cb;
+	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
+	elt->hash = h;
+
+	mask = keyval->table_size - 1;
+	LIST_INSERT_HEAD(&keyval->table[h & mask], elt, next);
 	keyval->len++;
 
 	return 0;
 
 fail:
-	if (free_cb)
+	if (free_cb != NULL)
 		free_cb(val);
-	return -ENOMEM;
+	if (elt != NULL) {
+		ec_free(elt->key);
+		ec_free(elt);
+	}
+
+	return ret;
 }
 
 void ec_keyval_free(struct ec_keyval *keyval)
@@ -164,11 +245,14 @@ void ec_keyval_free(struct ec_keyval *keyval)
 	if (keyval == NULL)
 		return;
 
-	for (i = 0; i < ec_keyval_len(keyval); i++) {
-		elt = &keyval->vec[i];
-		ec_keyval_elt_free(elt);
+	for (i = 0; i < keyval->table_size; i++) {
+		while (!LIST_EMPTY(&keyval->table[i])) {
+			elt = LIST_FIRST(&keyval->table[i]);
+			LIST_REMOVE(elt, next);
+			ec_keyval_elt_free(elt);
+		}
 	}
-	ec_free(keyval->vec);
+	ec_free(keyval->table);
 	ec_free(keyval);
 }
 
@@ -177,8 +261,9 @@ size_t ec_keyval_len(const struct ec_keyval *keyval)
 	return keyval->len;
 }
 
-void ec_keyval_dump(const struct ec_keyval *keyval, FILE *out)
+void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 {
+	struct ec_keyval_elt *elt;
 	size_t i;
 
 	if (keyval == NULL) {
@@ -187,18 +272,47 @@ void ec_keyval_dump(const struct ec_keyval *keyval, FILE *out)
 	}
 
 	fprintf(out, "keyval:\n");
-	for (i = 0; i < ec_keyval_len(keyval); i++) {
-		fprintf(out, "  %s: %p\n",
-			keyval->vec[i].key,
-			keyval->vec[i].val);
+	for (i = 0; i < keyval->table_size; i++) {
+		LIST_FOREACH(elt, &keyval->table[i], next) {
+			fprintf(out, "  %s: %p\n",
+				elt->key, elt->val);
+		}
 	}
 }
+
+static int ec_keyval_init_func(void)
+{
+	int fd;
+	ssize_t ret;
+
+	fd = open("/dev/urandom", 0);
+	if (fd == -1) {
+		fprintf(stderr, "failed to open /dev/urandom\n");
+		return -1;
+	}
+	ret = read(fd, &ec_keyval_seed, sizeof(ec_keyval_seed));
+	if (ret != sizeof(ec_keyval_seed)) {
+		fprintf(stderr, "failed to read /dev/urandom\n");
+		return -1;
+	}
+	close(fd);
+	return 0;
+}
+
+static struct ec_init ec_keyval_init = {
+	.init = ec_keyval_init_func,
+	.priority = 50,
+};
+
+EC_INIT_REGISTER(ec_keyval_init);
 
 /* LCOV_EXCL_START */
 static int ec_keyval_testcase(void)
 {
 	struct ec_keyval *keyval;
 	char *val;
+	size_t i;
+	int ret;
 
 	keyval = ec_keyval();
 	if (keyval == NULL) {
@@ -207,8 +321,10 @@ static int ec_keyval_testcase(void)
 	}
 
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 0);
-	ec_keyval_set(keyval, "key1", "val1", NULL);
-	ec_keyval_set(keyval, "key2", ec_strdup("val2"), ec_free2);
+	ret = ec_keyval_set(keyval, "key1", "val1", NULL);
+	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	ret = ec_keyval_set(keyval, "key2", ec_strdup("val2"), ec_free2);
+	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
 
 	val = ec_keyval_get(keyval, "key1");
@@ -218,19 +334,33 @@ static int ec_keyval_testcase(void)
 	val = ec_keyval_get(keyval, "key3");
 	EC_TEST_ASSERT(val == NULL);
 
-	ec_keyval_set(keyval, "key1", "another_val1", NULL);
-	ec_keyval_set(keyval, "key2", ec_strdup("another_val2"), ec_free2);
+	ret = ec_keyval_set(keyval, "key1", "another_val1", NULL);
+	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	ret = ec_keyval_set(keyval, "key2", ec_strdup("another_val2"), ec_free2);
+	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
 
 	val = ec_keyval_get(keyval, "key1");
 	EC_TEST_ASSERT(val != NULL && !strcmp(val, "another_val1"));
 	val = ec_keyval_get(keyval, "key2");
 	EC_TEST_ASSERT(val != NULL && !strcmp(val, "another_val2"));
+	EC_TEST_ASSERT(ec_keyval_has_key(keyval, "key1"));
 
-	ec_keyval_del(keyval, "key1");
+	ret = ec_keyval_del(keyval, "key1");
+	EC_TEST_ASSERT_STR(ret == 0, "cannot del key");
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 1);
 
+	ec_keyval_dump(stdout, NULL);
+	ec_keyval_dump(stdout, keyval);
+
+	for (i = 0; i < 100; i++) {
+		char buf[8];
+		snprintf(buf, sizeof(buf), "k%zd", i);
+		ret = ec_keyval_set(keyval, buf, "val", NULL);
+		EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	}
 	ec_keyval_free(keyval);
+
 
 	return 0;
 }
