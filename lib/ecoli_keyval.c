@@ -323,7 +323,7 @@ static int ec_keyval_testcase(void)
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 0);
 	ret = ec_keyval_set(keyval, "key1", "val1", NULL);
 	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
-	ret = ec_keyval_set(keyval, "key2", ec_strdup("val2"), ec_free2);
+	ret = ec_keyval_set(keyval, "key2", ec_strdup("val2"), ec_free_func);
 	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
 
@@ -336,7 +336,8 @@ static int ec_keyval_testcase(void)
 
 	ret = ec_keyval_set(keyval, "key1", "another_val1", NULL);
 	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
-	ret = ec_keyval_set(keyval, "key2", ec_strdup("another_val2"), ec_free2);
+	ret = ec_keyval_set(keyval, "key2", ec_strdup("another_val2"),
+			ec_free_func);
 	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
 	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
 
@@ -359,6 +360,13 @@ static int ec_keyval_testcase(void)
 		ret = ec_keyval_set(keyval, buf, "val", NULL);
 		EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
 	}
+
+	/* einval */
+	ret = ec_keyval_set(keyval, NULL, "val1", NULL);
+	EC_TEST_ASSERT(ret == -1);
+	val = ec_keyval_get(keyval, NULL);
+	EC_TEST_ASSERT(val == NULL);
+
 	ec_keyval_free(keyval);
 
 

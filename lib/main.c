@@ -386,18 +386,18 @@ int main(int argc, char **argv)
 
 	srandom(seed);
 
-	if (ec_init() < 0) {
-		fprintf(stderr, "cannot init ecoli: %s\n", strerror(errno));
-		return 1;
-	}
-	ec_log_fct_register(debug_log, NULL);
-
 	/* register a new malloc to track memleaks */
 	TAILQ_INIT(&debug_alloc_hdr_list);
 	if (ec_malloc_register(debug_malloc, debug_free, debug_realloc) < 0) {
 		EC_LOG(EC_LOG_ERR, "cannot register new malloc\n");
 		return 1;
 	}
+
+	if (ec_init() < 0) {
+		fprintf(stderr, "cannot init ecoli: %s\n", strerror(errno));
+		return 1;
+	}
+	ec_log_fct_register(debug_log, NULL);
 
 	ret = 0;
 	if (argc <= 1) {
@@ -407,7 +407,6 @@ int main(int argc, char **argv)
 			ret |= ec_test_one(argv[i]);
 	}
 
-	ec_malloc_unregister();
 	leaks = debug_alloc_dump_leaks();
 
 	if (alloc_fail_proba == 0 && ret != 0) {

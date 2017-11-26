@@ -260,7 +260,7 @@ static int create_commands(void)
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")), "help",
 		"the person to greet", NULL);
 	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "count")), "help",
-		"how many times to greet", NULL);
+		"how many times to greet (0-10)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 

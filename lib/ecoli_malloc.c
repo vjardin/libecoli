@@ -25,20 +25,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
+#include <ecoli_init.h>
 #include <ecoli_malloc.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
+static int init_done = 0;
+
 struct ec_malloc_handler ec_malloc_handler;
 
 int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
 	ec_realloc_t usr_realloc)
 {
-	if (usr_malloc == NULL || usr_free == NULL || usr_realloc == NULL)
+	if (usr_malloc == NULL || usr_free == NULL || usr_realloc == NULL) {
+		errno = EINVAL;
 		return -1;
+	}
+
+	if (init_done) {
+		errno = EBUSY;
+		return -1;
+	}
 
 	ec_malloc_handler.malloc = usr_malloc;
 	ec_malloc_handler.free = usr_free;
@@ -47,20 +56,12 @@ int ec_malloc_register(ec_malloc_t usr_malloc, ec_free_t usr_free,
 	return 0;
 }
 
-void ec_malloc_unregister(void)
-{
-	/* XXX handlers must set errno on error */
-	ec_malloc_handler.malloc = NULL;
-	ec_malloc_handler.free = NULL;
-	ec_malloc_handler.realloc = NULL;
-}
-
 void *__ec_malloc(size_t size, const char *file, unsigned int line)
 {
 	return ec_malloc_handler.malloc(size, file, line);
 }
 
-void *ec_malloc2(size_t size)
+void *ec_malloc_func(size_t size)
 {
 	return __ec_malloc(size, __FILE__, __LINE__);
 }
@@ -70,7 +71,7 @@ void __ec_free(void *ptr, const char *file, unsigned int line)
 	ec_malloc_handler.free(ptr, file, line);
 }
 
-void ec_free2(void *ptr)
+void ec_free_func(void *ptr)
 {
 	__ec_free(ptr, __FILE__, __LINE__);
 }
@@ -129,3 +130,16 @@ char *__ec_strndup(const char *s, size_t n, const char *file, unsigned int line)
 
 	return s2;
 }
+
+static int ec_malloc_init_func(void)
+{
+	init_done = 1;
+	return 0;
+}
+
+static struct ec_init ec_malloc_init = {
+	.init = ec_malloc_init_func,
+	.priority = 50,
+};
+
+EC_INIT_REGISTER(ec_malloc_init);
