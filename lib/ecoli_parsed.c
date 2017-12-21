@@ -310,7 +310,7 @@ const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed)
 	return parsed->strvec;
 }
 
-/* number of parsed strings in the vector */
+/* number of strings in the parsed vector */
 size_t ec_parsed_len(const struct ec_parsed *parsed)
 {
 	if (parsed == NULL || parsed->strvec == NULL)

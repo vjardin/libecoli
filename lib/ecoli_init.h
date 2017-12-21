@@ -25,6 +25,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Register initialization routines.
+ */
+
 #ifndef ECOLI_INIT_
 #define ECOLI_INIT_
 

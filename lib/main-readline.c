@@ -58,6 +58,8 @@ static char *my_completion_entry(const char *s, int state)
 	static struct ec_completed *c;
 	static struct ec_completed_iter *iter;
 	const struct ec_completed_item *item;
+	enum ec_completed_type item_type;
+	const char *item_str, *item_display;
 
 	(void)s;
 
@@ -90,23 +92,26 @@ static char *my_completion_entry(const char *s, int state)
 	if (item == NULL)
 		return NULL;
 
+	item_str = ec_completed_item_get_str(item);
 	if (c->count_match == 1) {
 
 		/* don't add the trailing space for partial completions */
 		if (state == 0) {
-			if (item->type == EC_MATCH)
+			item_type = ec_completed_item_get_type(item);
+			if (item_type == EC_MATCH)
 				rl_completion_suppress_append = 0;
 			else
 				rl_completion_suppress_append = 1;
 		}
 
-		return strdup(item->str);
+		return strdup(item_str);
 	} else if (rl_completion_type == '?') {
 		/* on second try only show the display part */
-		return strdup(item->display);
+		item_display = ec_completed_item_get_display(item);
+		return strdup(item_display);
 	}
 
-	return strdup(item->str);
+	return strdup(item_str);
 }
 
 static char **my_attempted_completion(const char *text, int start, int end)
@@ -123,13 +128,15 @@ static char **my_attempted_completion(const char *text, int start, int end)
 /* this function builds the help string */
 static char *get_node_help(const struct ec_completed_node *compnode)
 {
-	const struct ec_completed_item *item;
-	const struct ec_node *node;
+//	const struct ec_completed_item *item;
+//	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
-	size_t i;
+//	size_t i;
 
+	(void)compnode;
+#if 0 //XXX
 	/* Since we display only one help per node, only look at the first item
 	 * to get the path. The objective is to retrieve the most precise
 	 * help for this node. */
@@ -141,6 +148,7 @@ static char *get_node_help(const struct ec_completed_node *compnode)
 		if (node_desc == NULL)
 			node_desc = ec_node_desc(node);
 	}
+#endif
 
 	if (node_help == NULL)
 		node_help = "";

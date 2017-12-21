@@ -149,7 +149,8 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		/* only check matching completions */
 		iter = ec_completed_iter(c, EC_MATCH);
 		while ((item = ec_completed_iter_next(iter)) != NULL) {
-			if (item->str != NULL && strcmp(item->str, s) == 0)
+			const char *str = ec_completed_item_get_str(item);
+			if (str != NULL && strcmp(str, s) == 0)
 				break;
 		}
 

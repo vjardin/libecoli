@@ -25,6 +25,43 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Interface to manage the ecoli nodes.
+ *
+ * A node is a main structure of the ecoli library, used to define how
+ * to match and complete the input tokens. A node is a generic object
+ * that implements:
+ * - a parse(node, input) method: check if an input matches
+ * - a complete(node, input) method: return possible completions for
+ *   a given input
+ * - some other methods to initialize, free, ...
+ *
+ * One basic example is the string node (ec_node_str). A node
+ * ec_node_str("foo") will match any token list starting with "foo",
+ * for example:
+ * - ["foo"]
+ * - ["foo", "bar", ...]
+ * But will not match:
+ * - []
+ * - ["bar", ...]
+ *
+ * A node ec_node_str("foo") will complete with "foo" if the input
+ * contains one token, with the same beginning than "foo":
+ * - [""]
+ * - ["f"]
+ * - ["fo"]
+ * - ["foo"]
+ * But it will not complete:
+ * - []
+ * - ["bar"]
+ * - ["f", ""]
+ * - ["", "f"]
+ *
+ * A node can have child nodes. For instance, a sequence node
+ * ec_node_seq(ec_node_str("foo"), ec_node_str("bar")) will match
+ * ["foo", "bar"].
+ */
+
 #ifndef ECOLI_NODE_
 #define ECOLI_NODE_
 

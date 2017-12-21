@@ -71,7 +71,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 #define EC_PARSED_NOMATCH INT_MIN
 /* internal: used by nodes
  *
- * state is the current parse tree, which is built bit by bit while
+ * state is the current parse tree, which is built piece by piece while
  *   parsing the node tree: ec_node_parse_child() creates a new child in
  *   this state parse tree, and calls the parse() method for the child
  *   node, with state pointing to this new child. If it does not match,

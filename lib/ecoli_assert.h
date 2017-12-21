@@ -29,7 +29,7 @@
  * Assert API
  *
  * Helpers to check at runtime if a condition is true, and abort
- * otherwise.
+ * (exit) otherwise.
  */
 
 #ifndef ECOLI_ASSERT_

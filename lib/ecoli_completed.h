@@ -25,6 +25,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * API for generating completions item on a node.
+ *
+ * This file provide helpers to list and manipulate the possible
+ * completions for a given input.
+ *
+ * XXX completed vs item
+ */
+
 #ifndef ECOLI_COMPLETED_
 #define ECOLI_COMPLETED_
 
@@ -40,18 +49,7 @@ enum ec_completed_type {
 	EC_PARTIAL_MATCH,
 };
 
-struct ec_completed_item {
-	TAILQ_ENTRY(ec_completed_item) next;
-	enum ec_completed_type type;
-	const struct ec_node *node;
-	char *str;
-	char *display;
-	struct ec_keyval *attrs;
-
-	/* reverse order: [0] = last, [len-1] = root */
-	const struct ec_node **path;
-	size_t pathlen;
-};
+struct ec_completed_item;
 
 TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
@@ -85,32 +83,117 @@ int ec_node_complete_child(struct ec_node *node,
 			struct ec_parsed *parsed_state,
 			const struct ec_strvec *strvec);
 
+/**
+ * Create a completion object (list of completion items).
+ *
+ *
+ */
 struct ec_completed *ec_completed(void);
 
+/**
+ * Free a completion object and all its items.
+ *
+ *
+ */
+void ec_completed_free(struct ec_completed *completed);
+
+/**
+ *
+ *
+ *
+ */
+void ec_completed_dump(FILE *out,
+	const struct ec_completed *completed);
+
+
+/**
+ * Create a completion item.
+ *
+ *
+ */
 struct ec_completed_item *
 ec_completed_item(struct ec_parsed *state, const struct ec_node *node);
+
+/**
+ * Set type and value of a completion item.
+ *
+ *
+ */
 int ec_completed_item_set(struct ec_completed_item *item,
 			enum ec_completed_type type, const char *str);
+
+/**
+ * Add a completion item to a completion list.
+ *
+ *
+ */
 int ec_completed_item_add(struct ec_completed *completed,
 			struct ec_completed_item *item);
+
+/**
+ * Get the string value of a completion item.
+ *
+ *
+ */
+const char *
+ec_completed_item_get_str(const struct ec_completed_item *item);
+
+/**
+ * Get the display string value of a completion item.
+ *
+ *
+ */
+const char *
+ec_completed_item_get_display(const struct ec_completed_item *item);
+
+/**
+ * Get the type of a completion item.
+ *
+ *
+ */
+enum ec_completed_type
+ec_completed_item_get_type(const struct ec_completed_item *item);
+
+/**
+ *
+ *
+ *
+ */
 void ec_completed_item_free(struct ec_completed_item *item);
 
+/**
+ * Set the display value of an item.
+ *
+ *
+ */
 int ec_completed_item_set_display(struct ec_completed_item *item,
 				const char *display);
 
-void ec_completed_free(struct ec_completed *completed);
-void ec_completed_dump(FILE *out,
-	const struct ec_completed *completed);
+/**
+ *
+ *
+ *
+ */
 int
 ec_node_default_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 
+/**
+ *
+ *
+ *
+ */
 unsigned int ec_completed_count(
 	const struct ec_completed *completed,
 	enum ec_completed_type flags);
 
+/**
+ *
+ *
+ *
+ */
 struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
@@ -118,13 +201,28 @@ struct ec_completed_iter {
 	const struct ec_completed_item *cur_match;
 };
 
+/**
+ *
+ *
+ *
+ */
 struct ec_completed_iter *
 ec_completed_iter(struct ec_completed *completed,
 	enum ec_completed_type type);
 
+/**
+ *
+ *
+ *
+ */
 const struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter);
 
+/**
+ *
+ *
+ *
+ */
 void ec_completed_iter_free(struct ec_completed_iter *iter);
 
 

@@ -32,4 +32,6 @@
 #ifndef ECOLI_NODE_ANY_
 #define ECOLI_NODE_ANY_
 
+/* no specific API for this node */
+
 #endif

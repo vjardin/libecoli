@@ -39,6 +39,19 @@
 #include <ecoli_parsed.h>
 #include <ecoli_completed.h>
 
+struct ec_completed_item {
+	TAILQ_ENTRY(ec_completed_item) next;
+	enum ec_completed_type type;
+	const struct ec_node *node;
+	char *str;
+	char *display;
+	struct ec_keyval *attrs;
+
+	/* reverse order: [0] = last, [len-1] = root */
+	const struct ec_node **path;
+	size_t pathlen;
+};
+
 struct ec_completed *ec_completed(void)
 {
 	struct ec_completed *completed = NULL;
@@ -338,6 +351,24 @@ ec_completed_item_add(struct ec_completed *completed,
 	TAILQ_INSERT_TAIL(&compnode->items, item, next);
 
 	return 0;
+}
+
+const char *
+ec_completed_item_get_str(const struct ec_completed_item *item)
+{
+	return item->str;
+}
+
+const char *
+ec_completed_item_get_display(const struct ec_completed_item *item)
+{
+	return item->display;
+}
+
+enum ec_completed_type
+ec_completed_item_get_type(const struct ec_completed_item *item)
+{
+	return item->type;
 }
 
 void ec_completed_item_free(struct ec_completed_item *item)
