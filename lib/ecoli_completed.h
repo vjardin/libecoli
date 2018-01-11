@@ -155,6 +155,14 @@ enum ec_completed_type
 ec_completed_item_get_type(const struct ec_completed_item *item);
 
 /**
+ * Get the node associated to a completion item.
+ *
+ *
+ */
+const struct ec_node *
+ec_completed_item_get_node(const struct ec_completed_item *item);
+
+/**
  *
  *
  *

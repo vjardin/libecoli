@@ -126,21 +126,17 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_node *compnode)
+static char *get_node_help(const struct ec_completed_item *item)
 {
-//	const struct ec_completed_item *item;
-//	const struct ec_node *node;
+	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
 //	size_t i;
 
-	(void)compnode;
+	(void)item;
 #if 0 //XXX
-	/* Since we display only one help per node, only look at the first item
-	 * to get the path. The objective is to retrieve the most precise
-	 * help for this node. */
-	item = TAILQ_FIRST(&compnode->items);
+	/* Retrieve the most precise help for this node. */
 	for (i = 0; i < item->pathlen; i++) {
 		node = item->path[i];
 		if (node_help == NULL)
@@ -148,10 +144,14 @@ static char *get_node_help(const struct ec_completed_node *compnode)
 		if (node_desc == NULL)
 			node_desc = ec_node_desc(node);
 	}
+#else
+	node = ec_completed_item_get_node(item);
+	node_help = ec_keyval_get(ec_node_attrs(node), "help");
+	node_desc = ec_node_desc(node);
 #endif
 
 	if (node_help == NULL)
-		node_help = "";
+		node_help = "-";
 	if (node_desc == NULL)
 		return NULL;
 
@@ -163,11 +163,13 @@ static char *get_node_help(const struct ec_completed_node *compnode)
 
 static int show_help(int ignore, int invoking_key)
 {
-	const struct ec_completed_node *compnode;
+	struct ec_completed_iter *iter;
+	const struct ec_completed_item *item;
+	const struct ec_node *prev_node = NULL;
 	struct ec_completed *c;
 	struct ec_parsed *p;
-	char *line;
-	unsigned int count, i;
+	char *line = NULL;
+	unsigned int count;
 	char **helps = NULL;
 	int match = 0;
 
@@ -176,54 +178,74 @@ static int show_help(int ignore, int invoking_key)
 
 	line = strdup(rl_line_buffer);
 	if (line == NULL)
-		return 1;
+		goto fail;
 
 	/* check if the current line matches */
 	p = ec_node_parse(commands, line);
 	if (ec_parsed_matches(p))
 		match = 1;
 	ec_parsed_free(p);
+	p = NULL;
 
 	/* complete at current cursor position */
 	line[rl_point] = '\0';
 	c = ec_node_complete(commands, line);
-	//ec_completed_dump(stdout, c);
 	free(line);
+	line = NULL;
 	if (c == NULL)
-		return 1;
+		goto fail;
+
+	//ec_completed_dump(stdout, c);
 
 	/* let's display one contextual help per node */
 	count = 0;
-	TAILQ_FOREACH(compnode, &c->nodes, next) {
-		if (TAILQ_EMPTY(&compnode->items))
-			continue;
-		count++;
-	}
+	iter = ec_completed_iter(c, EC_NO_MATCH | EC_MATCH | EC_PARTIAL_MATCH);
+	if (iter == NULL)
+		goto fail;
 
-	helps = calloc(count + match + 1, sizeof(char *));
+	/* strangely, rl_display_match_list() expects first index at 1 */
+	helps = calloc(match + 1, sizeof(char *));
 	if (helps == NULL)
-		return 1;
-
+		goto fail;
 	if (match)
 		helps[1] = "<return>";
 
-	/* strangely, rl_display_match_list() expects first index at 1 */
-	i = match + 1;
-	TAILQ_FOREACH(compnode, &c->nodes, next) {
-		if (TAILQ_EMPTY(&compnode->items))
+	while ((item = ec_completed_iter_next(iter)) != NULL) {
+		const struct ec_node *node;
+		char **tmp;
+
+		/* keep one help per node, skip other items  */
+		node = ec_completed_item_get_node(item);
+		if (node == prev_node)
 			continue;
-		helps[i++] = get_node_help(compnode);
+
+		tmp = realloc(helps, (count + match + 2) * sizeof(char *));
+		if (tmp == NULL)
+			goto fail;
+		helps = tmp;
+		helps[count + match + 1] = get_node_help(item);
+		count++;
 	}
 
+	ec_completed_iter_free(iter);
 	ec_completed_free(c);
-
 	rl_display_match_list(helps, count + match, 1000); /* XXX 1000 */
-
 	rl_forced_update_display();
 
 	return 0;
 
-	// free helps[n] XXX on error ?
+fail:
+	ec_completed_iter_free(iter);
+	ec_parsed_free(p);
+	free(line);
+	ec_completed_free(c);
+	if (helps != NULL) {
+		while (count--)
+			free(helps[count + match + 1]);
+	}
+	free(helps);
+
+	return 1;
 }
 
 static int create_commands(void)

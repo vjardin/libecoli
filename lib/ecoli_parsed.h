@@ -25,6 +25,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * Node parse API.
+ *
+ * The parse operation is to check if an input (a string or vector of
+ * strings) matches the node tree. On success, the result is stored in a
+ * tree that describes which part of the input matches which node.
+ */
+
 #ifndef ECOLI_PARSED_
 #define ECOLI_PARSED_
 
@@ -34,26 +42,42 @@
 #include <stdio.h>
 
 struct ec_node;
+struct ec_parsed;
 
-TAILQ_HEAD(ec_parsed_list, ec_parsed);
-
-/*
-  node == NULL + empty children list means "no match"
-  XXX still valid?
-*/
-struct ec_parsed {
-	TAILQ_ENTRY(ec_parsed) next;
-	struct ec_parsed_list children;
-	struct ec_parsed *parent;
-	const struct ec_node *node;
-	struct ec_strvec *strvec;
-	struct ec_keyval *attrs;
-};
-
+/**
+ * Create an empty parse tree.
+ *
+ * @return
+ *   The empty parse tree.
+ */
 struct ec_parsed *ec_parsed(void);
+
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_free(struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_free_children(struct ec_parsed *parsed);
 
+/**
+ *
+ *
+ *
+ */
+struct ec_parsed *ec_parsed_dup(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
 const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
 
 /* XXX we could use a cache to store possible completions or match: the
@@ -63,12 +87,28 @@ const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
 */
+/**
+ *
+ *
+ *
+ */
 struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str);
 
+/**
+ *
+ *
+ *
+ */
 struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 				const struct ec_strvec *strvec);
 
-#define EC_PARSED_NOMATCH INT_MIN
+/**
+ *
+ *
+ *
+ */
+#define EC_PARSED_NOMATCH INT_MAX
+
 /* internal: used by nodes
  *
  * state is the current parse tree, which is built piece by piece while
@@ -79,8 +119,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
  *   possible descendants.
  *
  * return:
- * XXX change EC_PARSED_NOMATCH to INT_MAX?
- * EC_PARSED_NOMATCH (negative) if it does not match
+ * EC_PARSED_NOMATCH (positive) if it does not match
  * any other negative value (-errno) for other errors
  * the number of matched strings in strvec
  * XXX state is not freed on error ?
@@ -89,23 +128,127 @@ int ec_node_parse_child(struct ec_node *node,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_add_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_del_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
 
+/**
+ *
+ *
+ *
+ */
 struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
 struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed);
-struct ec_parsed *ec_parsed_get_last_child(struct ec_parsed *parsed);
+
+/**
+ * Get the first child of a tree.
+ *
+ */
+struct ec_parsed *ec_parsed_get_first_child(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+struct ec_parsed *ec_parsed_get_last_child(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+struct ec_parsed *ec_parsed_get_next(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+#define EC_PARSED_FOREACH_CHILD(child, parsed)			\
+	for (child = ec_parsed_get_first_child(parsed);		\
+		child != NULL;					\
+		child = ec_parsed_get_next(child))		\
+
+/**
+ *
+ *
+ *
+ */
+bool ec_parsed_has_child(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+const struct ec_node *ec_parsed_get_node(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+void ec_parsed_set_node(struct ec_parsed *parsed, const struct ec_node *node);
+
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_del_last_child(struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
 int ec_parsed_get_path(struct ec_parsed *parsed, struct ec_node **path);
 
+/**
+ *
+ *
+ *
+ */
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
 
+/**
+ *
+ *
+ *
+ */
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	const char *id);
 
+/**
+ *
+ *
+ *
+ */
 size_t ec_parsed_len(const struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
 size_t ec_parsed_matches(const struct ec_parsed *parsed);
 
 #endif

@@ -49,19 +49,24 @@ EC_LOG_TYPE_REGISTER(keyval);
 static uint32_t ec_keyval_seed;
 
 struct ec_keyval_elt {
-	LIST_ENTRY(ec_keyval_elt) next;
 	char *key;
 	void *val;
 	uint32_t hash;
 	ec_keyval_elt_free_t free;
+	unsigned int refcount;
 };
 
-LIST_HEAD(ec_keyval_elt_list, ec_keyval_elt);
+struct ec_keyval_elt_ref {
+	LIST_ENTRY(ec_keyval_elt_ref) next;
+	struct ec_keyval_elt *elt;
+};
+
+LIST_HEAD(ec_keyval_elt_ref_list, ec_keyval_elt_ref);
 
 struct ec_keyval {
 	size_t len;
 	size_t table_size;
-	struct ec_keyval_elt_list *table;
+	struct ec_keyval_elt_ref_list *table;
 };
 
 struct ec_keyval *ec_keyval(void)
@@ -75,10 +80,10 @@ struct ec_keyval *ec_keyval(void)
 	return keyval;
 }
 
-static struct ec_keyval_elt *ec_keyval_lookup(const struct ec_keyval *keyval,
-	const char *key)
+static struct ec_keyval_elt_ref *
+ec_keyval_lookup(const struct ec_keyval *keyval, const char *key)
 {
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref *ref;
 	uint32_t h, mask = keyval->table_size - 1;
 
 	if (keyval == NULL || key == NULL) {
@@ -91,10 +96,10 @@ static struct ec_keyval_elt *ec_keyval_lookup(const struct ec_keyval *keyval,
 	}
 
 	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
-	LIST_FOREACH(elt, &keyval->table[h & mask], next) {
-		if (strcmp(elt->key, key) == 0) {
+	LIST_FOREACH(ref, &keyval->table[h & mask], next) {
+		if (strcmp(ref->elt->key, key) == 0) {
 			errno = 0;
-			return elt;
+			return ref;
 		}
 	}
 
@@ -102,15 +107,21 @@ static struct ec_keyval_elt *ec_keyval_lookup(const struct ec_keyval *keyval,
 	return NULL;
 }
 
-static void ec_keyval_elt_free(struct ec_keyval_elt *elt)
+static void ec_keyval_elt_ref_free(struct ec_keyval_elt_ref *ref)
 {
-	if (elt == NULL)
+	struct ec_keyval_elt *elt;
+
+	if (ref == NULL)
 		return;
 
-	ec_free(elt->key);
-	if (elt->free != NULL)
-		elt->free(elt->val);
-	ec_free(elt);
+	elt = ref->elt;
+	if (elt != NULL && --elt->refcount == 0) {
+		ec_free(elt->key);
+		if (elt->free != NULL)
+			elt->free(elt->val);
+		ec_free(elt);
+	}
+	ec_free(ref);
 }
 
 bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key)
@@ -120,27 +131,27 @@ bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key)
 
 void *ec_keyval_get(const struct ec_keyval *keyval, const char *key)
 {
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref *ref;
 
-	elt = ec_keyval_lookup(keyval, key);
-	if (elt == NULL)
+	ref = ec_keyval_lookup(keyval, key);
+	if (ref == NULL)
 		return NULL;
 
-	return elt->val;
+	return ref->elt->val;
 }
 
 int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 {
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref *ref;
 
-	elt = ec_keyval_lookup(keyval, key);
-	if (elt == NULL)
+	ref = ec_keyval_lookup(keyval, key);
+	if (ref == NULL)
 		return -1;
 
 	/* we could resize table here */
 
-	LIST_REMOVE(elt, next);
-	ec_keyval_elt_free(elt);
+	LIST_REMOVE(ref, next);
+	ec_keyval_elt_ref_free(ref);
 	keyval->len--;
 
 	return 0;
@@ -148,8 +159,8 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 
 static int ec_keyval_table_resize(struct ec_keyval *keyval, size_t new_size)
 {
-	struct ec_keyval_elt_list *new_table;
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref_list *new_table;
+	struct ec_keyval_elt_ref *ref;
 	size_t i;
 
 	if (new_size == 0 || (new_size & (new_size - 1))) {
@@ -163,10 +174,11 @@ static int ec_keyval_table_resize(struct ec_keyval *keyval, size_t new_size)
 
 	for (i = 0; i < keyval->table_size; i++) {
 		while (!LIST_EMPTY(&keyval->table[i])) {
-			elt = LIST_FIRST(&keyval->table[i]);
-			LIST_REMOVE(elt, next);
-			LIST_INSERT_HEAD(&new_table[elt->hash & (new_size - 1)],
-					elt, next);
+			ref = LIST_FIRST(&keyval->table[i]);
+			LIST_REMOVE(ref, next);
+			LIST_INSERT_HEAD(
+				&new_table[ref->elt->hash & (new_size - 1)],
+				ref, next);
 		}
 	}
 
@@ -177,27 +189,15 @@ static int ec_keyval_table_resize(struct ec_keyval *keyval, size_t new_size)
 	return 0;
 }
 
-int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
-	ec_keyval_elt_free_t free_cb)
+static int
+__ec_keyval_set(struct ec_keyval *keyval, struct ec_keyval_elt_ref *ref)
 {
-	struct ec_keyval_elt *elt;
-	uint32_t h, mask;
 	size_t new_size;
+	uint32_t mask;
 	int ret;
 
-	if (keyval == NULL || key == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	elt = ec_keyval_lookup(keyval, key);
-	if (elt != NULL) {
-		if (elt->free != NULL)
-			elt->free(elt->val);
-		elt->val = val;
-		elt->free = free_cb;
-		return 0;
-	}
+	/* remove previous entry if any */
+	ec_keyval_del(keyval, ref->elt->key);
 
 	if (keyval->len >= keyval->table_size) {
 		if (keyval->table_size != 0)
@@ -206,40 +206,62 @@ int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 			new_size =  1 << FACTOR;
 		ret = ec_keyval_table_resize(keyval, new_size);
 		if (ret < 0)
-			goto fail;
+			return ret;
 	}
+
+	mask = keyval->table_size - 1;
+	LIST_INSERT_HEAD(&keyval->table[ref->elt->hash & mask], ref, next);
+	keyval->len++;
+
+	return 0;
+}
+
+int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
+	ec_keyval_elt_free_t free_cb)
+{
+	struct ec_keyval_elt *elt = NULL;
+	struct ec_keyval_elt_ref *ref = NULL;
+	uint32_t h;
+
+	if (keyval == NULL || key == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	ref = ec_calloc(1, sizeof(*ref));
+	if (ref == NULL)
+		goto fail;
 
 	elt = ec_calloc(1, sizeof(*elt));
 	if (elt == NULL)
 		goto fail;
+
+	ref->elt = elt;
+	elt->refcount = 1;
+	elt->val = val;
+	val = NULL;
+	elt->free = free_cb;
 	elt->key = ec_strdup(key);
 	if (elt->key == NULL)
 		goto fail;
-	elt->val = val;
-	elt->free = free_cb;
 	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
 	elt->hash = h;
 
-	mask = keyval->table_size - 1;
-	LIST_INSERT_HEAD(&keyval->table[h & mask], elt, next);
-	keyval->len++;
+	if (__ec_keyval_set(keyval, ref) < 0)
+		goto fail;
 
 	return 0;
 
 fail:
-	if (free_cb != NULL)
+	if (free_cb != NULL && val != NULL)
 		free_cb(val);
-	if (elt != NULL) {
-		ec_free(elt->key);
-		ec_free(elt);
-	}
-
-	return ret;
+	ec_keyval_elt_ref_free(ref);
+	return -1;
 }
 
 void ec_keyval_free(struct ec_keyval *keyval)
 {
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref *ref;
 	size_t i;
 
 	if (keyval == NULL)
@@ -247,9 +269,9 @@ void ec_keyval_free(struct ec_keyval *keyval)
 
 	for (i = 0; i < keyval->table_size; i++) {
 		while (!LIST_EMPTY(&keyval->table[i])) {
-			elt = LIST_FIRST(&keyval->table[i]);
-			LIST_REMOVE(elt, next);
-			ec_keyval_elt_free(elt);
+			ref = LIST_FIRST(&keyval->table[i]);
+			LIST_REMOVE(ref, next);
+			ec_keyval_elt_ref_free(ref);
 		}
 	}
 	ec_free(keyval->table);
@@ -263,7 +285,7 @@ size_t ec_keyval_len(const struct ec_keyval *keyval)
 
 void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 {
-	struct ec_keyval_elt *elt;
+	struct ec_keyval_elt_ref *ref;
 	size_t i;
 
 	if (keyval == NULL) {
@@ -273,11 +295,42 @@ void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 
 	fprintf(out, "keyval:\n");
 	for (i = 0; i < keyval->table_size; i++) {
-		LIST_FOREACH(elt, &keyval->table[i], next) {
+		LIST_FOREACH(ref, &keyval->table[i], next) {
 			fprintf(out, "  %s: %p\n",
-				elt->key, elt->val);
+				ref->elt->key, ref->elt->val);
 		}
 	}
+}
+
+struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval)
+{
+	struct ec_keyval *dup = NULL;
+	struct ec_keyval_elt_ref *ref, *dup_ref = NULL;
+	size_t i;
+
+	dup = ec_keyval();
+	if (dup == NULL)
+		return NULL;
+
+	for (i = 0; i < keyval->table_size; i++) {
+		LIST_FOREACH(ref, &keyval->table[i], next) {
+			dup_ref = ec_calloc(1, sizeof(*ref));
+			if (dup_ref == NULL)
+				goto fail;
+			dup_ref->elt = ref->elt;
+			ref->elt->refcount++;
+
+			if (__ec_keyval_set(dup, dup_ref) < 0)
+				goto fail;
+		}
+	}
+
+	return dup;
+
+fail:
+	ec_keyval_elt_ref_free(dup_ref);
+	ec_keyval_free(dup);
+	return NULL;
 }
 
 static int ec_keyval_init_func(void)
@@ -309,7 +362,7 @@ EC_INIT_REGISTER(ec_keyval_init);
 /* LCOV_EXCL_START */
 static int ec_keyval_testcase(void)
 {
-	struct ec_keyval *keyval;
+	struct ec_keyval *keyval, *dup;
 	char *val;
 	size_t i;
 	int ret;
@@ -355,10 +408,22 @@ static int ec_keyval_testcase(void)
 	ec_keyval_dump(stdout, keyval);
 
 	for (i = 0; i < 100; i++) {
-		char buf[8];
-		snprintf(buf, sizeof(buf), "k%zd", i);
-		ret = ec_keyval_set(keyval, buf, "val", NULL);
+		char key[8];
+		snprintf(key, sizeof(key), "k%zd", i);
+		ret = ec_keyval_set(keyval, key, "val", NULL);
 		EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	}
+	dup = ec_keyval_dup(keyval);
+	EC_TEST_ASSERT_STR(dup != NULL, "cannot duplicate keyval");
+	if (dup != NULL) {
+		for (i = 0; i < 100; i++) {
+			char key[8];
+			snprintf(key, sizeof(key), "k%zd", i);
+			val = ec_keyval_get(dup, key);
+			EC_TEST_ASSERT(val != NULL && !strcmp(val, "val"));
+		}
+		ec_keyval_free(dup);
+		dup = NULL;
 	}
 
 	/* einval */
@@ -368,7 +433,6 @@ static int ec_keyval_testcase(void)
 	EC_TEST_ASSERT(val == NULL);
 
 	ec_keyval_free(keyval);
-
 
 	return 0;
 }

@@ -39,6 +39,17 @@
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
 
+TAILQ_HEAD(ec_parsed_list, ec_parsed);
+
+struct ec_parsed {
+	TAILQ_ENTRY(ec_parsed) next;
+	struct ec_parsed_list children;
+	struct ec_parsed *parent;
+	const struct ec_node *node;
+	struct ec_strvec *strvec;
+	struct ec_keyval *attrs;
+};
+
 int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 			const struct ec_strvec *strvec)
 {
@@ -65,15 +76,16 @@ int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	if (child == NULL)
 		return -ENOMEM;
 
-	child->node = node;
+	ec_parsed_set_node(child, node);
 	ec_parsed_add_child(state, child);
 	ret = node->type->parse(node, child, strvec);
+	if (ret < 0)
+		return ret;
+
 	if (ret == EC_PARSED_NOMATCH) {
 		ec_parsed_del_child(state, child);
 		assert(TAILQ_EMPTY(&child->children));
 		ec_parsed_free(child);
-		return ret;
-	} else if (ret < 0) {
 		return ret;
 	}
 
@@ -97,10 +109,12 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 		return NULL;
 
 	ret = ec_node_parse_child(node, parsed, strvec);
-	if (ret < 0 && ret != EC_PARSED_NOMATCH) {
+	if (ret < 0) {
 		ec_parsed_free(parsed);
-		parsed = NULL;
-	} else if (ret != EC_PARSED_NOMATCH) {
+		return NULL;
+	}
+
+	if (ret != EC_PARSED_NOMATCH) {
 		/* remove dummy root node */
 		child_parsed = ec_parsed_get_last_child(parsed);
 		ec_parsed_del_child(parsed, child_parsed);
@@ -158,6 +172,45 @@ struct ec_parsed *ec_parsed(void)
 		ec_keyval_free(parsed->attrs);
 	ec_free(parsed);
 
+	return NULL;
+}
+
+struct ec_parsed *ec_parsed_dup(const struct ec_parsed *parsed)
+{
+	struct ec_parsed *dup = NULL;
+	struct ec_parsed *child, *dup_child;
+	struct ec_keyval *attrs = NULL;
+
+	if (parsed == NULL)
+		return NULL;
+
+	dup = ec_parsed();
+	if (dup == NULL)
+		return NULL;
+
+	attrs = ec_keyval_dup(parsed->attrs);
+	if (attrs == NULL)
+		goto fail;
+	ec_keyval_free(dup->attrs);
+	dup->attrs = attrs;
+
+	if (parsed->strvec != NULL) {
+		dup->strvec = ec_strvec_dup(parsed->strvec);
+		if (dup->strvec == NULL)
+			goto fail;
+	}
+
+	TAILQ_FOREACH(child, &parsed->children, next) {
+		dup_child = ec_parsed_dup(child);
+		if (dup_child == NULL)
+			goto fail;
+		ec_parsed_add_child(dup, dup_child);
+	}
+
+	return dup;
+
+fail:
+	ec_parsed_free(dup);
 	return NULL;
 }
 
@@ -247,9 +300,35 @@ void ec_parsed_del_child(struct ec_parsed *parsed, // XXX rename del in unlink?
 }
 
 struct ec_parsed *
-ec_parsed_get_last_child(struct ec_parsed *parsed)
+ec_parsed_get_first_child(const struct ec_parsed *parsed)
+{
+	return TAILQ_FIRST(&parsed->children);
+}
+
+struct ec_parsed *
+ec_parsed_get_last_child(const struct ec_parsed *parsed)
 {
 	return TAILQ_LAST(&parsed->children, ec_parsed_list);
+}
+
+struct ec_parsed *ec_parsed_get_next(const struct ec_parsed *parsed)
+{
+	return TAILQ_NEXT(parsed, next);
+}
+
+bool ec_parsed_has_child(const struct ec_parsed *parsed)
+{
+	return !TAILQ_EMPTY(&parsed->children);
+}
+
+const struct ec_node *ec_parsed_get_node(const struct ec_parsed *parsed)
+{
+	return parsed->node;
+}
+
+void ec_parsed_set_node(struct ec_parsed *parsed, const struct ec_node *node)
+{
+	parsed->node = node;
 }
 
 void ec_parsed_del_last_child(struct ec_parsed *parsed) // rename in free

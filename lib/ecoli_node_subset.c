@@ -85,10 +85,11 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 	for (i = 0; i < table_len; i++) {
 		/* try to parse elt i */
 		ret = ec_node_parse_child(table[i], state, strvec);
+		if (ret < 0)
+			goto fail;
+
 		if (ret == EC_PARSED_NOMATCH)
 			continue;
-		else if (ret < 0)
-			goto fail;
 
 		/* build a new table without elt i */
 		for (j = 0; j < table_len; j++) {
@@ -213,10 +214,11 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			continue;
 
 		ret = ec_node_parse_child(table[i], parsed, strvec);
+		if (ret < 0)
+			goto fail;
+
 		if (ret == EC_PARSED_NOMATCH)
 			continue;
-		else if (ret < 0)
-			goto fail;
 
 		len = ret;
 		childvec = ec_strvec_ndup(strvec, len,

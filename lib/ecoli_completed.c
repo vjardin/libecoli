@@ -103,7 +103,7 @@ ec_node_complete_child(struct ec_node *node,
 	child_state = ec_parsed();
 	if (child_state == NULL)
 		return -ENOMEM;
-	child_state->node = node;
+	ec_parsed_set_node(child_state, node);
 	ec_parsed_add_child(parsed_state, child_state);
 
 	ret = node->type->complete(node, completed, child_state, strvec);
@@ -119,7 +119,7 @@ ec_node_complete_child(struct ec_node *node,
 #endif
 
 	ec_parsed_del_child(parsed_state, child_state);
-	assert(TAILQ_EMPTY(&child_state->children));
+	assert(!ec_parsed_has_child(child_state));
 	ec_parsed_free(child_state);
 
 	return 0;
@@ -223,7 +223,7 @@ ec_completed_item(struct ec_parsed *state, const struct ec_node *node)
 	/* write path in array */
 	for (p = state, len = 0; p != NULL;
 	     p = ec_parsed_get_parent(p), len++)
-		item->path[len] = p->node;
+		item->path[len] = ec_parsed_get_node(p);
 
 	item->type = EC_NO_MATCH;
 	item->node = node;
@@ -369,6 +369,12 @@ enum ec_completed_type
 ec_completed_item_get_type(const struct ec_completed_item *item)
 {
 	return item->type;
+}
+
+const struct ec_node *
+ec_completed_item_get_node(const struct ec_completed_item *item)
+{
+	return item->node;
 }
 
 void ec_completed_item_free(struct ec_completed_item *item)

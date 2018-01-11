@@ -101,6 +101,7 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key);
  *   object is destroyed (ec_keyval_del() or ec_keyval_free()).
  * @return
  *   0 on success, or -1 on error (errno is set).
+ *   On error, the passed value is freed (free_cb(val) is called).
  */
 int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
 	ec_keyval_elt_free_t free_cb);
@@ -122,6 +123,9 @@ void ec_keyval_free(struct ec_keyval *keyval);
  *   The length of the hash table.
  */
 size_t ec_keyval_len(const struct ec_keyval *keyval);
+
+/* XXX help */
+struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval);
 
 /**
  * Dump a hash table.

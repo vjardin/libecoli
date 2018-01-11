@@ -353,9 +353,9 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	ret = -EINVAL;
 	if (!ec_parsed_matches(p))
 		goto fail;
-	if (TAILQ_EMPTY(&p->children))
+	if (!ec_parsed_has_child(p))
 		goto fail;
-	if (TAILQ_EMPTY(&TAILQ_FIRST(&p->children)->children))
+	if (!ec_parsed_has_child(ec_parsed_get_first_child(p)))
 		goto fail;
 
 	ret = -ENOMEM;
@@ -363,7 +363,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	if (cmd == NULL)
 		goto fail;
 
-	TAILQ_FOREACH(child, &TAILQ_FIRST(&p->children)->children, next) {
+	EC_PARSED_FOREACH_CHILD(child, ec_parsed_get_first_child(p)) {
 		ret = ec_node_expr_eval(&result, expr, child,
 			&test_ops, node);
 		if (ret < 0)

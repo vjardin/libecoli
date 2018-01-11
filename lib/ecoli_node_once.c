@@ -60,10 +60,10 @@ count_node(struct ec_parsed *parsed, const struct ec_node *node)
 	if (parsed == NULL)
 		return 0;
 
-	if (parsed->node == node)
+	if (ec_parsed_get_node(parsed) == node)
 		count++;
 
-	TAILQ_FOREACH(child, &parsed->children, next)
+	EC_PARSED_FOREACH_CHILD(child, parsed)
 		count += count_node(child, node);
 
 	return count;

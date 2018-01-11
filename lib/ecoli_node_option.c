@@ -57,10 +57,11 @@ ec_node_option_parse(const struct ec_node *gen_node,
 	int ret;
 
 	ret = ec_node_parse_child(node->child, state, strvec);
+	if (ret < 0)
+		return ret;
+
 	if (ret == EC_PARSED_NOMATCH)
 		return 0;
-	else if (ret < 0)
-		return ret;
 
 	return ret;
 }

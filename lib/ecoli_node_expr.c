@@ -527,7 +527,7 @@ static int eval_expression(struct result *result,
 	memset(result, 0, sizeof(*result));
 	memset(&child_result, 0, sizeof(child_result));
 
-	type = get_node_type(expr_gen_node, parsed->node);
+	type = get_node_type(expr_gen_node, ec_parsed_get_node(parsed));
 	if (type == VAL) {
 		ret = ops->eval_var(&result->val, userctx, parsed);
 		if (ret < 0)
@@ -538,9 +538,9 @@ static int eval_expression(struct result *result,
 		result->op_type = type;
 	}
 
-	TAILQ_FOREACH(child, &parsed->children, next) {
+	EC_PARSED_FOREACH_CHILD(child, parsed) {
 
-		type = get_node_type(expr_gen_node, child->node);
+		type = get_node_type(expr_gen_node, ec_parsed_get_node(child));
 		if (type == PAREN_OPEN) {
 			open = child;
 			continue;

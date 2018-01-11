@@ -255,15 +255,16 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	}
 
 	ret = ec_node_parse_child(node->child, state, new_vec);
-	if (ret >= 0) {
-		if ((unsigned)ret == ec_strvec_len(new_vec)) {
-			ret = 1;
-		} else {
-			child_parsed = ec_parsed_get_last_child(state);
-			ec_parsed_del_child(state, child_parsed);
-			ec_parsed_free(child_parsed);
-			ret = EC_PARSED_NOMATCH;
-		}
+	if (ret < 0)
+		goto fail;
+
+	if ((unsigned)ret == ec_strvec_len(new_vec)) {
+		ret = 1;
+	} else if (ret != EC_PARSED_NOMATCH) {
+		child_parsed = ec_parsed_get_last_child(state);
+		ec_parsed_del_child(state, child_parsed);
+		ec_parsed_free(child_parsed);
+		ret = EC_PARSED_NOMATCH;
 	}
 
 	ec_strvec_free(new_vec);

@@ -74,13 +74,15 @@ ec_node_seq_parse(const struct ec_node *gen_node,
 		}
 
 		ret = ec_node_parse_child(node->table[i], state, childvec);
+		if (ret < 0)
+			goto fail;
+
 		ec_strvec_free(childvec);
 		childvec = NULL;
+
 		if (ret == EC_PARSED_NOMATCH) {
 			ec_parsed_free_children(state);
 			return EC_PARSED_NOMATCH;
-		} else if (ret < 0) {
-			goto fail;
 		}
 
 		len += ret;
@@ -130,7 +132,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 			goto fail;
 
 		ret = ec_node_parse_child(table[0], parsed, childvec);
-		if (ret < 0 && ret != EC_PARSED_NOMATCH)
+		if (ret < 0)
 			goto fail;
 
 		ec_strvec_free(childvec);

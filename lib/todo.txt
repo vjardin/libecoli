@@ -202,7 +202,7 @@ return values:
 - 0: success, child->strvec is set by node (NULL = no_match)
 - -1: error (errno is set)
 maybe complex to use:
-- the node must set it (ex: "return ec_parsed_node_match()")
+- the node must set the match (ex: "return ec_parsed_node_match()")
 - the caller must use accessor to check if it matches or not
 
 alternative idea for return values:
@@ -210,6 +210,7 @@ alternative idea for return values:
 - -1: error (errno is set)
 - -2 or MAX_INT: success, but no match
 This is strange to have a specific value for no match
+With MAX_INT, this is the best (less bad) alternative
 
 alternative idea for return values:
 - ec_parse_result_match(n_tokens >= 0)
@@ -251,6 +252,11 @@ partial: beginning of a completion, does not match the token
          (good example is a directory in a path)
 unknown: could complete, but the node does not know how
 
+struct completion_item {
+  const char *value;
+  const char *disp;
+}
+
 struct completed_elt {
   ec_parsed *parse_tree; // current tree state
   ec_node *last;         // last node of the tree
@@ -274,15 +280,15 @@ a node can filter the completions
 
 [] ->
   foo   3 str(foo)
-  seq
-    option
-      str(foo) <-
+    seq
+      option
+        str(foo) <-
 
-  ?       5 int(1,10)
-  seq
-    option
-    or
-      int <-
+  ""    5 int(1,10)
+    seq
+      option
+      or
+        int <-
 
   bar   6 str(bar)
   foo   7 str(bar)
@@ -308,7 +314,6 @@ a node can filter the completions
 changes:
 - a completion item should contain a strvec for the value
   (the display string remains a string)
-- use a INT_MIN or a specific
 - there is maybe no good reason to split in:
   - ec_completed_item()
   - ec_completed_item_set()

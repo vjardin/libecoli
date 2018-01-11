@@ -71,13 +71,14 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 		}
 
 		ret = ec_node_parse_child(node->child, state, childvec);
+		if (ret < 0)
+			goto fail;
+
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
 		if (ret == EC_PARSED_NOMATCH)
 			break;
-		else if (ret < 0)
-			goto fail;
 
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
@@ -133,7 +134,7 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 			goto fail;
 
 		ret = ec_node_parse_child(node->child, parsed, childvec);
-		if (ret < 0 && ret != EC_PARSED_NOMATCH)
+		if (ret < 0)
 			goto fail;
 
 		ec_strvec_free(childvec);
