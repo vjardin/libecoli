@@ -98,9 +98,9 @@ fail:
 static int
 __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
+	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
@@ -120,7 +120,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 	 */
 
 	/* first, try to complete with the first node of the table */
-	ret = ec_node_complete_child(table[0], completed, parsed, strvec);
+	ret = ec_node_complete_child(table[0], completed, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -152,7 +152,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 
 		ret = __ec_node_seq_complete(&table[1],
 					table_len - 1,
-					completed, parsed, childvec);
+					completed, childvec);
 		ec_parsed_del_last_child(parsed);
 		ec_strvec_free(childvec);
 		childvec = NULL;
@@ -171,13 +171,12 @@ fail:
 static int
 ec_node_seq_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
 
 	return __ec_node_seq_complete(node->table, node->len, completed,
-				parsed, strvec);
+				strvec);
 }
 
 static size_t ec_node_seq_get_max_parse_len(const struct ec_node *gen_node)
@@ -322,6 +321,8 @@ static int ec_node_seq_testcase(void)
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
+	ec_node_free(node);
+	return 0;
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);

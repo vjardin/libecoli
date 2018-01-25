@@ -280,7 +280,6 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 static int
 ec_node_sh_lex_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
@@ -301,7 +300,7 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 
 	// XXX: complete should add the quotes for !EC_PARTIAL
 	// XXX: if no quotes, replace " " by "\ "
-	ret = ec_node_complete_child(node->child, completed, parsed, new_vec);
+	ret = ec_node_complete_child(node->child, completed, new_vec);
 	if (ret < 0)
 		goto fail;
 

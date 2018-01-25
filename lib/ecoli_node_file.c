@@ -116,7 +116,6 @@ static int split_path(const char *path, char **dname_p, char **bname_p)
 static int
 ec_node_file_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_completed_item *item = NULL;
@@ -200,7 +199,7 @@ ec_node_file_complete(const struct ec_node *gen_node,
 			is_dir = 0;
 		}
 
-		item = ec_completed_item(state, gen_node);
+		item = ec_completed_item(gen_node);
 		if (item == NULL) {
 			ret = -ENOMEM;
 			goto out;
@@ -230,7 +229,7 @@ ec_node_file_complete(const struct ec_node *gen_node,
 				ret = -errno;
 				goto out;
 			}
-			ret = ec_completed_item_set(item, EC_MATCH,
+			ret = ec_completed_item_set(item, EC_COMP_FULL,
 						comp_str);
 			if (ret < 0)
 				goto out;

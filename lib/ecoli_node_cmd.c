@@ -260,12 +260,11 @@ ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parsed *state,
 static int
 ec_node_cmd_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
-	return ec_node_complete_child(node->cmd, completed, parsed, strvec);
+	return ec_node_complete_child(node->cmd, completed, strvec);
 }
 
 static void ec_node_cmd_free_priv(struct ec_node *gen_node)

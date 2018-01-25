@@ -147,7 +147,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		count++;
 
 		/* only check matching completions */
-		iter = ec_completed_iter(c, EC_MATCH);
+		iter = ec_completed_iter(c, EC_COMP_FULL);
 		while ((item = ec_completed_iter_next(iter)) != NULL) {
 			const char *str = ec_completed_item_get_str(item);
 			if (str != NULL && strcmp(str, s) == 0)
@@ -163,10 +163,10 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	}
 
 	/* check if we have more completions (or less) than expected */
-	if (count != ec_completed_count(c, EC_MATCH)) {
+	if (count != ec_completed_count(c, EC_COMP_FULL)) {
 		EC_LOG(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_count(c, EC_MATCH));
+			count, ec_completed_count(c, EC_COMP_FULL));
 		ec_completed_dump(stdout, c);
 		ret = -1;
 	} else

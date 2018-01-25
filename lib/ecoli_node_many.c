@@ -106,15 +106,15 @@ fail:
 static int
 __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
+	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
 
 	/* first, try to complete with the child node */
-	ret = ec_node_complete_child(node->child, completed, parsed, strvec);
+	ret = ec_node_complete_child(node->child, completed, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -152,8 +152,7 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 			goto fail;
 		}
 
-		ret = __ec_node_many_complete(node, max, completed,
-					parsed, childvec);
+		ret = __ec_node_many_complete(node, max, completed, childvec);
 		ec_parsed_del_last_child(parsed);
 		ec_strvec_free(childvec);
 		childvec = NULL;
@@ -172,13 +171,12 @@ fail:
 static int
 ec_node_many_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_many *node = (struct ec_node_many *)gen_node;
 
 	return __ec_node_many_complete(node, node->max,	completed,
-				parsed, strvec);
+				strvec);
 }
 
 static void ec_node_many_free_priv(struct ec_node *gen_node)

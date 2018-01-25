@@ -96,7 +96,6 @@ typedef int (*ec_node_parse_t)(const struct ec_node *node,
 			const struct ec_strvec *strvec);
 typedef int (*ec_node_complete_t)(const struct ec_node *node,
 				struct ec_completed *completed_state,
-				struct ec_parsed *parsed_state,
 				const struct ec_strvec *strvec);
 typedef size_t (*ec_node_get_max_parse_len_t)(const struct ec_node *node);
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
@@ -108,8 +107,8 @@ typedef void (*ec_node_free_priv_t)(struct ec_node *);
  */
 struct ec_node_type {
 	TAILQ_ENTRY(ec_node_type) next;  /**< Next in list. */
-	const char *name;              /**< Node type name. */
-	ec_node_build_t build; /* (re)build the node, called by generic parse */
+	const char *name;                /**< Node type name. */
+	ec_node_build_t build;           /**< (Re)build the node */
 	ec_node_parse_t parse;
 	ec_node_complete_t complete;
 	ec_node_get_max_parse_len_t get_max_parse_len;

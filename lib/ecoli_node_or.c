@@ -72,7 +72,6 @@ ec_node_or_parse(const struct ec_node *gen_node,
 static int
 ec_node_or_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
@@ -81,7 +80,7 @@ ec_node_or_complete(const struct ec_node *gen_node,
 
 	for (n = 0; n < node->len; n++) {
 		ret = ec_node_complete_child(node->table[n],
-					completed, parsed, strvec);
+					completed, strvec);
 		if (ret < 0)
 			return ret;
 	}

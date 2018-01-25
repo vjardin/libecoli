@@ -179,9 +179,9 @@ ec_node_subset_parse(const struct ec_node *gen_node,
 static int
 __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
+	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
 	struct ec_strvec *childvec = NULL;
 	struct ec_node *save;
 	size_t i, len;
@@ -202,7 +202,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			continue;
 
 		ret = ec_node_complete_child(table[i],
-					completed, parsed, strvec);
+					completed, strvec);
 		if (ret < 0)
 			goto fail;
 	}
@@ -231,7 +231,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 		save = table[i];
 		table[i] = NULL;
 		ret = __ec_node_subset_complete(table, table_len,
-						completed, parsed, childvec);
+						completed, childvec);
 		table[i] = save;
 		ec_strvec_free(childvec);
 		childvec = NULL;
@@ -250,13 +250,12 @@ fail:
 static int
 ec_node_subset_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
 
 	return __ec_node_subset_complete(node->table, node->len, completed,
-					parsed, strvec);
+					strvec);
 }
 
 static void ec_node_subset_free_priv(struct ec_node *gen_node)

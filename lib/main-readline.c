@@ -83,7 +83,7 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 
 		ec_completed_iter_free(iter);
-		iter = ec_completed_iter(c, EC_MATCH | EC_PARTIAL_MATCH);
+		iter = ec_completed_iter(c, EC_COMP_FULL | EC_PARTIAL_MATCH);
 		if (iter == NULL)
 			return NULL;
 	}
@@ -98,7 +98,7 @@ static char *my_completion_entry(const char *s, int state)
 		/* don't add the trailing space for partial completions */
 		if (state == 0) {
 			item_type = ec_completed_item_get_type(item);
-			if (item_type == EC_MATCH)
+			if (item_type == EC_COMP_FULL)
 				rl_completion_suppress_append = 0;
 			else
 				rl_completion_suppress_append = 1;
@@ -128,6 +128,8 @@ static char **my_attempted_completion(const char *text, int start, int end)
 /* this function builds the help string */
 static char *get_node_help(const struct ec_completed_item *item)
 {
+	const struct ec_completed_group *grp;
+	struct ec_parsed *state; // XXX keep const with macro
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
@@ -135,10 +137,12 @@ static char *get_node_help(const struct ec_completed_item *item)
 //	size_t i;
 
 	(void)item;
-#if 0 //XXX
-	/* Retrieve the most precise help for this node. */
-	for (i = 0; i < item->pathlen; i++) {
-		node = item->path[i];
+#if 1
+	grp = ec_completed_item_get_grp(item);
+	state = grp->state;
+	for (state = grp->state; state != NULL;
+	     state = ec_parsed_get_parent(state)) {
+		node = ec_parsed_get_node(state);
 		if (node_help == NULL)
 			node_help = ec_keyval_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -164,8 +168,8 @@ static char *get_node_help(const struct ec_completed_item *item)
 static int show_help(int ignore, int invoking_key)
 {
 	struct ec_completed_iter *iter;
+	const struct ec_completed_group *grp, *prev_grp = NULL;
 	const struct ec_completed_item *item;
-	const struct ec_node *prev_node = NULL;
 	struct ec_completed *c;
 	struct ec_parsed *p;
 	char *line = NULL;
@@ -199,7 +203,8 @@ static int show_help(int ignore, int invoking_key)
 
 	/* let's display one contextual help per node */
 	count = 0;
-	iter = ec_completed_iter(c, EC_NO_MATCH | EC_MATCH | EC_PARTIAL_MATCH);
+	iter = ec_completed_iter(c,
+		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_PARTIAL_MATCH);
 	if (iter == NULL)
 		goto fail;
 
@@ -211,13 +216,14 @@ static int show_help(int ignore, int invoking_key)
 		helps[1] = "<return>";
 
 	while ((item = ec_completed_iter_next(iter)) != NULL) {
-		const struct ec_node *node;
 		char **tmp;
 
-		/* keep one help per node, skip other items  */
-		node = ec_completed_item_get_node(item);
-		if (node == prev_node)
+		/* keep one help per group, skip other items  */
+		grp = ec_completed_item_get_grp(item);
+		if (grp == prev_grp)
 			continue;
+
+		prev_grp = grp;
 
 		tmp = realloc(helps, (count + match + 2) * sizeof(char *));
 		if (tmp == NULL)

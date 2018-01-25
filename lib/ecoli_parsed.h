@@ -71,7 +71,7 @@ void ec_parsed_free_children(struct ec_parsed *parsed);
  *
  *
  */
-struct ec_parsed *ec_parsed_dup(const struct ec_parsed *parsed);
+struct ec_parsed *ec_parsed_dup(struct ec_parsed *parsed);
 
 /**
  *

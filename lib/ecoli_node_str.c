@@ -70,7 +70,6 @@ ec_node_str_parse(const struct ec_node *gen_node,
 static int
 ec_node_str_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_completed_item *item = NULL;
@@ -78,8 +77,6 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	const char *str;
 	size_t n = 0;
 	int ret;
-
-	(void)parsed;
 
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
@@ -94,10 +91,10 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	if (str[n] != '\0')
 		return 0; // XXX add a no_match instead?
 
-	item = ec_completed_item(parsed, gen_node);
+	item = ec_completed_item(gen_node);
 	if (item == NULL)
 		return -ENOMEM;
-	ret = ec_completed_item_set(item, EC_MATCH, node->string);
+	ret = ec_completed_item_set(item, EC_COMP_FULL, node->string);
 	if (ret < 0) {
 		ec_completed_item_free(item);
 		return ret;

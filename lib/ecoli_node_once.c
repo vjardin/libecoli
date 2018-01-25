@@ -90,10 +90,10 @@ ec_node_once_parse(const struct ec_node *gen_node,
 static int
 ec_node_once_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
-		struct ec_parsed *parsed,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
+	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
 	unsigned int count;
 	int ret;
 
@@ -104,7 +104,7 @@ ec_node_once_complete(const struct ec_node *gen_node,
 	if (count > 0)
 		return 0;
 
-	ret = ec_node_complete_child(node->child, completed, parsed, strvec);
+	ret = ec_node_complete_child(node->child, completed, strvec);
 	if (ret < 0)
 		return ret;
 

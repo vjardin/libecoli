@@ -44,8 +44,8 @@
 struct ec_node;
 
 enum ec_completed_type {
-	EC_NO_MATCH,
-	EC_MATCH,
+	EC_COMP_UNKNOWN,
+	EC_COMP_FULL,
 	EC_PARTIAL_MATCH,
 };
 
@@ -53,18 +53,21 @@ struct ec_completed_item;
 
 TAILQ_HEAD(ec_completed_item_list, ec_completed_item);
 
-struct ec_completed_node {
-	TAILQ_ENTRY(ec_completed_node) next;
+struct ec_completed_group {
+	TAILQ_ENTRY(ec_completed_group) next;
 	const struct ec_node *node;
 	struct ec_completed_item_list items;
+	struct ec_parsed *state;
 };
 
-TAILQ_HEAD(ec_completed_node_list, ec_completed_node);
+TAILQ_HEAD(ec_completed_group_list, ec_completed_group);
 
 struct ec_completed {
 	unsigned count;
 	unsigned count_match;
-	struct ec_completed_node_list nodes;
+	struct ec_parsed *cur_state;
+	struct ec_completed_group *cur_group;
+	struct ec_completed_group_list groups;
 	struct ec_keyval *attrs; // XXX per node instead?
 };
 
@@ -80,7 +83,6 @@ struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 /* internal: used by nodes */
 int ec_node_complete_child(struct ec_node *node,
 			struct ec_completed *completed,
-			struct ec_parsed *parsed_state,
 			const struct ec_strvec *strvec);
 
 /**
@@ -106,13 +108,15 @@ void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
 
 
+struct ec_parsed *ec_completed_cur_parse_state(struct ec_completed *completed);
+
 /**
  * Create a completion item.
  *
  *
  */
 struct ec_completed_item *
-ec_completed_item(struct ec_parsed *state, const struct ec_node *node);
+ec_completed_item(const struct ec_node *node);
 
 /**
  * Set type and value of a completion item.
@@ -145,6 +149,14 @@ ec_completed_item_get_str(const struct ec_completed_item *item);
  */
 const char *
 ec_completed_item_get_display(const struct ec_completed_item *item);
+
+/**
+ * Get the group of a completion item.
+ *
+ *
+ */
+const struct ec_completed_group *
+ec_completed_item_get_grp(const struct ec_completed_item *item);
 
 /**
  * Get the type of a completion item.
@@ -185,7 +197,6 @@ int ec_completed_item_set_display(struct ec_completed_item *item,
 int
 ec_node_default_complete(const struct ec_node *gen_node,
 			struct ec_completed *completed,
-			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 
 /**
@@ -205,7 +216,7 @@ unsigned int ec_completed_count(
 struct ec_completed_iter {
 	enum ec_completed_type type;
 	const struct ec_completed *completed;
-	const struct ec_completed_node *cur_node;
+	const struct ec_completed_group *cur_node;
 	const struct ec_completed_item *cur_match;
 };
 

@@ -82,6 +82,8 @@ examples
 - example with libedit
 - mini script language
 - configuration file
+- mini shell: cd, ls, cat, stat
+- mini network console based on ip
 
 doc
 ===

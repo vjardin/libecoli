@@ -43,13 +43,10 @@ struct ec_completed_item {
 	TAILQ_ENTRY(ec_completed_item) next;
 	enum ec_completed_type type;
 	const struct ec_node *node;
+	struct ec_completed_group *grp;
 	char *str;
 	char *display;
 	struct ec_keyval *attrs;
-
-	/* reverse order: [0] = last, [len-1] = root */
-	const struct ec_node **path;
-	size_t pathlen;
 };
 
 struct ec_completed *ec_completed(void)
@@ -60,11 +57,13 @@ struct ec_completed *ec_completed(void)
 	if (completed == NULL)
 		goto fail;
 
-	TAILQ_INIT(&completed->nodes);
+	TAILQ_INIT(&completed->groups);
 
 	completed->attrs = ec_keyval();
 	if (completed->attrs == NULL)
 		goto fail;
+
+	completed->cur_state = NULL;
 
 	return completed;
 
@@ -76,15 +75,17 @@ struct ec_completed *ec_completed(void)
 	return NULL;
 }
 
-/* XXX on error, states are not freed ?
- * they can be left in a bad state and should not be reused */
-int
-ec_node_complete_child(struct ec_node *node,
-		struct ec_completed *completed,
-		struct ec_parsed *parsed_state,
-		const struct ec_strvec *strvec)
+struct ec_parsed *ec_completed_cur_parse_state(struct ec_completed *completed)
 {
-	struct ec_parsed *child_state = NULL;
+	return completed->cur_state;
+}
+
+int
+ec_node_complete_child(struct ec_node *node, struct ec_completed *completed,
+			const struct ec_strvec *strvec)
+{
+	struct ec_parsed *child_state, *cur_state;
+	struct ec_completed_group *cur_group;
 	int ret;
 
 	/* build the node if required */
@@ -100,13 +101,31 @@ ec_node_complete_child(struct ec_node *node,
 	if (node->type->complete == NULL)
 		return -ENOTSUP;
 
+	/* save previous parse state, prepare child state */
+	cur_state = completed->cur_state;
 	child_state = ec_parsed();
 	if (child_state == NULL)
 		return -ENOMEM;
-	ec_parsed_set_node(child_state, node);
-	ec_parsed_add_child(parsed_state, child_state);
 
-	ret = node->type->complete(node, completed, child_state, strvec);
+	if (cur_state != NULL)
+		ec_parsed_add_child(cur_state, child_state);
+	ec_parsed_set_node(child_state, node);
+	completed->cur_state = child_state;
+	cur_group = completed->cur_group;
+	completed->cur_group = NULL;
+
+	/* complete */
+	ret = node->type->complete(node, completed, strvec);
+
+	/* restore parent parse state */
+	if (cur_state != NULL) {
+		ec_parsed_del_child(cur_state, child_state);
+		assert(!ec_parsed_has_child(child_state));
+	}
+	ec_parsed_free(child_state);
+	completed->cur_state = cur_state;
+	completed->cur_group = cur_group;
+
 	if (ret < 0)
 		return ret;
 
@@ -115,12 +134,7 @@ ec_node_complete_child(struct ec_node *node,
 	ec_node_dump(stdout, node);
 	ec_strvec_dump(stdout, strvec);
 	ec_completed_dump(stdout, completed);
-	ec_parsed_dump(stdout, parsed_state);
 #endif
-
-	ec_parsed_del_child(parsed_state, child_state);
-	assert(!ec_parsed_has_child(child_state));
-	ec_parsed_free(child_state);
 
 	return 0;
 }
@@ -128,29 +142,20 @@ ec_node_complete_child(struct ec_node *node,
 struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed_state = NULL;
 	struct ec_completed *completed = NULL;
 	int ret;
-
-	parsed_state = ec_parsed();
-	if (parsed_state == NULL)
-		goto fail;
 
 	completed = ec_completed();
 	if (completed == NULL)
 		goto fail;
 
-	ret = ec_node_complete_child(node, completed,
-				parsed_state, strvec);
+	ret = ec_node_complete_child(node, completed, strvec);
 	if (ret < 0)
 		goto fail;
-
-	ec_parsed_free(parsed_state);
 
 	return completed;
 
 fail:
-	ec_parsed_free(parsed_state);
 	ec_completed_free(completed);
 	return NULL;
 }
@@ -181,27 +186,35 @@ struct ec_completed *ec_node_complete(struct ec_node *node,
 	return NULL;
 }
 
-static struct ec_completed_node *
-ec_completed_node(const struct ec_node *node)
+static struct ec_completed_group *
+ec_completed_group(const struct ec_node *node, struct ec_parsed *parsed)
 {
-	struct ec_completed_node *compnode = NULL;
+	struct ec_completed_group *grp = NULL;
 
-	compnode = ec_calloc(1, sizeof(*compnode));
-	if (compnode == NULL)
+	grp = ec_calloc(1, sizeof(*grp));
+	if (grp == NULL)
 		return NULL;
 
-	compnode->node = node;
-	TAILQ_INIT(&compnode->items);
+	grp->state = ec_parsed_dup(parsed);
+	if (grp->state == NULL)
+		goto fail;
 
-	return compnode;
+	grp->node = node;
+	TAILQ_INIT(&grp->items);
+
+	return grp;
+
+fail:
+	if (grp != NULL)
+		ec_parsed_free(grp->state);
+	ec_free(grp);
+	return NULL;
 }
 
 struct ec_completed_item *
-ec_completed_item(struct ec_parsed *state, const struct ec_node *node)
+ec_completed_item(const struct ec_node *node)
 {
 	struct ec_completed_item *item = NULL;
-	struct ec_parsed *p;
-	size_t len;
 
 	item = ec_calloc(1, sizeof(*item));
 	if (item == NULL)
@@ -211,28 +224,13 @@ ec_completed_item(struct ec_parsed *state, const struct ec_node *node)
 	if (item->attrs == NULL)
 		goto fail;
 
-	/* get path len */
-	for (p = state, len = 0; p != NULL;
-	     p = ec_parsed_get_parent(p), len++)
-		;
-	/* allocate room for path */
-	item->path = ec_calloc(len, sizeof(*item->path));
-	if (item->path == NULL)
-		goto fail;
-	item->pathlen = len;
-	/* write path in array */
-	for (p = state, len = 0; p != NULL;
-	     p = ec_parsed_get_parent(p), len++)
-		item->path[len] = ec_parsed_get_node(p);
-
-	item->type = EC_NO_MATCH;
+	item->type = EC_COMP_UNKNOWN;
 	item->node = node;
 
 	return item;
 
 fail:
 	if (item != NULL) {
-		ec_free(item->path);
 		ec_free(item->str);
 		ec_free(item->display);
 		ec_keyval_free(item->attrs);
@@ -256,11 +254,11 @@ ec_completed_item_set(struct ec_completed_item *item,
 		return -EEXIST;
 
 	switch (type) {
-	case EC_NO_MATCH:
+	case EC_COMP_UNKNOWN:
 		if (str != NULL)
 			return -EINVAL;
 		break;
-	case EC_MATCH:
+	case EC_COMP_FULL:
 	case EC_PARTIAL_MATCH:
 		if (str == NULL)
 			return -EINVAL;
@@ -297,7 +295,7 @@ int ec_completed_item_set_display(struct ec_completed_item *item,
 	int ret = 0;
 
 	if (item == NULL || display == NULL ||
-			item->type == EC_NO_MATCH || item->str == NULL)
+			item->type == EC_COMP_UNKNOWN || item->str == NULL)
 		return -EINVAL;
 
 	ret = -ENOMEM;
@@ -315,19 +313,18 @@ fail:
 	return ret;
 }
 
+// XXX refactor ec_completed_item(), ec_completed_item_add(), ec_completed_item_set* 
 int
 ec_completed_item_add(struct ec_completed *completed,
 		struct ec_completed_item *item)
 {
-	struct ec_completed_node *compnode = NULL;
-
 	if (completed == NULL || item == NULL || item->node == NULL)
 		return -EINVAL;
 
 	switch (item->type) {
-	case EC_NO_MATCH:
+	case EC_COMP_UNKNOWN:
 		break;
-	case EC_MATCH:
+	case EC_COMP_FULL:
 	case EC_PARTIAL_MATCH:
 		completed->count_match++; //XXX
 		break;
@@ -335,20 +332,19 @@ ec_completed_item_add(struct ec_completed *completed,
 		return -EINVAL;
 	}
 
-	/* find the compnode entry corresponding to this node */
-	TAILQ_FOREACH(compnode, &completed->nodes, next) {
-		if (compnode->node == item->node)
-			break;
-	}
-	if (compnode == NULL) {
-		compnode = ec_completed_node(item->node);
-		if (compnode == NULL)
+	if (completed->cur_group == NULL) {
+		struct ec_completed_group *grp;
+
+		grp = ec_completed_group(item->node, completed->cur_state);
+		if (grp == NULL)
 			return -ENOMEM;
-		TAILQ_INSERT_TAIL(&completed->nodes, compnode, next);
+		TAILQ_INSERT_TAIL(&completed->groups, grp, next);
+		completed->cur_group = grp;
 	}
 
 	completed->count++;
-	TAILQ_INSERT_TAIL(&compnode->items, item, next);
+	TAILQ_INSERT_TAIL(&completed->cur_group->items, item, next);
+	item->grp = completed->cur_group;
 
 	return 0;
 }
@@ -377,6 +373,12 @@ ec_completed_item_get_node(const struct ec_completed_item *item)
 	return item->node;
 }
 
+const struct ec_completed_group *
+ec_completed_item_get_grp(const struct ec_completed_item *item)
+{
+	return item->grp;
+}
+
 void ec_completed_item_free(struct ec_completed_item *item)
 {
 	if (item == NULL)
@@ -384,7 +386,6 @@ void ec_completed_item_free(struct ec_completed_item *item)
 
 	ec_free(item->str);
 	ec_free(item->display);
-	ec_free(item->path);
 	ec_keyval_free(item->attrs);
 	ec_free(item);
 }
@@ -393,7 +394,6 @@ void ec_completed_item_free(struct ec_completed_item *item)
 int
 ec_node_default_complete(const struct ec_node *gen_node, // XXX rename in nomatch
 			struct ec_completed *completed,
-			struct ec_parsed *parsed_state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_completed_item *item = NULL;
@@ -402,10 +402,10 @@ ec_node_default_complete(const struct ec_node *gen_node, // XXX rename in nomatc
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
 
-	item = ec_completed_item(parsed_state, gen_node);
+	item = ec_completed_item(gen_node);
 	if (item == NULL)
 		return -ENOMEM;
-	ret = ec_completed_item_set(item, EC_NO_MATCH, NULL);
+	ret = ec_completed_item_set(item, EC_COMP_UNKNOWN, NULL);
 	if (ret < 0) {
 		ec_completed_item_free(item);
 		return ret;
@@ -419,24 +419,33 @@ ec_node_default_complete(const struct ec_node *gen_node, // XXX rename in nomatc
 	return 0;
 }
 
+static void ec_completed_group_free(struct ec_completed_group *grp)
+{
+	struct ec_completed_item *item;
+
+	if (grp == NULL)
+		return;
+
+	while (!TAILQ_EMPTY(&grp->items)) {
+		item = TAILQ_FIRST(&grp->items);
+		TAILQ_REMOVE(&grp->items, item, next);
+		ec_completed_item_free(item);
+	}
+	ec_parsed_free(ec_parsed_get_root(grp->state));
+	ec_free(grp);
+}
+
 void ec_completed_free(struct ec_completed *completed)
 {
-	struct ec_completed_node *compnode;
-	struct ec_completed_item *item;
+	struct ec_completed_group *grp;
 
 	if (completed == NULL)
 		return;
 
-	while (!TAILQ_EMPTY(&completed->nodes)) {
-		compnode = TAILQ_FIRST(&completed->nodes);
-		TAILQ_REMOVE(&completed->nodes, compnode, next);
-
-		while (!TAILQ_EMPTY(&compnode->items)) {
-			item = TAILQ_FIRST(&compnode->items);
-			TAILQ_REMOVE(&compnode->items, item, next);
-			ec_completed_item_free(item);
-		}
-		ec_free(compnode);
+	while (!TAILQ_EMPTY(&completed->groups)) {
+		grp = TAILQ_FIRST(&completed->groups);
+		TAILQ_REMOVE(&completed->groups, grp, next);
+		ec_completed_group_free(grp);
 	}
 	ec_keyval_free(completed->attrs);
 	ec_free(completed);
@@ -444,7 +453,7 @@ void ec_completed_free(struct ec_completed *completed)
 
 void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 {
-	struct ec_completed_node *compnode;
+	struct ec_completed_group *grp;
 	struct ec_completed_item *item;
 
 	if (completed == NULL || completed->count == 0) {
@@ -455,15 +464,15 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 	fprintf(out, "completion: count=%u match=%u\n",
 		completed->count, completed->count_match);
 
-	TAILQ_FOREACH(compnode, &completed->nodes, next) {
+	TAILQ_FOREACH(grp, &completed->groups, next) {
 		fprintf(out, "node=%p, node_type=%s\n",
-			compnode->node, compnode->node->type->name);
-		TAILQ_FOREACH(item, &compnode->items, next) {
+			grp->node, grp->node->type->name);
+		TAILQ_FOREACH(item, &grp->items, next) {
 			const char *typestr;
 
 			switch (item->type) {
-			case EC_NO_MATCH: typestr = "no-match"; break;
-			case EC_MATCH: typestr = "match"; break;
+			case EC_COMP_UNKNOWN: typestr = "no-match"; break;
+			case EC_COMP_FULL: typestr = "match"; break;
 			case EC_PARTIAL_MATCH: typestr = "partial-match"; break;
 			default: typestr = "unknown"; break;
 			}
@@ -483,9 +492,9 @@ unsigned int ec_completed_count(
 	if (completed == NULL)
 		return count;
 
-	if (type & EC_MATCH)
+	if (type & EC_COMP_FULL)
 		count += completed->count_match;
-	if (type & EC_NO_MATCH)
+	if (type & EC_COMP_UNKNOWN)
 		count += (completed->count - completed->count_match); //XXX
 
 	return count;
@@ -513,7 +522,7 @@ const struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter)
 {
 	const struct ec_completed *completed = iter->completed;
-	const struct ec_completed_node *cur_node;
+	const struct ec_completed_group *cur_node;
 	const struct ec_completed_item *cur_match;
 
 	if (completed == NULL)
@@ -524,7 +533,7 @@ const struct ec_completed_item *ec_completed_iter_next(
 
 	/* first call */
 	if (cur_node == NULL) {
-		TAILQ_FOREACH(cur_node, &completed->nodes, next) {
+		TAILQ_FOREACH(cur_node, &completed->groups, next) {
 			TAILQ_FOREACH(cur_match, &cur_node->items, next) {
 				if (cur_match != NULL &&
 						cur_match->type & iter->type)
