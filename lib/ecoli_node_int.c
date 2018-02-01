@@ -209,6 +209,7 @@ int64_t ec_node_int_getval(struct ec_node *gen_node, const char *str)
 
 	// XXX check type here
 	// if gen_node->type != int fail
+	// we may need to change the API (return int + val in a ptr ?)
 
 	parse_llint(node, str, &val);
 

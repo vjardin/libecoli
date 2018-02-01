@@ -44,9 +44,10 @@
 struct ec_node;
 
 enum ec_completed_type {
-	EC_COMP_UNKNOWN,
-	EC_COMP_FULL,
-	EC_PARTIAL_MATCH,
+	EC_COMP_UNKNOWN = 0x1,
+	EC_COMP_FULL = 0x2,
+	EC_COMP_PARTIAL = 0x4,
+	EC_COMP_ALL = 0x7,
 };
 
 struct ec_completed_item;
@@ -58,6 +59,7 @@ struct ec_completed_group {
 	const struct ec_node *node;
 	struct ec_completed_item_list items;
 	struct ec_parsed *state;
+	struct ec_keyval *attrs;
 };
 
 TAILQ_HEAD(ec_completed_group_list, ec_completed_group);
@@ -68,7 +70,6 @@ struct ec_completed {
 	struct ec_parsed *cur_state;
 	struct ec_completed_group *cur_group;
 	struct ec_completed_group_list groups;
-	struct ec_keyval *attrs; // XXX per node instead?
 };
 
 /*
@@ -90,7 +91,7 @@ int ec_node_complete_child(struct ec_node *node,
  *
  *
  */
-struct ec_completed *ec_completed(void);
+struct ec_completed *ec_completed(struct ec_parsed *state);
 
 /**
  * Free a completion object and all its items.
@@ -107,32 +108,28 @@ void ec_completed_free(struct ec_completed *completed);
 void ec_completed_dump(FILE *out,
 	const struct ec_completed *completed);
 
+/**
+ * Merge items contained in 'from' into 'to'
+ *
+ * The 'from' completed struct is freed.
+ */
+int ec_completed_merge(struct ec_completed *to,
+		struct ec_completed *from);
 
-struct ec_parsed *ec_completed_cur_parse_state(struct ec_completed *completed);
+struct ec_parsed *ec_completed_get_state(struct ec_completed *completed);
+
+/* shortcut for ec_completed_item() + ec_completed_item_add() */
+int ec_completed_add_item(struct ec_completed *completed,
+			const struct ec_node *node,
+			struct ec_completed_item **p_item,
+			enum ec_completed_type type,
+			const char *start, const char *full);
 
 /**
- * Create a completion item.
- *
  *
  */
-struct ec_completed_item *
-ec_completed_item(const struct ec_node *node);
-
-/**
- * Set type and value of a completion item.
- *
- *
- */
-int ec_completed_item_set(struct ec_completed_item *item,
-			enum ec_completed_type type, const char *str);
-
-/**
- * Add a completion item to a completion list.
- *
- *
- */
-int ec_completed_item_add(struct ec_completed *completed,
-			struct ec_completed_item *item);
+int ec_completed_item_set_str(struct ec_completed_item *item,
+			const char *str);
 
 /**
  * Get the string value of a completion item.
@@ -149,6 +146,14 @@ ec_completed_item_get_str(const struct ec_completed_item *item);
  */
 const char *
 ec_completed_item_get_display(const struct ec_completed_item *item);
+
+/**
+ * Get the completion string value of a completion item.
+ *
+ *
+ */
+const char *
+ec_completed_item_get_completion(const struct ec_completed_item *item);
 
 /**
  * Get the group of a completion item.
@@ -175,19 +180,20 @@ const struct ec_node *
 ec_completed_item_get_node(const struct ec_completed_item *item);
 
 /**
- *
- *
- *
- */
-void ec_completed_item_free(struct ec_completed_item *item);
-
-/**
  * Set the display value of an item.
  *
  *
  */
 int ec_completed_item_set_display(struct ec_completed_item *item,
 				const char *display);
+
+/**
+ * Set the completion value of an item.
+ *
+ *
+ */
+int ec_completed_item_set_completion(struct ec_completed_item *item,
+				const char *completion);
 
 /**
  *
@@ -215,9 +221,9 @@ unsigned int ec_completed_count(
  */
 struct ec_completed_iter {
 	enum ec_completed_type type;
-	const struct ec_completed *completed;
-	const struct ec_completed_group *cur_node;
-	const struct ec_completed_item *cur_match;
+	struct ec_completed *completed;
+	struct ec_completed_group *cur_node;
+	struct ec_completed_item *cur_match;
 };
 
 /**
@@ -234,7 +240,7 @@ ec_completed_iter(struct ec_completed *completed,
  *
  *
  */
-const struct ec_completed_item *ec_completed_iter_next(
+struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter);
 
 /**

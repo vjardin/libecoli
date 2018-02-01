@@ -32,6 +32,7 @@
 #include <errno.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_string.h>
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
@@ -44,12 +45,14 @@ struct ec_completed_item {
 	enum ec_completed_type type;
 	const struct ec_node *node;
 	struct ec_completed_group *grp;
-	char *str;
-	char *display;
+	char *start;      /* the initial token */
+	char *full;       /* the full token after completion */
+	char *completion; /* chars that are added, NULL if not applicable */
+	char *display;    /* what should be displayed by help/completers */
 	struct ec_keyval *attrs;
 };
 
-struct ec_completed *ec_completed(void)
+struct ec_completed *ec_completed(struct ec_parsed *state)
 {
 	struct ec_completed *completed = NULL;
 
@@ -59,23 +62,17 @@ struct ec_completed *ec_completed(void)
 
 	TAILQ_INIT(&completed->groups);
 
-	completed->attrs = ec_keyval();
-	if (completed->attrs == NULL)
-		goto fail;
-
-	completed->cur_state = NULL;
+	completed->cur_state = state;
 
 	return completed;
 
  fail:
-	if (completed != NULL)
-		ec_keyval_free(completed->attrs);
 	ec_free(completed);
 
 	return NULL;
 }
 
-struct ec_parsed *ec_completed_cur_parse_state(struct ec_completed *completed)
+struct ec_parsed *ec_completed_get_state(struct ec_completed *completed)
 {
 	return completed->cur_state;
 }
@@ -114,7 +111,7 @@ ec_node_complete_child(struct ec_node *node, struct ec_completed *completed,
 	cur_group = completed->cur_group;
 	completed->cur_group = NULL;
 
-	/* complete */
+	/* fill the completed struct with items */
 	ret = node->type->complete(node, completed, strvec);
 
 	/* restore parent parse state */
@@ -145,7 +142,7 @@ struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
 	struct ec_completed *completed = NULL;
 	int ret;
 
-	completed = ec_completed();
+	completed = ec_completed(NULL);
 	if (completed == NULL)
 		goto fail;
 
@@ -195,6 +192,10 @@ ec_completed_group(const struct ec_node *node, struct ec_parsed *parsed)
 	if (grp == NULL)
 		return NULL;
 
+	grp->attrs = ec_keyval();
+	if (grp->attrs == NULL)
+		goto fail;
+
 	grp->state = ec_parsed_dup(parsed);
 	if (grp->state == NULL)
 		goto fail;
@@ -205,87 +206,79 @@ ec_completed_group(const struct ec_node *node, struct ec_parsed *parsed)
 	return grp;
 
 fail:
-	if (grp != NULL)
+	if (grp != NULL) {
 		ec_parsed_free(grp->state);
+		ec_keyval_free(grp->attrs);
+	}
 	ec_free(grp);
 	return NULL;
 }
 
-struct ec_completed_item *
-ec_completed_item(const struct ec_node *node)
+static struct ec_completed_item *
+ec_completed_item(const struct ec_node *node, enum ec_completed_type type,
+		const char *start, const char *full)
 {
 	struct ec_completed_item *item = NULL;
+	struct ec_keyval *attrs = NULL;
+	char *comp_cp = NULL, *start_cp = NULL;
+	char *full_cp = NULL, *display_cp = NULL;
+
+	if (type == EC_COMP_UNKNOWN && full != NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
+	if (type != EC_COMP_UNKNOWN && full == NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	item = ec_calloc(1, sizeof(*item));
 	if (item == NULL)
 		goto fail;
 
-	item->attrs = ec_keyval();
-	if (item->attrs == NULL)
+	attrs = ec_keyval();
+	if (attrs == NULL)
 		goto fail;
 
-	item->type = EC_COMP_UNKNOWN;
+	if (start != NULL) {
+		start_cp = ec_strdup(start);
+		if (start_cp == NULL)
+			goto fail;
+
+		if (ec_str_startswith(full, start)) {
+			comp_cp = ec_strdup(&full[strlen(start)]);
+			if (comp_cp == NULL)
+				goto fail;
+		}
+	}
+	if (full != NULL) {
+		full_cp = ec_strdup(full);
+		if (full_cp == NULL)
+			goto fail;
+		display_cp = ec_strdup(full);
+		if (display_cp == NULL)
+			goto fail;
+	}
+
 	item->node = node;
+	item->type = type;
+	item->start = start_cp;
+	item->full = full_cp;
+	item->completion = comp_cp;
+	item->display = display_cp;
+	item->attrs = attrs;
 
 	return item;
 
 fail:
-	if (item != NULL) {
-		ec_free(item->str);
-		ec_free(item->display);
-		ec_keyval_free(item->attrs);
-	}
+	ec_keyval_free(item->attrs);
+	ec_free(comp_cp);
+	ec_free(start_cp);
+	ec_free(full_cp);
+	ec_free(display_cp);
 	ec_free(item);
 
 	return NULL;
-}
-
-int
-ec_completed_item_set(struct ec_completed_item *item,
-		enum ec_completed_type type, const char *str)
-{
-	char *str_copy = NULL;
-	char *display_copy = NULL;
-	int ret = 0;
-
-	if (item == NULL)
-		return -EINVAL;
-	if (item->str != NULL)
-		return -EEXIST;
-
-	switch (type) {
-	case EC_COMP_UNKNOWN:
-		if (str != NULL)
-			return -EINVAL;
-		break;
-	case EC_COMP_FULL:
-	case EC_PARTIAL_MATCH:
-		if (str == NULL)
-			return -EINVAL;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (str != NULL) {
-		ret = -ENOMEM;
-		str_copy = ec_strdup(str);
-		if (str_copy == NULL)
-			goto fail;
-		display_copy = ec_strdup(str);
-		if (display_copy == NULL)
-			goto fail;
-	}
-
-	item->type = type;
-	item->str = str_copy;
-	item->display = display_copy;
-	return 0;
-
-fail:
-	ec_free(str_copy);
-	ec_free(display_copy);
-	return ret;
 }
 
 int ec_completed_item_set_display(struct ec_completed_item *item,
@@ -295,10 +288,9 @@ int ec_completed_item_set_display(struct ec_completed_item *item,
 	int ret = 0;
 
 	if (item == NULL || display == NULL ||
-			item->type == EC_COMP_UNKNOWN || item->str == NULL)
+			item->type == EC_COMP_UNKNOWN)
 		return -EINVAL;
 
-	ret = -ENOMEM;
 	display_copy = ec_strdup(display);
 	if (display_copy == NULL)
 		goto fail;
@@ -313,8 +305,59 @@ fail:
 	return ret;
 }
 
-// XXX refactor ec_completed_item(), ec_completed_item_add(), ec_completed_item_set* 
 int
+ec_completed_item_set_completion(struct ec_completed_item *item,
+				const char *completion)
+{
+	char *completion_copy = NULL;
+	int ret = 0;
+
+	if (item == NULL || completion == NULL ||
+			item->type == EC_COMP_UNKNOWN)
+		return -EINVAL;
+
+	ret = -ENOMEM;
+	completion_copy = ec_strdup(completion);
+	if (completion_copy == NULL)
+		goto fail;
+
+	ec_free(item->completion);
+	item->completion = completion_copy;
+
+	return 0;
+
+fail:
+	ec_free(completion_copy);
+	return ret;
+}
+
+int
+ec_completed_item_set_str(struct ec_completed_item *item,
+			const char *str)
+{
+	char *str_copy = NULL;
+	int ret = 0;
+
+	if (item == NULL || str == NULL ||
+			item->type == EC_COMP_UNKNOWN)
+		return -EINVAL;
+
+	ret = -ENOMEM;
+	str_copy = ec_strdup(str);
+	if (str_copy == NULL)
+		goto fail;
+
+	ec_free(item->full);
+	item->full = str_copy;
+
+	return 0;
+
+fail:
+	ec_free(str_copy);
+	return ret;
+}
+
+static int
 ec_completed_item_add(struct ec_completed *completed,
 		struct ec_completed_item *item)
 {
@@ -325,7 +368,7 @@ ec_completed_item_add(struct ec_completed *completed,
 	case EC_COMP_UNKNOWN:
 		break;
 	case EC_COMP_FULL:
-	case EC_PARTIAL_MATCH:
+	case EC_COMP_PARTIAL:
 		completed->count_match++; //XXX
 		break;
 	default:
@@ -352,13 +395,19 @@ ec_completed_item_add(struct ec_completed *completed,
 const char *
 ec_completed_item_get_str(const struct ec_completed_item *item)
 {
-	return item->str;
+	return item->full;
 }
 
 const char *
 ec_completed_item_get_display(const struct ec_completed_item *item)
 {
 	return item->display;
+}
+
+const char *
+ec_completed_item_get_completion(const struct ec_completed_item *item)
+{
+	return item->completion;
 }
 
 enum ec_completed_type
@@ -379,15 +428,46 @@ ec_completed_item_get_grp(const struct ec_completed_item *item)
 	return item->grp;
 }
 
-void ec_completed_item_free(struct ec_completed_item *item)
+static void
+ec_completed_item_free(struct ec_completed_item *item)
 {
 	if (item == NULL)
 		return;
 
-	ec_free(item->str);
+	ec_free(item->full);
+	ec_free(item->start);
+	ec_free(item->completion);
 	ec_free(item->display);
 	ec_keyval_free(item->attrs);
 	ec_free(item);
+}
+
+int ec_completed_add_item(struct ec_completed *completed,
+			const struct ec_node *node,
+			struct ec_completed_item **p_item,
+			enum ec_completed_type type,
+			const char *start, const char *full)
+{
+	struct ec_completed_item *item = NULL;
+	int ret;
+
+	item = ec_completed_item(node, type, start, full);
+	if (item == NULL)
+		return -1;
+
+	ret = ec_completed_item_add(completed, item);
+	if (ret < 0)
+		goto fail;
+
+	if (p_item != NULL)
+		*p_item = item;
+
+	return 0;
+
+fail:
+	ec_completed_item_free(item);
+
+	return -1;
 }
 
 /* default completion function: return a no-match element */
@@ -396,25 +476,15 @@ ec_node_default_complete(const struct ec_node *gen_node, // XXX rename in nomatc
 			struct ec_completed *completed,
 			const struct ec_strvec *strvec)
 {
-	struct ec_completed_item *item = NULL;
 	int ret;
 
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
 
-	item = ec_completed_item(gen_node);
-	if (item == NULL)
-		return -ENOMEM;
-	ret = ec_completed_item_set(item, EC_COMP_UNKNOWN, NULL);
-	if (ret < 0) {
-		ec_completed_item_free(item);
+	ret = ec_completed_add_item(completed, gen_node, NULL,
+				EC_COMP_UNKNOWN, NULL, NULL);
+	if (ret < 0)
 		return ret;
-	}
-	ret = ec_completed_item_add(completed, item);
-	if (ret < 0) {
-		ec_completed_item_free(item);
-		return ret;
-	}
 
 	return 0;
 }
@@ -432,6 +502,7 @@ static void ec_completed_group_free(struct ec_completed_group *grp)
 		ec_completed_item_free(item);
 	}
 	ec_parsed_free(ec_parsed_get_root(grp->state));
+	ec_keyval_free(grp->attrs);
 	ec_free(grp);
 }
 
@@ -447,7 +518,6 @@ void ec_completed_free(struct ec_completed *completed)
 		TAILQ_REMOVE(&completed->groups, grp, next);
 		ec_completed_group_free(grp);
 	}
-	ec_keyval_free(completed->attrs);
 	ec_free(completed);
 }
 
@@ -471,16 +541,34 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 			const char *typestr;
 
 			switch (item->type) {
-			case EC_COMP_UNKNOWN: typestr = "no-match"; break;
-			case EC_COMP_FULL: typestr = "match"; break;
-			case EC_PARTIAL_MATCH: typestr = "partial-match"; break;
+			case EC_COMP_UNKNOWN: typestr = "unknown"; break;
+			case EC_COMP_FULL: typestr = "full"; break;
+			case EC_COMP_PARTIAL: typestr = "partial"; break;
 			default: typestr = "unknown"; break;
 			}
 
-			fprintf(out, "  type=%s str=<%s> disp=<%s>\n",
-				typestr, item->str, item->display);
+			fprintf(out, "  type=%s str=<%s> comp=<%s> disp=<%s>\n",
+				typestr, item->full, item->completion,
+				item->display);
 		}
 	}
+}
+
+int ec_completed_merge(struct ec_completed *to,
+		struct ec_completed *from)
+{
+	struct ec_completed_group *grp;
+
+	while (!TAILQ_EMPTY(&from->groups)) {
+		grp = TAILQ_FIRST(&from->groups);
+		TAILQ_REMOVE(&from->groups, grp, next);
+		TAILQ_INSERT_TAIL(&to->groups, grp, next);
+	}
+	to->count += from->count;
+	to->count_match += from->count_match;
+
+	ec_completed_free(from);
+	return 0;
 }
 
 unsigned int ec_completed_count(
@@ -518,12 +606,12 @@ ec_completed_iter(struct ec_completed *completed,
 	return iter;
 }
 
-const struct ec_completed_item *ec_completed_iter_next(
+struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter)
 {
-	const struct ec_completed *completed = iter->completed;
-	const struct ec_completed_group *cur_node;
-	const struct ec_completed_item *cur_match;
+	struct ec_completed *completed = iter->completed;
+	struct ec_completed_group *cur_node;
+	struct ec_completed_item *cur_match;
 
 	if (completed == NULL)
 		return NULL;

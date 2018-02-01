@@ -243,3 +243,11 @@ const char *ec_node_desc(const struct ec_node *node)
 
 	return node->desc;
 }
+
+int ec_node_check_type(const struct ec_node *node,
+		const struct ec_node_type *type)
+{
+	if (strcmp(node->type->name, type->name))
+		return -EINVAL;
+	return 0;
+}

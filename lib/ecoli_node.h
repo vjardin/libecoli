@@ -187,4 +187,8 @@ const char *ec_node_desc(const struct ec_node *node);
 void ec_node_dump(FILE *out, const struct ec_node *node);
 struct ec_node *ec_node_find(struct ec_node *node, const char *id);
 
+/* check the type of a node */
+int ec_node_check_type(const struct ec_node *node,
+		const struct ec_node_type *type);
+
 #endif

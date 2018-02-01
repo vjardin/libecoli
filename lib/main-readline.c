@@ -63,15 +63,15 @@ static char *my_completion_entry(const char *s, int state)
 
 	(void)s;
 
-	/* don't append a quote */
+	/* Don't append a quote. Note: there are still some bugs when
+	 * completing a quoted token. */
 	rl_completion_suppress_quote = 1;
-	rl_basic_quote_characters = "";
+	rl_completer_quote_characters = "\"'";
 
 	if (state == 0) {
 		char *line;
 
 		ec_completed_free(c);
-
 		line = strdup(rl_line_buffer);
 		if (line == NULL)
 			return NULL;
@@ -83,7 +83,7 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 
 		ec_completed_iter_free(iter);
-		iter = ec_completed_iter(c, EC_COMP_FULL | EC_PARTIAL_MATCH);
+		iter = ec_completed_iter(c, EC_COMP_FULL | EC_COMP_PARTIAL);
 		if (iter == NULL)
 			return NULL;
 	}
@@ -134,12 +134,10 @@ static char *get_node_help(const struct ec_completed_item *item)
 	char *help = NULL;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
-//	size_t i;
 
-	(void)item;
-#if 1
 	grp = ec_completed_item_get_grp(item);
 	state = grp->state;
+	ec_parsed_dump(stdout, ec_parsed_get_root(state));
 	for (state = grp->state; state != NULL;
 	     state = ec_parsed_get_parent(state)) {
 		node = ec_parsed_get_node(state);
@@ -148,11 +146,6 @@ static char *get_node_help(const struct ec_completed_item *item)
 		if (node_desc == NULL)
 			node_desc = ec_node_desc(node);
 	}
-#else
-	node = ec_completed_item_get_node(item);
-	node_help = ec_keyval_get(ec_node_attrs(node), "help");
-	node_desc = ec_node_desc(node);
-#endif
 
 	if (node_help == NULL)
 		node_help = "-";
@@ -199,12 +192,12 @@ static int show_help(int ignore, int invoking_key)
 	if (c == NULL)
 		goto fail;
 
-	//ec_completed_dump(stdout, c);
+	ec_completed_dump(stdout, c);
 
 	/* let's display one contextual help per node */
 	count = 0;
 	iter = ec_completed_iter(c,
-		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_PARTIAL_MATCH);
+		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL);
 	if (iter == NULL)
 		goto fail;
 

@@ -118,13 +118,14 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
 		const struct ec_strvec *strvec)
 {
+	char *dname = NULL, *bname = NULL, *effective_dir;
 	struct ec_completed_item *item = NULL;
+	enum ec_completed_type type;
 	struct stat st;
 	const char *input;
 	size_t bname_len;
 	struct dirent *de = NULL;
 	DIR *dir = NULL;
-	char *dname = NULL, *bname = NULL, *effective_dir;
 	char *comp_str = NULL;
 	char *disp_str = NULL;
 	int ret;
@@ -199,13 +200,8 @@ ec_node_file_complete(const struct ec_node *gen_node,
 			is_dir = 0;
 		}
 
-		item = ec_completed_item(gen_node);
-		if (item == NULL) {
-			ret = -ENOMEM;
-			goto out;
-		}
-
 		if (is_dir) {
+			type = EC_COMP_PARTIAL;
 			if (asprintf(&comp_str, "%s%s/", input,
 					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
@@ -215,11 +211,8 @@ ec_node_file_complete(const struct ec_node *gen_node,
 				ret = -errno;
 				goto out;
 			}
-			ret = ec_completed_item_set(item, EC_PARTIAL_MATCH,
-						comp_str);
-			if (ret < 0)
-				goto out;
 		} else {
+			type = EC_COMP_FULL;
 			if (asprintf(&comp_str, "%s%s", input,
 					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
@@ -229,15 +222,15 @@ ec_node_file_complete(const struct ec_node *gen_node,
 				ret = -errno;
 				goto out;
 			}
-			ret = ec_completed_item_set(item, EC_COMP_FULL,
-						comp_str);
-			if (ret < 0)
-				goto out;
 		}
-		ret = ec_completed_item_set_display(item, disp_str);
+		ret = ec_completed_add_item(completed, gen_node, &item,
+					type, input, comp_str);
 		if (ret < 0)
 			goto out;
-		ret = ec_completed_item_add(completed, item);
+
+		/* fix the display string: we don't want to display the full
+		 * path. */
+		ret = ec_completed_item_set_display(item, disp_str);
 		if (ret < 0)
 			goto out;
 
@@ -250,7 +243,6 @@ ec_node_file_complete(const struct ec_node *gen_node,
 	ret = 0;
 
 out:
-	ec_completed_item_free(item);
 	free(comp_str);
 	free(disp_str);
 	ec_free(dname);

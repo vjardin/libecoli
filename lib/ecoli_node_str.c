@@ -72,11 +72,9 @@ ec_node_str_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
 		const struct ec_strvec *strvec)
 {
-	struct ec_completed_item *item = NULL;
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
 	const char *str;
 	size_t n = 0;
-	int ret;
 
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
@@ -91,19 +89,9 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	if (str[n] != '\0')
 		return 0; // XXX add a no_match instead?
 
-	item = ec_completed_item(gen_node);
-	if (item == NULL)
-		return -ENOMEM;
-	ret = ec_completed_item_set(item, EC_COMP_FULL, node->string);
-	if (ret < 0) {
-		ec_completed_item_free(item);
-		return ret;
-	}
-	ret = ec_completed_item_add(completed, item);
-	if (ret < 0) {
-		ec_completed_item_free(item);
-		return ret;
-	}
+	if (ec_completed_add_item(completed, gen_node, NULL, EC_COMP_FULL,
+					str, node->string) < 0)
+		return -1;
 
 	return 0;
 }
@@ -143,6 +131,11 @@ EC_NODE_TYPE_REGISTER(ec_node_str_type);
 int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	int ret;
+
+	ret = ec_node_check_type(gen_node, &ec_node_str_type);
+	if (ret < 0)
+		return ret;
 
 	if (str == NULL)
 		return -EINVAL;

@@ -181,7 +181,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			struct ec_completed *completed,
 			const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
+	struct ec_parsed *parsed = ec_completed_get_state(completed);
 	struct ec_strvec *childvec = NULL;
 	struct ec_node *save;
 	size_t i, len;

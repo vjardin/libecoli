@@ -93,7 +93,7 @@ ec_node_once_complete(const struct ec_node *gen_node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
-	struct ec_parsed *parsed = ec_completed_cur_parse_state(completed);
+	struct ec_parsed *parsed = ec_completed_get_state(completed);
 	unsigned int count;
 	int ret;
 
@@ -131,13 +131,14 @@ EC_NODE_TYPE_REGISTER(ec_node_once_type);
 int ec_node_once_set(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
+	int ret;
 
-	// XXX check node type
-
-	assert(node != NULL);
-
-	if (child == NULL)
+	if (gen_node == NULL || child == NULL)
 		return -EINVAL;
+
+	ret = ec_node_check_type(gen_node, &ec_node_once_type);
+	if (ret < 0)
+		return ret;
 
 	gen_node->flags &= ~EC_NODE_F_BUILT;
 

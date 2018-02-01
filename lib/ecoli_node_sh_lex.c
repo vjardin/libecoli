@@ -25,6 +25,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _GNU_SOURCE /* for asprintf */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -164,6 +165,8 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 		goto fail;
 
 	while (str[off] != '\0') {
+		if (missing_quote != NULL)
+			*missing_quote = '\0';
 		len = eat_spaces(&str[off]);
 		if (len > 0)
 			last_is_space = 1;
@@ -172,6 +175,8 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 		len = 0;
 		suboff = off;
 		while (str[suboff] != '\0') {
+			if (missing_quote != NULL)
+				*missing_quote = '\0';
 			last_is_space = 0;
 			if (str[suboff] == '"' || str[suboff] == '\'') {
 				sublen = eat_quoted_str(&str[suboff]);
@@ -211,8 +216,6 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 			concat = NULL;
 		}
 
-		/* XXX remove all printf comments */
-//		printf("str off=%zd len=%zd\n", off, len);
 		off += len;
 	}
 
@@ -283,7 +286,11 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_completed *tmp_completed = NULL;
 	struct ec_strvec *new_vec = NULL;
+	struct ec_completed_iter *iter = NULL;
+	struct ec_completed_item *item = NULL;
+	char *new_str = NULL;
 	const char *str;
 	char missing_quote;
 	int ret;
@@ -292,24 +299,63 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 		return 0;
 
 	str = ec_strvec_val(strvec, 0);
-//	printf("\nold:%s\n", str);
 	new_vec = tokenize(str, 1, 1, &missing_quote);
 	if (new_vec == NULL)
 		goto fail;
-//	printf("new:%s\n", ec_strvec_val(new_vec, 0));
 
-	// XXX: complete should add the quotes for !EC_PARTIAL
-	// XXX: if no quotes, replace " " by "\ "
-	ret = ec_node_complete_child(node->child, completed, new_vec);
+	/* we will store the completions in a temporary struct, because
+	 * we want to update them (ex: add missing quotes) */
+	tmp_completed = ec_completed(ec_completed_get_state(completed));
+	if (tmp_completed == NULL)
+		goto fail;
+
+	ret = ec_node_complete_child(node->child, tmp_completed, new_vec);
 	if (ret < 0)
 		goto fail;
 
+	/* add missing quote for full completions  */
+	if (missing_quote != '\0') {
+		iter = ec_completed_iter(tmp_completed, EC_COMP_FULL);
+		if (iter == NULL)
+			goto fail;
+		while ((item = ec_completed_iter_next(iter)) != NULL) {
+			str = ec_completed_item_get_str(item);
+			if (asprintf(&new_str, "%c%s%c", missing_quote, str,
+					missing_quote) < 0) {
+				new_str = NULL;
+				goto fail;
+			}
+			if (ec_completed_item_set_str(item, new_str) < 0)
+				goto fail;
+			free(new_str);
+			new_str = NULL;
+
+			str = ec_completed_item_get_completion(item);
+			if (asprintf(&new_str, "%s%c", str,
+					missing_quote) < 0) {
+				new_str = NULL;
+				goto fail;
+			}
+			if (ec_completed_item_set_completion(item, new_str) < 0)
+				goto fail;
+			free(new_str);
+			new_str = NULL;
+		}
+	}
+
+	ec_completed_iter_free(iter);
 	ec_strvec_free(new_vec);
+
+	ec_completed_merge(completed, tmp_completed);
 
 	return 0;
 
  fail:
+	ec_completed_free(tmp_completed);
+	ec_completed_iter_free(iter);
 	ec_strvec_free(new_vec);
+	free(new_str);
+
 	return -1;
 }
 
@@ -425,6 +471,9 @@ static int ec_node_sh_lex_testcase(void)
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"foo barx", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo 'b", EC_NODE_ENDLIST,
+		"'bar'", EC_NODE_ENDLIST);
 
 	ec_node_free(node);
 	return ret;

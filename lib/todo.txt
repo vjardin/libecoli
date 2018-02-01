@@ -322,6 +322,17 @@ changes:
   - ec_completed_item_set_display()
   - ec_completed_item_add()
 
+-----
+
+sh_lex
+  or
+    str(foo)
+    str(foo2)
+    str(bar)
+
+complete(sh_lex, ["'fo"])
+  complete(sh_lex, ["fo"]) -> ["foo", "foo2"]
+  
 
 -----
 

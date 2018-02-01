@@ -243,6 +243,10 @@ int ec_node_expr_set_val_node(struct ec_node *gen_node, struct ec_node *val_node
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 	int ret;
 
+	ret = ec_node_check_type(gen_node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
+
 	ret = -EINVAL;
 	if (val_node == NULL)
 		goto fail;
@@ -270,7 +274,9 @@ int ec_node_expr_add_bin_op(struct ec_node *gen_node, struct ec_node *op)
 	struct ec_node **bin_ops;
 	int ret;
 
-	// XXX check node type
+	ret = ec_node_check_type(gen_node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
 
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
@@ -304,7 +310,9 @@ int ec_node_expr_add_pre_op(struct ec_node *gen_node, struct ec_node *op)
 	struct ec_node **pre_ops;
 	int ret;
 
-	// XXX check node type
+	ret = ec_node_check_type(gen_node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
 
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
@@ -338,7 +346,9 @@ int ec_node_expr_add_post_op(struct ec_node *gen_node, struct ec_node *op)
 	struct ec_node **post_ops;
 	int ret;
 
-	// XXX check node type
+	ret = ec_node_check_type(gen_node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
 
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
@@ -373,7 +383,9 @@ int ec_node_expr_add_parenthesis(struct ec_node *gen_node,
 	struct ec_node **open_ops, **close_ops;
 	int ret;
 
-	// XXX check node type
+	ret = ec_node_check_type(gen_node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
 
 	ret = -EINVAL;
 	if (node == NULL || open == NULL || close == NULL)
@@ -416,6 +428,7 @@ enum expr_node_type {
 	PAREN_OPEN,
 	PAREN_CLOSE,
 };
+
 static enum expr_node_type get_node_type(const struct ec_node *expr_gen_node,
 	const struct ec_node *check)
 {
