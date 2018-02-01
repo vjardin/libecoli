@@ -70,6 +70,7 @@ struct ec_completed {
 	struct ec_parsed *cur_state;
 	struct ec_completed_group *cur_group;
 	struct ec_completed_group_list groups;
+	struct ec_keyval *attrs;
 };
 
 /*

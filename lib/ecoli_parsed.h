@@ -50,7 +50,7 @@ struct ec_parsed;
  * @return
  *   The empty parse tree.
  */
-struct ec_parsed *ec_parsed(void);
+struct ec_parsed *ec_parsed(const struct ec_node *node);
 
 /**
  *
@@ -206,13 +206,6 @@ const struct ec_node *ec_parsed_get_node(const struct ec_parsed *parsed);
  *
  *
  */
-void ec_parsed_set_node(struct ec_parsed *parsed, const struct ec_node *node);
-
-/**
- *
- *
- *
- */
 void ec_parsed_del_last_child(struct ec_parsed *parsed);
 
 /**
@@ -220,7 +213,7 @@ void ec_parsed_del_last_child(struct ec_parsed *parsed);
  *
  *
  */
-int ec_parsed_get_path(struct ec_parsed *parsed, struct ec_node **path);
+struct ec_keyval *ec_parsed_get_attrs(struct ec_parsed *parsed);
 
 /**
  *
@@ -236,6 +229,14 @@ void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed);
  */
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	const char *id);
+
+/**
+ * Iterate among parsed tree
+ *
+ * Use it with:
+ * for (iter = state; iter != NULL; iter = ec_parsed_iter_next(iter))
+ */
+struct ec_parsed *ec_parsed_iter_next(struct ec_parsed *parsed);
 
 /**
  *

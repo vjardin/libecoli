@@ -57,6 +57,7 @@ srcs += ecoli_node_cmd.c
 srcs += ecoli_node_empty.c
 srcs += ecoli_node_expr.c
 srcs += ecoli_node_expr_test.c
+srcs += ecoli_node_dynamic.c
 srcs += ecoli_node_file.c
 srcs += ecoli_node_int.c
 srcs += ecoli_node_many.c

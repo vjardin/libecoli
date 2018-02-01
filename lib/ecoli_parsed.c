@@ -79,7 +79,7 @@ static int __ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 		return -ENOTSUP;
 
 	if (!is_root) {
-		child = ec_parsed();
+		child = ec_parsed(node);
 		if (child == NULL)
 			return -ENOMEM;
 
@@ -87,7 +87,6 @@ static int __ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	} else {
 		child = state;
 	}
-	ec_parsed_set_node(child, node);
 	ret = node->type->parse(node, child, strvec);
 	if (ret < 0) // XXX should we free state, child?
 		return ret;
@@ -120,7 +119,7 @@ int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 				const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_parsed();
+	struct ec_parsed *parsed = ec_parsed(node);
 	int ret;
 
 	if (parsed == NULL)
@@ -161,7 +160,7 @@ struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str)
 	return NULL;
 }
 
-struct ec_parsed *ec_parsed(void)
+struct ec_parsed *ec_parsed(const struct ec_node *node)
 {
 	struct ec_parsed *parsed = NULL;
 
@@ -171,6 +170,7 @@ struct ec_parsed *ec_parsed(void)
 
 	TAILQ_INIT(&parsed->children);
 
+	parsed->node = node;
 	parsed->attrs = ec_keyval();
 	if (parsed->attrs == NULL)
 		goto fail;
@@ -196,7 +196,7 @@ __ec_parsed_dup(const struct ec_parsed *root, const struct ec_parsed *ref,
 	if (root == NULL)
 		return NULL;
 
-	dup = ec_parsed();
+	dup = ec_parsed(root->node);
 	if (dup == NULL)
 		return NULL;
 
@@ -208,7 +208,6 @@ __ec_parsed_dup(const struct ec_parsed *root, const struct ec_parsed *ref,
 		goto fail;
 	ec_keyval_free(dup->attrs);
 	dup->attrs = attrs;
-	dup->node = root->node;
 
 	if (root->strvec != NULL) {
 		dup->strvec = ec_strvec_dup(root->strvec);
@@ -365,11 +364,6 @@ const struct ec_node *ec_parsed_get_node(const struct ec_parsed *parsed)
 	return parsed->node;
 }
 
-void ec_parsed_set_node(struct ec_parsed *parsed, const struct ec_node *node)
-{
-	parsed->node = node;
-}
-
 void ec_parsed_del_last_child(struct ec_parsed *parsed) // rename in free
 {
 	struct ec_parsed *child;
@@ -398,6 +392,24 @@ struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed)
 	return parsed->parent;
 }
 
+struct ec_parsed *ec_parsed_iter_next(struct ec_parsed *parsed)
+{
+	struct ec_parsed *child, *parent, *next;
+
+	child = TAILQ_FIRST(&parsed->children);
+	if (child != NULL)
+		return child;
+	parent = parsed->parent;
+	while (parent != NULL) {
+		next = TAILQ_NEXT(parsed, next);
+		if (next != NULL)
+			return next;
+		parsed = parent;
+		parent = parsed->parent;
+	}
+	return NULL;
+}
+
 struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	const char *id)
 {
@@ -418,6 +430,15 @@ struct ec_parsed *ec_parsed_find_first(struct ec_parsed *parsed,
 	}
 
 	return NULL;
+}
+
+struct ec_keyval *
+ec_parsed_get_attrs(struct ec_parsed *parsed)
+{
+	if (parsed == NULL)
+		return NULL;
+
+	return parsed->attrs;
 }
 
 const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed)

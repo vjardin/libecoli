@@ -60,6 +60,10 @@ struct ec_completed *ec_completed(struct ec_parsed *state)
 	if (completed == NULL)
 		goto fail;
 
+	completed->attrs = ec_keyval();
+	if (completed->attrs == NULL)
+		goto fail;
+
 	TAILQ_INIT(&completed->groups);
 
 	completed->cur_state = state;
@@ -67,6 +71,8 @@ struct ec_completed *ec_completed(struct ec_parsed *state)
 	return completed;
 
  fail:
+	if (completed != NULL)
+		ec_keyval_free(completed->attrs);
 	ec_free(completed);
 
 	return NULL;
@@ -100,13 +106,12 @@ ec_node_complete_child(struct ec_node *node, struct ec_completed *completed,
 
 	/* save previous parse state, prepare child state */
 	cur_state = completed->cur_state;
-	child_state = ec_parsed();
+	child_state = ec_parsed(node);
 	if (child_state == NULL)
 		return -ENOMEM;
 
 	if (cur_state != NULL)
 		ec_parsed_add_child(cur_state, child_state);
-	ec_parsed_set_node(child_state, node);
 	completed->cur_state = child_state;
 	cur_group = completed->cur_group;
 	completed->cur_group = NULL;
@@ -518,6 +523,7 @@ void ec_completed_free(struct ec_completed *completed)
 		TAILQ_REMOVE(&completed->groups, grp, next);
 		ec_completed_group_free(grp);
 	}
+	ec_keyval_free(completed->attrs);
 	ec_free(completed);
 }
 
