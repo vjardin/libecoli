@@ -46,6 +46,40 @@
  */
 struct ec_strvec *ec_strvec(void);
 
+#ifndef EC_COUNT_OF
+#define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
+		((size_t)(!(sizeof(x) % sizeof(0[x])))))
+#endif
+
+/**
+ * Allocate a new string vector
+ *
+ * The string vector is initialized with the list of const strings
+ * passed as arguments.
+ *
+ * @return
+ *   The new strvec object, or NULL on error (errno is set).
+ */
+#define EC_STRVEC(args...) ({						\
+			const char *_arr[] = {args};			\
+			ec_strvec_from_array(_arr, EC_COUNT_OF(_arr));	\
+		})
+/**
+ * Allocate a new string vector
+ *
+ * The string vector is initialized with the array of const strings
+ * passed as arguments.
+ *
+ * @param strarr
+ *   The array of const strings.
+ * @param n
+ *   The number of strings in the array.
+ * @return
+ *   The new strvec object, or NULL on error (errno is set).
+ */
+struct ec_strvec *ec_strvec_from_array(const char * const *strarr,
+	size_t n);
+
 /**
  * Add a string in a vector.
  *
@@ -57,6 +91,18 @@ struct ec_strvec *ec_strvec(void);
  *   0 on success or -1 on error (errno is set).
  */
 int ec_strvec_add(struct ec_strvec *strvec, const char *s);
+
+/**
+ * Delete the last entry in the string vector.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param s
+ *   The string to be added at the end of the vector.
+ * @return
+ *   0 on success or -1 on error (errno is set).
+ */
+int ec_strvec_del_last(struct ec_strvec *strvec);
 
 /**
  * Duplicate a string vector.
@@ -113,6 +159,19 @@ size_t ec_strvec_len(const struct ec_strvec *strvec);
  *   or invalid index).
  */
 const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
+
+/**
+ * Compare two string vectors
+ *
+ * @param strvec
+ *   The pointer to the first string vector.
+ * @param strvec
+ *   The pointer to the second string vector.
+ * @return
+ *   0 if the string vectors are equal.
+ */
+int ec_strvec_cmp(const struct ec_strvec *strvec1,
+		const struct ec_strvec *strvec2);
 
 /**
  * Dump a string vector.
