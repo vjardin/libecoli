@@ -73,7 +73,7 @@ static int ec_node_any_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node("any", NULL);
+	node = ec_node("any", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -84,7 +84,7 @@ static int ec_node_any_testcase(void)
 	ec_node_free(node);
 
 	/* never completes */
-	node = ec_node("any", NULL);
+	node = ec_node("any", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

@@ -99,7 +99,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 	/* ...or create a string node */
 	if (eval == NULL) {
-		eval = ec_node_str(NULL, str);
+		eval = ec_node_str(EC_NO_ID, str);
 		if (eval == NULL)
 			return -ENOMEM;
 	}
@@ -167,7 +167,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 		return -EINVAL;
 
 	if (!strcmp(ec_strvec_val(vec, 0), "|")) {
-		out = EC_NODE_OR(NULL, ec_node_clone(in1), ec_node_clone(in2));
+		out = EC_NODE_OR(EC_NO_ID, ec_node_clone(in1), ec_node_clone(in2));
 		if (out == NULL)
 			return -EINVAL;
 		ec_node_free(in1);
@@ -180,7 +180,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 			ec_node_free(in1);
 			*result = in2;
 		} else {
-			out = EC_NODE_SUBSET(NULL, ec_node_clone(in1),
+			out = EC_NODE_SUBSET(EC_NO_ID, ec_node_clone(in1),
 					ec_node_clone(in2));
 			if (out == NULL)
 				return -EINVAL;
@@ -216,7 +216,7 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 		return -EINVAL;
 
 	if (!strcmp(ec_strvec_val(vec, 0), "[")) {
-		out = ec_node_option(NULL, ec_node_clone(in));
+		out = ec_node_option(EC_NO_ID, ec_node_clone(in));
 		if (out == NULL)
 			return -EINVAL;
 		ec_node_free(in);
@@ -296,34 +296,34 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	expr = ec_node("expr", "expr");
 	if (expr == NULL)
 		goto fail;
-	ret = ec_node_expr_set_val_node(expr, ec_node_re(NULL, "[a-zA-Z0-9]+"));
+	ret = ec_node_expr_set_val_node(expr, ec_node_re(EC_NO_ID, "[a-zA-Z0-9]+"));
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_expr_add_bin_op(expr, ec_node_str(NULL, ","));
+	ret = ec_node_expr_add_bin_op(expr, ec_node_str(EC_NO_ID, ","));
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_expr_add_bin_op(expr, ec_node_str(NULL, "|"));
+	ret = ec_node_expr_add_bin_op(expr, ec_node_str(EC_NO_ID, "|"));
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_expr_add_post_op(expr, ec_node_str(NULL, "+"));
+	ret = ec_node_expr_add_post_op(expr, ec_node_str(EC_NO_ID, "+"));
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_expr_add_post_op(expr, ec_node_str(NULL, "*"));
+	ret = ec_node_expr_add_post_op(expr, ec_node_str(EC_NO_ID, "*"));
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_expr_add_parenthesis(expr, ec_node_str(NULL, "["),
-		ec_node_str(NULL, "]"));
+	ret = ec_node_expr_add_parenthesis(expr, ec_node_str(EC_NO_ID, "["),
+		ec_node_str(EC_NO_ID, "]"));
 	if (ret < 0)
 		goto fail;
-	ec_node_expr_add_parenthesis(expr, ec_node_str(NULL, "("),
-		ec_node_str(NULL, ")"));
+	ec_node_expr_add_parenthesis(expr, ec_node_str(EC_NO_ID, "("),
+		ec_node_str(EC_NO_ID, ")"));
 	if (ret < 0)
 		goto fail;
 
 	/* prepend a lexer and a "many" to the expression node */
 	ret = -ENOMEM;
-	lex = ec_node_re_lex(NULL,
-		ec_node_many(NULL, ec_node_clone(expr), 1, 0));
+	lex = ec_node_re_lex(EC_NO_ID,
+		ec_node_many(EC_NO_ID, ec_node_clone(expr), 1, 0));
 	if (lex == NULL)
 		goto fail;
 
@@ -358,7 +358,7 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 		goto fail;
 
 	ret = -ENOMEM;
-	cmd = ec_node("seq", NULL);
+	cmd = ec_node("seq", EC_NO_ID);
 	if (cmd == NULL)
 		goto fail;
 
@@ -499,7 +499,7 @@ static int ec_node_cmd_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = EC_NODE_CMD(NULL,
+	node = EC_NODE_CMD(EC_NO_ID,
 		"command [option] (subset1, subset2, subset3) x|y",
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
@@ -515,7 +515,7 @@ static int ec_node_cmd_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
 	ec_node_free(node);
 
-	node = EC_NODE_CMD(NULL, "good morning [count] bob|bobby|michael",
+	node = EC_NODE_CMD(EC_NO_ID, "good morning [count] bob|bobby|michael",
 			ec_node_int("count", 0, 10, 10));
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");

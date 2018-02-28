@@ -83,7 +83,7 @@ static int ec_node_space_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node("space", NULL);
+	node = ec_node("space", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -96,7 +96,7 @@ static int ec_node_space_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = ec_node("space", NULL);
+	node = ec_node("space", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

@@ -237,7 +237,7 @@ static int ec_node_int_testcase(void)
 	const char *s;
 	int ret = 0;
 
-	node = ec_node_uint(NULL, 0, 256, 0);
+	node = ec_node_uint(EC_NO_ID, 0, 256, 0);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -260,7 +260,7 @@ static int ec_node_int_testcase(void)
 	ec_parsed_free(p);
 	ec_node_free(node);
 
-	node = ec_node_int(NULL, -1, LLONG_MAX, 16);
+	node = ec_node_int(EC_NO_ID, -1, LLONG_MAX, 16);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -277,7 +277,7 @@ static int ec_node_int_testcase(void)
 	ec_parsed_free(p);
 	ec_node_free(node);
 
-	node = ec_node_int(NULL, LLONG_MIN, 0, 10);
+	node = ec_node_int(EC_NO_ID, LLONG_MIN, 0, 10);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -290,7 +290,7 @@ static int ec_node_int_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = ec_node_int(NULL, 0, 10, 0);
+	node = ec_node_int(EC_NO_ID, 0, 10, 0);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

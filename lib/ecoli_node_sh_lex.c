@@ -400,13 +400,13 @@ static int ec_node_sh_lex_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node_sh_lex(NULL,
-		EC_NODE_SEQ(NULL,
-			ec_node_str(NULL, "foo"),
-			ec_node_option(NULL,
-				ec_node_str(NULL, "toto")
+	node = ec_node_sh_lex(EC_NO_ID,
+		EC_NODE_SEQ(EC_NO_ID,
+			ec_node_str(EC_NO_ID, "foo"),
+			ec_node_option(EC_NO_ID,
+				ec_node_str(EC_NO_ID, "toto")
 			),
-			ec_node_str(NULL, "bar")
+			ec_node_str(EC_NO_ID, "bar")
 		)
 	);
 	if (node == NULL) {
@@ -421,14 +421,14 @@ static int ec_node_sh_lex_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = ec_node_sh_lex(NULL,
-		EC_NODE_SEQ(NULL,
-			ec_node_str(NULL, "foo"),
-			ec_node_option(NULL,
-				ec_node_str(NULL, "toto")
+	node = ec_node_sh_lex(EC_NO_ID,
+		EC_NODE_SEQ(EC_NO_ID,
+			ec_node_str(EC_NO_ID, "foo"),
+			ec_node_option(EC_NO_ID,
+				ec_node_str(EC_NO_ID, "toto")
 			),
-			ec_node_str(NULL, "bar"),
-			ec_node_str(NULL, "titi")
+			ec_node_str(EC_NO_ID, "bar"),
+			ec_node_str(EC_NO_ID, "titi")
 		)
 	);
 	if (node == NULL) {

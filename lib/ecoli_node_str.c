@@ -175,8 +175,7 @@ static int ec_node_str_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	/* XXX use EC_NO_ID instead of NULL */
-	node = ec_node_str(NULL, "foo");
+	node = ec_node_str(EC_NO_ID, "foo");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -188,7 +187,7 @@ static int ec_node_str_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "");
 	ec_node_free(node);
 
-	node = ec_node_str(NULL, "Здравствуйте");
+	node = ec_node_str(EC_NO_ID, "Здравствуйте");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -201,7 +200,7 @@ static int ec_node_str_testcase(void)
 	ec_node_free(node);
 
 	/* an empty string node always matches */
-	node = ec_node_str(NULL, "");
+	node = ec_node_str(EC_NO_ID, "");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
@@ -212,7 +211,7 @@ static int ec_node_str_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = ec_node_str(NULL, "foo");
+	node = ec_node_str(EC_NO_ID, "foo");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

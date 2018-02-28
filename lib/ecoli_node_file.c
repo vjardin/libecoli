@@ -268,7 +268,7 @@ static int ec_node_file_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node("file", NULL);
+	node = ec_node("file", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

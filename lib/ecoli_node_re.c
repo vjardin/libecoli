@@ -146,7 +146,7 @@ static int ec_node_re_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node_re(NULL, "fo+|bar");
+	node = ec_node_re(EC_NO_ID, "fo+|bar");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

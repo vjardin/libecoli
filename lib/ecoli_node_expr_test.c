@@ -228,13 +228,13 @@ static int ec_node_expr_testcase(void)
 	if (node == NULL)
 		return -1;
 
-	ec_node_expr_set_val_node(node, ec_node_int(NULL, 0, UCHAR_MAX, 0));
-	ec_node_expr_add_bin_op(node, ec_node_str(NULL, "+"));
-	ec_node_expr_add_bin_op(node, ec_node_str(NULL, "*"));
-	ec_node_expr_add_pre_op(node, ec_node_str(NULL, "!"));  /* not */
-	ec_node_expr_add_post_op(node, ec_node_str(NULL, "^")); /* square */
-	ec_node_expr_add_parenthesis(node, ec_node_str(NULL, "("),
-		ec_node_str(NULL, ")"));
+	ec_node_expr_set_val_node(node, ec_node_int(EC_NO_ID, 0, UCHAR_MAX, 0));
+	ec_node_expr_add_bin_op(node, ec_node_str(EC_NO_ID, "+"));
+	ec_node_expr_add_bin_op(node, ec_node_str(EC_NO_ID, "*"));
+	ec_node_expr_add_pre_op(node, ec_node_str(EC_NO_ID, "!"));  /* not */
+	ec_node_expr_add_post_op(node, ec_node_str(EC_NO_ID, "^")); /* square */
+	ec_node_expr_add_parenthesis(node, ec_node_str(EC_NO_ID, "("),
+		ec_node_str(EC_NO_ID, ")"));
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "1");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "1", "1");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "1", "*");
@@ -250,7 +250,7 @@ static int ec_node_expr_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 5, "1", "+", "!", "1", "^");
 
 	/* prepend a lexer to the expression node */
-	lex_node = ec_node_re_lex(NULL, ec_node_clone(node));
+	lex_node = ec_node_re_lex(EC_NO_ID, ec_node_clone(node));
 	if (lex_node == NULL)
 		goto fail;
 

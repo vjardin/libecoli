@@ -172,10 +172,10 @@ static int ec_node_once_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = ec_node_many(NULL,
-			EC_NODE_OR(NULL,
-				ec_node_once(NULL, ec_node_str(NULL, "foo")),
-				ec_node_str(NULL, "bar")
+	node = ec_node_many(EC_NO_ID,
+			EC_NODE_OR(EC_NO_ID,
+				ec_node_once(EC_NO_ID, ec_node_str(EC_NO_ID, "foo")),
+				ec_node_str(EC_NO_ID, "bar")
 				), 0, 0
 		);
 	if (node == NULL) {
@@ -196,12 +196,12 @@ static int ec_node_once_testcase(void)
 
 #if 0 //XXX no completion test for node_once
 	/* test completion */
-	node = EC_NODE_OR(NULL,
-		ec_node_str(NULL, "foo"),
-		ec_node_str(NULL, "bar"),
-		ec_node_str(NULL, "bar2"),
-		ec_node_str(NULL, "toto"),
-		ec_node_str(NULL, "titi")
+	node = EC_NODE_OR(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "foo"),
+		ec_node_str(EC_NO_ID, "bar"),
+		ec_node_str(EC_NO_ID, "bar2"),
+		ec_node_str(EC_NO_ID, "toto"),
+		ec_node_str(EC_NO_ID, "titi")
 	);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");

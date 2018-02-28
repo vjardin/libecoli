@@ -176,8 +176,8 @@ static int ec_node_dynamic_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	/* XXX use EC_NO_ID instead of NULL */
-	node = ec_node_many(NULL, ec_node_dynamic(NULL, build_counter, NULL),
+	node = ec_node_many(EC_NO_ID,
+			ec_node_dynamic(EC_NO_ID, build_counter, NULL),
 			1, 3);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");

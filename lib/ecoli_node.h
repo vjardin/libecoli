@@ -69,6 +69,8 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+#define EC_NO_ID "no-id"
+
 #define EC_NODE_ENDLIST ((void *)1)
 
 struct ec_node;

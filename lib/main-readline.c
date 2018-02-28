@@ -251,19 +251,19 @@ static int create_commands(void)
 {
 	struct ec_node *cmdlist = NULL, *cmd = NULL;
 
-	cmdlist = ec_node("or", NULL);
+	cmdlist = ec_node("or", EC_NO_ID);
 	if (cmdlist == NULL)
 		goto fail;
 
 
-	cmd = EC_NODE_SEQ(NULL,
-		ec_node_str(NULL, "hello"),
+	cmd = EC_NODE_SEQ(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "hello"),
 		EC_NODE_OR("name",
 			ec_node_str("john", "john"),
-			ec_node_str(NULL, "johnny"),
-			ec_node_str(NULL, "mike")
+			ec_node_str(EC_NO_ID, "johnny"),
+			ec_node_str(EC_NO_ID, "mike")
 		),
-		ec_node_option(NULL, ec_node_int("int", 0, 10, 10))
+		ec_node_option(EC_NO_ID, ec_node_int("int", 0, 10, 10))
 	);
 	if (cmd == NULL)
 		goto fail;
@@ -279,7 +279,7 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_CMD(NULL, "good morning name [count]",
+	cmd = EC_NODE_CMD(EC_NO_ID, "good morning name [count]",
 			EC_NODE_CMD("name", "bob|bobby|michael"),
 			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
@@ -294,7 +294,7 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_CMD(NULL,
+	cmd = EC_NODE_CMD(EC_NO_ID,
 			"buy potatoes,carrots,pumpkins");
 	if (cmd == NULL)
 		goto fail;
@@ -304,14 +304,14 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_CMD(NULL, "eat vegetables",
+	cmd = EC_NODE_CMD(EC_NO_ID, "eat vegetables",
 			ec_node_many("vegetables",
-				EC_NODE_OR(NULL,
-					ec_node_str(NULL, "potatoes"),
-					ec_node_once(NULL,
-						ec_node_str(NULL, "carrots")),
-					ec_node_once(NULL,
-						ec_node_str(NULL, "pumpkins"))),
+				EC_NODE_OR(EC_NO_ID,
+					ec_node_str(EC_NO_ID, "potatoes"),
+					ec_node_once(EC_NO_ID,
+						ec_node_str(EC_NO_ID, "carrots")),
+					ec_node_once(EC_NO_ID,
+						ec_node_str(EC_NO_ID, "pumpkins"))),
 			1, 0));
 	if (cmd == NULL)
 		goto fail;
@@ -321,24 +321,24 @@ static int create_commands(void)
 		goto fail;
 
 
-	cmd = EC_NODE_SEQ(NULL,
-		ec_node_str(NULL, "bye")
+	cmd = EC_NODE_SEQ(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "bye")
 	);
 	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
 
-	cmd = EC_NODE_SEQ(NULL,
-		ec_node_str(NULL, "load"),
-		ec_node("file", NULL)
+	cmd = EC_NODE_SEQ(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "load"),
+		ec_node("file", EC_NO_ID)
 	);
 	ec_keyval_set(ec_node_attrs(cmd), "help", "load a file", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
 
-	commands = ec_node_sh_lex(NULL, cmdlist);
+	commands = ec_node_sh_lex(EC_NO_ID, cmdlist);
 	if (commands == NULL)
 		goto fail;
 

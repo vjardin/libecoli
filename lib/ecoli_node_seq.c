@@ -291,9 +291,9 @@ static int ec_node_seq_testcase(void)
 	struct ec_node *node;
 	int ret = 0;
 
-	node = EC_NODE_SEQ(NULL,
-		ec_node_str(NULL, "foo"),
-		ec_node_str(NULL, "bar")
+	node = EC_NODE_SEQ(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "foo"),
+		ec_node_str(EC_NO_ID, "bar")
 	);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
@@ -309,10 +309,10 @@ static int ec_node_seq_testcase(void)
 	ec_node_free(node);
 
 	/* test completion */
-	node = EC_NODE_SEQ(NULL,
-		ec_node_str(NULL, "foo"),
-		ec_node_option(NULL, ec_node_str(NULL, "toto")),
-		ec_node_str(NULL, "bar")
+	node = EC_NODE_SEQ(EC_NO_ID,
+		ec_node_str(EC_NO_ID, "foo"),
+		ec_node_option(EC_NO_ID, ec_node_str(EC_NO_ID, "toto")),
+		ec_node_str(EC_NO_ID, "bar")
 	);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");

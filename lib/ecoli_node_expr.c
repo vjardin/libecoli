@@ -160,12 +160,12 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	if (ec_node_or_add(post, ec_node_clone(node->val_node)) < 0)
 		goto fail;
 	if (ec_node_or_add(post,
-		EC_NODE_SEQ(NULL,
+		EC_NODE_SEQ(EC_NO_ID,
 			ec_node_clone(pre_op),
 			ec_node_clone(weak))) < 0)
 		goto fail;
 	for (i = 0; i < node->paren_len; i++) {
-		if (ec_node_or_add(post, EC_NODE_SEQ(NULL,
+		if (ec_node_or_add(post, EC_NODE_SEQ(EC_NO_ID,
 					ec_node_clone(node->open_ops[i]),
 					ec_node_clone(weak),
 					ec_node_clone(node->close_ops[i]))) < 0)
@@ -173,7 +173,7 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	}
 	term = EC_NODE_SEQ("term",
 		ec_node_clone(post),
-		ec_node_many(NULL, ec_node_clone(post_op), 0, 0)
+		ec_node_many(EC_NO_ID, ec_node_clone(post_op), 0, 0)
 	);
 	if (term == NULL)
 		goto fail;
@@ -181,8 +181,8 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	for (i = 0; i < node->bin_ops_len; i++) {
 		next = EC_NODE_SEQ("next",
 			ec_node_clone(term),
-			ec_node_many(NULL,
-				EC_NODE_SEQ(NULL,
+			ec_node_many(EC_NO_ID,
+				EC_NODE_SEQ(EC_NO_ID,
 					ec_node_clone(node->bin_ops[i]),
 					ec_node_clone(term)
 				),

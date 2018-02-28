@@ -82,6 +82,10 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 
 	EC_LOG(EC_LOG_DEBUG, "create node type=%s id=%s\n",
 		type->name, id);
+	if (id == NULL) {
+		errno = -EINVAL;
+		goto fail;
+	}
 
 	node = ec_calloc(1, type->size);
 	if (node == NULL)
