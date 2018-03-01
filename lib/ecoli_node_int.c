@@ -379,16 +379,16 @@ static int ec_node_int_testcase(void)
 
 	p = ec_node_parse(node, "0");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
-		ec_node_int_getval(node, s, &i64) == 0 &&
-		i64 == 0);
+	EC_TEST_ASSERT(s != NULL);
+	EC_TEST_ASSERT(ec_node_uint_getval(node, s, &u64) == 0);
+	EC_TEST_ASSERT (u64 == 0);
 	ec_parsed_free(p);
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
-		ec_node_uint_getval(node, s, &u64) == 0 &&
-		u64 == 10);
+	EC_TEST_ASSERT(s != NULL);
+	EC_TEST_ASSERT(ec_node_uint_getval(node, s, &u64) == 0);
+	EC_TEST_ASSERT(u64 == 10);
 	ec_parsed_free(p);
 	ec_node_free(node);
 
@@ -405,9 +405,9 @@ static int ec_node_int_testcase(void)
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
-		ec_node_int_getval(node, s, &i64) == 0 &&
-		i64 == 16);
+	EC_TEST_ASSERT(s != NULL);
+	EC_TEST_ASSERT(ec_node_int_getval(node, s, &i64) == 0);
+	EC_TEST_ASSERT(i64 == 16);
 	ec_parsed_free(p);
 	ec_node_free(node);
 

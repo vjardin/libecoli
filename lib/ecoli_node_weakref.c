@@ -90,8 +90,6 @@ int ec_node_weakref_set(struct ec_node *gen_node, struct ec_node *child)
 	if (child == NULL)
 		return -EINVAL;
 
-	gen_node->flags &= ~EC_NODE_F_BUILT;
-
 	node->child = child;
 
 	child->parent = gen_node;

@@ -247,48 +247,19 @@ static const struct ec_node_expr_eval_ops test_ops = {
 	.eval_free = ec_node_cmd_eval_free,
 };
 
-static int
-ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parsed *state,
-		const struct ec_strvec *strvec)
-{
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
-
-	return ec_node_parse_child(node->cmd, state, strvec);
-}
-
-static int
-ec_node_cmd_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
-		const struct ec_strvec *strvec)
-{
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
-
-	return ec_node_complete_child(node->cmd, completed, strvec);
-}
-
-static void ec_node_cmd_free_priv(struct ec_node *gen_node)
-{
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
-	unsigned int i;
-
-	ec_free(node->cmd_str);
-	ec_node_free(node->cmd);
-	ec_node_free(node->expr);
-	ec_node_free(node->lex);
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
-}
-
-static int ec_node_cmd_build(struct ec_node *gen_node)
+static int ec_node_cmd_build(struct ec_node_cmd *node)
 {
 	struct ec_node *expr = NULL, *lex = NULL, *cmd = NULL;
 	struct ec_parsed *p, *child;
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 	void *result;
 	int ret;
 
-	/* XXX the expr parser can be moved in the node init */
+	ec_node_free(node->expr);
+	node->expr = NULL;
+	ec_node_free(node->lex);
+	node->lex = NULL;
+	ec_node_free(node->cmd);
+	node->cmd = NULL;
 
 	/* build the expression parser */
 	ret = -ENOMEM;
@@ -373,11 +344,8 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	ec_parsed_free(p);
 	p = NULL;
 
-	ec_node_free(node->expr);
 	node->expr = expr;
-	ec_node_free(node->lex);
 	node->lex = lex;
-	ec_node_free(node->cmd);
 	node->cmd = cmd;
 
 	return 0;
@@ -390,9 +358,46 @@ fail:
 	return ret;
 }
 
+static int
+ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parsed *state,
+		const struct ec_strvec *strvec)
+{
+	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+
+	if (node->cmd == NULL)
+		return -ENOENT;
+	return ec_node_parse_child(node->cmd, state, strvec);
+}
+
+static int
+ec_node_cmd_complete(const struct ec_node *gen_node,
+		struct ec_completed *completed,
+		const struct ec_strvec *strvec)
+{
+	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+
+	if (node->cmd == NULL)
+		return -ENOENT;
+	return ec_node_complete_child(node->cmd, completed, strvec);
+}
+
+static void ec_node_cmd_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	unsigned int i;
+
+	ec_free(node->cmd_str);
+	ec_node_free(node->cmd);
+	ec_node_free(node->expr);
+	ec_node_free(node->lex);
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
+	ec_free(node->table);
+}
+
+
 static struct ec_node_type ec_node_cmd_type = {
 	.name = "cmd",
-	.build = ec_node_cmd_build,
 	.parse = ec_node_cmd_parse,
 	.complete = ec_node_cmd_complete,
 	.size = sizeof(struct ec_node_cmd),
@@ -405,6 +410,7 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 	struct ec_node **table;
+	int ret;
 
 	// XXX check node type
 
@@ -413,7 +419,11 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 	if (child == NULL)
 		return -EINVAL;
 
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	if (node->cmd == NULL) {
+		ret = ec_node_cmd_build(node);
+		if (ret < 0)
+			return ret;
+	}
 
 	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
 	if (table == NULL) {
@@ -431,27 +441,6 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 	return 0;
 }
 
-struct ec_node *ec_node_cmd(const char *id, const char *cmd_str)
-{
-	struct ec_node *gen_node = NULL;
-	struct ec_node_cmd *node = NULL;
-
-	gen_node = __ec_node(&ec_node_cmd_type, id);
-	if (gen_node == NULL)
-		goto fail;
-
-	node = (struct ec_node_cmd *)gen_node;
-	node->cmd_str = ec_strdup(cmd_str);
-	if (node->cmd_str == NULL)
-		goto fail;
-
-	return gen_node;
-
-fail:
-	ec_node_free(gen_node);
-	return NULL;
-}
-
 struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 {
 	struct ec_node *gen_node = NULL;
@@ -460,12 +449,16 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	va_list ap;
 	int fail = 0;
 
-	va_start(ap, cmd);
+	gen_node = __ec_node(&ec_node_cmd_type, id);
+	if (gen_node == NULL)
+		goto fail;
 
-	gen_node = ec_node_cmd(id, cmd);
 	node = (struct ec_node_cmd *)gen_node;
-	if (node == NULL)
-		fail = 1;;
+	node->cmd_str = ec_strdup(cmd);
+	if (node->cmd_str == NULL)
+		goto fail;
+
+	va_start(ap, cmd);
 
 	for (child = va_arg(ap, struct ec_node *);
 	     child != EC_NODE_ENDLIST;
@@ -483,12 +476,21 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 		goto fail;
 
 	va_end(ap);
+
+	if (ec_node_cmd_build(node) < 0)
+		goto fail;
+
 	return gen_node;
 
 fail:
 	ec_node_free(gen_node); /* will also free children */
 	va_end(ap);
 	return NULL;
+}
+
+struct ec_node *ec_node_cmd(const char *id, const char *cmd_str)
+{
+	return __ec_node_cmd(id, cmd_str, EC_NODE_ENDLIST);
 }
 
 /* LCOV_EXCL_START */

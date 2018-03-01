@@ -74,6 +74,8 @@ static int ec_node_expr_parse(const struct ec_node *gen_node,
 {
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 
+	if (node->child == NULL)
+		return -ENOENT;
 	return ec_node_parse_child(node->child, state, strvec);
 }
 
@@ -84,6 +86,8 @@ ec_node_expr_complete(const struct ec_node *gen_node,
 {
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 
+	if (node->child == NULL)
+		return -ENOENT;
 	return ec_node_complete_child(node->child, completed, strvec);
 }
 
@@ -114,14 +118,16 @@ static void ec_node_expr_free_priv(struct ec_node *gen_node)
 	ec_node_free(node->child);
 }
 
-static int ec_node_expr_build(struct ec_node *gen_node)
+static int ec_node_expr_build(struct ec_node_expr *node)
 {
-	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 	struct ec_node *term = NULL, *expr = NULL, *next = NULL,
 		*pre_op = NULL, *post_op = NULL,
 		*post = NULL, *weak = NULL;
 	unsigned int i;
 	int ret;
+
+	ec_node_free(node->child);
+	node->child = NULL;
 
 	if (node->val_node == NULL)
 		return -EINVAL;
@@ -212,7 +218,6 @@ static int ec_node_expr_build(struct ec_node *gen_node)
 	weak = NULL;
 
 	node->child = expr;
-	//ec_node_dump(stdout, node->child); //XXX
 
 	return 0;
 
@@ -229,7 +234,6 @@ fail:
 
 static struct ec_node_type ec_node_expr_type = {
 	.name = "expr",
-	.build = ec_node_expr_build,
 	.parse = ec_node_expr_parse,
 	.complete = ec_node_expr_complete,
 	.size = sizeof(struct ec_node_expr),
@@ -250,15 +254,10 @@ int ec_node_expr_set_val_node(struct ec_node *gen_node, struct ec_node *val_node
 	ret = -EINVAL;
 	if (val_node == NULL)
 		goto fail;
-	ret = -EPERM;
-	if (gen_node->flags & EC_NODE_F_BUILT)
-		goto fail;
-	ret = -EEXIST;
-	if (node->val_node != NULL)
-		goto fail;
 
+	ec_node_free(node->val_node);
 	node->val_node = val_node;
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	ec_node_expr_build(node);
 
 	return 0;
 
@@ -281,9 +280,6 @@ int ec_node_expr_add_bin_op(struct ec_node *gen_node, struct ec_node *op)
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
 		goto fail;
-	ret = -EPERM;
-	if (gen_node->flags & EC_NODE_F_BUILT)
-		goto fail;
 
 	ret = -ENOMEM;
 	bin_ops = ec_realloc(node->bin_ops,
@@ -294,7 +290,7 @@ int ec_node_expr_add_bin_op(struct ec_node *gen_node, struct ec_node *op)
 	node->bin_ops = bin_ops;
 	bin_ops[node->bin_ops_len] = op;
 	node->bin_ops_len++;
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	ec_node_expr_build(node);
 
 	return 0;
 
@@ -317,9 +313,6 @@ int ec_node_expr_add_pre_op(struct ec_node *gen_node, struct ec_node *op)
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
 		goto fail;
-	ret = -EPERM;
-	if (gen_node->flags & EC_NODE_F_BUILT)
-		goto fail;
 
 	ret = -ENOMEM;
 	pre_ops = ec_realloc(node->pre_ops,
@@ -330,7 +323,7 @@ int ec_node_expr_add_pre_op(struct ec_node *gen_node, struct ec_node *op)
 	node->pre_ops = pre_ops;
 	pre_ops[node->pre_ops_len] = op;
 	node->pre_ops_len++;
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	ec_node_expr_build(node);
 
 	return 0;
 
@@ -353,9 +346,6 @@ int ec_node_expr_add_post_op(struct ec_node *gen_node, struct ec_node *op)
 	ret = -EINVAL;
 	if (node == NULL || op == NULL)
 		goto fail;
-	ret = -EPERM;
-	if (gen_node->flags & EC_NODE_F_BUILT)
-		goto fail;
 
 	ret = -ENOMEM;
 	post_ops = ec_realloc(node->post_ops,
@@ -366,7 +356,7 @@ int ec_node_expr_add_post_op(struct ec_node *gen_node, struct ec_node *op)
 	node->post_ops = post_ops;
 	post_ops[node->post_ops_len] = op;
 	node->post_ops_len++;
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	ec_node_expr_build(node);
 
 	return 0;
 
@@ -390,9 +380,6 @@ int ec_node_expr_add_parenthesis(struct ec_node *gen_node,
 	ret = -EINVAL;
 	if (node == NULL || open == NULL || close == NULL)
 		goto fail;
-	ret = -EPERM;
-	if (gen_node->flags & EC_NODE_F_BUILT)
-		goto fail;;
 
 	ret = -ENOMEM;
 	open_ops = ec_realloc(node->open_ops,
@@ -409,7 +396,7 @@ int ec_node_expr_add_parenthesis(struct ec_node *gen_node,
 	open_ops[node->paren_len] = open;
 	close_ops[node->paren_len] = close;
 	node->paren_len++;
-	gen_node->flags &= ~EC_NODE_F_BUILT;
+	ec_node_expr_build(node);
 
 	return 0;
 

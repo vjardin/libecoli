@@ -71,7 +71,7 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 		return -ENOMEM;
 
 	eval->val = val;
-	printf("eval var %d\n", eval->val);
+	EC_LOG(EC_LOG_DEBUG, "eval var %d\n", eval->val);
 	*result = eval;
 
 	return 0;
@@ -96,7 +96,7 @@ ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 	else
 		return -EINVAL;
 
-	printf("eval pre_op %d\n", eval->val);
+	EC_LOG(EC_LOG_DEBUG, "eval pre_op %d\n", eval->val);
 	*result = eval;
 
 	return 0;
@@ -121,7 +121,7 @@ ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 	else
 		return -EINVAL;
 
-	printf("eval post_op %d\n", eval->val);
+	EC_LOG(EC_LOG_DEBUG, "eval post_op %d\n", eval->val);
 	*result = eval;
 
 	return 0;
@@ -150,7 +150,7 @@ ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
 	else
 		return -EINVAL;
 
-	printf("eval bin_op %d\n", eval1->val);
+	EC_LOG(EC_LOG_DEBUG, "eval bin_op %d\n", eval1->val);
 	ec_free(eval2);
 	*result = eval1;
 
@@ -167,7 +167,7 @@ ec_node_expr_test_eval_parenthesis(void **result, void *userctx,
 	(void)open_paren;
 	(void)close_paren;
 
-	printf("eval paren\n");
+	EC_LOG(EC_LOG_DEBUG, "eval paren\n");
 	*result = value;
 
 	return 0;
@@ -211,7 +211,7 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 	eval = result;
 	assert(eval != NULL);
 
-	printf("result: %d (expected %d)\n", eval->val, val);
+	EC_LOG(EC_LOG_DEBUG, "result: %d (expected %d)\n", eval->val, val);
 	if (eval->val == val)
 		ret = 0;
 	else

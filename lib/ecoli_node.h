@@ -156,8 +156,6 @@ struct ec_node {
 	/* XXX ensure parent and child are properly set in all nodes */
 	struct ec_node *parent;
 	unsigned int refcnt;
-#define EC_NODE_F_BUILT 0x0001 /** set if configuration is built */
-	unsigned int flags;
 
 	TAILQ_ENTRY(ec_node) next;
 	struct ec_node_list children;

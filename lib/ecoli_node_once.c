@@ -140,8 +140,6 @@ int ec_node_once_set(struct ec_node *gen_node, struct ec_node *child)
 	if (ret < 0)
 		return ret;
 
-	gen_node->flags &= ~EC_NODE_F_BUILT;
-
 	node->child = child;
 
 	child->parent = gen_node;

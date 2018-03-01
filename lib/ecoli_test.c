@@ -76,7 +76,6 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 	}
 
 	p = ec_node_parse_strvec(tk, vec);
-	ec_parsed_dump(stdout, p); /* XXX only for debug */
 	if (p == NULL) {
 		EC_LOG(EC_LOG_ERR, "parsed is NULL\n");
 	}
@@ -169,8 +168,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 			count, ec_completed_count(c, EC_COMP_FULL));
 		ec_completed_dump(stdout, c);
 		ret = -1;
-	} else
-		ec_completed_dump(stdout, c); //XXX
+	}
 
 out:
 	ec_strvec_free(vec);

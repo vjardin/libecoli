@@ -84,22 +84,13 @@ struct ec_parsed *ec_completed_get_state(struct ec_completed *completed)
 }
 
 int
-ec_node_complete_child(struct ec_node *node, struct ec_completed *completed,
-			const struct ec_strvec *strvec)
+ec_node_complete_child(/* XXX const */struct ec_node *node,
+		struct ec_completed *completed,
+		const struct ec_strvec *strvec)
 {
 	struct ec_parsed *child_state, *cur_state;
 	struct ec_completed_group *cur_group;
 	int ret;
-
-	/* build the node if required */
-	if (node->type->build != NULL) {
-		if ((node->flags & EC_NODE_F_BUILT) == 0) {
-			ret = node->type->build(node);
-			if (ret < 0)
-				return ret;
-		}
-	}
-	node->flags |= EC_NODE_F_BUILT;
 
 	if (node->type->complete == NULL)
 		return -ENOTSUP;
@@ -130,13 +121,6 @@ ec_node_complete_child(struct ec_node *node, struct ec_completed *completed,
 
 	if (ret < 0)
 		return ret;
-
-#if 0 // XXX dump
-	printf("----------------------------------------------------------\n");
-	ec_node_dump(stdout, node);
-	ec_strvec_dump(stdout, strvec);
-	ec_completed_dump(stdout, completed);
-#endif
 
 	return 0;
 }

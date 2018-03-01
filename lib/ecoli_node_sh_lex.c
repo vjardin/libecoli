@@ -253,7 +253,10 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 		new_vec = tokenize(str, 0, 0, NULL);
 	}
 	if (new_vec == NULL) {
-		ret = -ENOMEM;
+		if (errno == EINVAL)
+			ret = EC_PARSED_NOMATCH;
+		else
+			ret = -ENOMEM;
 		goto fail;
 	}
 

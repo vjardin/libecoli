@@ -228,8 +228,6 @@ int ec_node_seq_add(struct ec_node *gen_node, struct ec_node *child)
 	if (child == NULL)
 		return -EINVAL;
 
-	gen_node->flags &= ~EC_NODE_F_BUILT;
-
 	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
 	if (table == NULL) {
 		ec_node_free(child);

@@ -65,16 +65,6 @@ static int __ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	struct ec_parsed *child;
 	int ret;
 
-	/* build the node if required */
-	if (node->type->build != NULL) {
-		if ((node->flags & EC_NODE_F_BUILT) == 0) {
-			ret = node->type->build(node);
-			if (ret < 0)
-				return ret;
-		}
-	}
-	node->flags |= EC_NODE_F_BUILT;
-
 	if (node->type->parse == NULL)
 		return -ENOTSUP;
 
