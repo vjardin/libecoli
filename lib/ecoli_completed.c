@@ -84,7 +84,7 @@ struct ec_parsed *ec_completed_get_state(struct ec_completed *completed)
 }
 
 int
-ec_node_complete_child(/* XXX const */struct ec_node *node,
+ec_node_complete_child(const struct ec_node *node,
 		struct ec_completed *completed,
 		const struct ec_strvec *strvec)
 {
@@ -125,7 +125,7 @@ ec_node_complete_child(/* XXX const */struct ec_node *node,
 	return 0;
 }
 
-struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
+struct ec_completed *ec_node_complete_strvec(const struct ec_node *node,
 	const struct ec_strvec *strvec)
 {
 	struct ec_completed *completed = NULL;
@@ -146,7 +146,7 @@ fail:
 	return NULL;
 }
 
-struct ec_completed *ec_node_complete(struct ec_node *node,
+struct ec_completed *ec_node_complete(const struct ec_node *node,
 	const char *str)
 {
 	struct ec_strvec *strvec = NULL;

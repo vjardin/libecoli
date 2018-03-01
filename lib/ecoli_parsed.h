@@ -92,14 +92,14 @@ const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
  *
  *
  */
-struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str);
+struct ec_parsed *ec_node_parse(const struct ec_node *node, const char *str);
 
 /**
  *
  *
  *
  */
-struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
+struct ec_parsed *ec_node_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec);
 
 /**
@@ -124,7 +124,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
  * the number of matched strings in strvec
  * XXX state is not freed on error ?
  */
-int ec_node_parse_child(struct ec_node *node,
+int ec_node_parse_child(const struct ec_node *node,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 

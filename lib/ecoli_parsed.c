@@ -58,7 +58,8 @@ struct ec_parsed {
 	struct ec_keyval *attrs;
 };
 
-static int __ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
+static int __ec_node_parse_child(const struct ec_node *node,
+				struct ec_parsed *state,
 				bool is_root, const struct ec_strvec *strvec)
 {
 	struct ec_strvec *match_strvec;
@@ -99,14 +100,14 @@ static int __ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
 	return ret;
 }
 
-int ec_node_parse_child(struct ec_node *node, struct ec_parsed *state,
+int ec_node_parse_child(const struct ec_node *node, struct ec_parsed *state,
 			const struct ec_strvec *strvec)
 {
 	assert(state != NULL);
 	return __ec_node_parse_child(node, state, false, strvec);
 }
 
-struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
+struct ec_parsed *ec_node_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec)
 {
 	struct ec_parsed *parsed = ec_parsed(node);
@@ -124,7 +125,7 @@ struct ec_parsed *ec_node_parse_strvec(struct ec_node *node,
 	return parsed;
 }
 
-struct ec_parsed *ec_node_parse(struct ec_node *node, const char *str)
+struct ec_parsed *ec_node_parse(const struct ec_node *node, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
 	struct ec_parsed *parsed = NULL;

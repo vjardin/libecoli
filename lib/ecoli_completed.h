@@ -77,13 +77,13 @@ struct ec_completed {
  * return a completed object filled with items
  * return NULL on error (nomem?)
  */
-struct ec_completed *ec_node_complete(struct ec_node *node,
+struct ec_completed *ec_node_complete(const struct ec_node *node,
 	const char *str);
-struct ec_completed *ec_node_complete_strvec(struct ec_node *node,
+struct ec_completed *ec_node_complete_strvec(const struct ec_node *node,
 	const struct ec_strvec *strvec);
 
 /* internal: used by nodes */
-int ec_node_complete_child(struct ec_node *node,
+int ec_node_complete_child(const struct ec_node *node,
 			struct ec_completed *completed,
 			const struct ec_strvec *strvec);
 
