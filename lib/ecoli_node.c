@@ -95,11 +95,9 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	node->type = type;
 	node->refcnt = 1;
 
-	if (id != NULL) {
-		node->id = ec_strdup(id);
-		if (node->id == NULL)
-			goto fail;
-	}
+	node->id = ec_strdup(id);
+	if (node->id == NULL)
+		goto fail;
 
 	snprintf(buf, sizeof(buf), "<%s>", type->name);
 	node->desc = ec_strdup(buf); // XXX ec_asprintf ?
@@ -110,10 +108,19 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	if (node->attrs == NULL)
 		goto fail;
 
+	if (type->init_priv != NULL) {
+		if (type->init_priv(node) < 0)
+			goto fail;
+	}
+
 	return node;
 
  fail:
-	ec_node_free(node);
+	ec_keyval_free(node->attrs);
+	ec_free(node->desc);
+	ec_free(node->id);
+	ec_free(node);
+
 	return NULL;
 }
 

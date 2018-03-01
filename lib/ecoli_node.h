@@ -101,7 +101,7 @@ typedef int (*ec_node_complete_t)(const struct ec_node *node,
 				const struct ec_strvec *strvec);
 typedef size_t (*ec_node_get_max_parse_len_t)(const struct ec_node *node);
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
-typedef void (*ec_node_init_priv_t)(struct ec_node *);
+typedef int (*ec_node_init_priv_t)(struct ec_node *);
 typedef void (*ec_node_free_priv_t)(struct ec_node *);
 
 /**
