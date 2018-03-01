@@ -51,7 +51,9 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 	const struct ec_parsed *var)
 {
 	const struct ec_strvec *vec;
-	struct my_eval_result *eval;
+	const struct ec_node *node;
+	struct my_eval_result *eval = NULL;
+	int64_t val;
 
 	(void)userctx;
 
@@ -60,11 +62,15 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
+	node = ec_parsed_get_node(var);
+	if (ec_node_int_getval(node, ec_strvec_val(vec, 0), &val) < 0)
+		return -EINVAL;
+
 	eval = ec_malloc(sizeof(*eval));
 	if (eval == NULL)
 		return -ENOMEM;
 
-	eval->val = atoi(ec_strvec_val(vec, 0)); // XXX use strtol
+	eval->val = val;
 	printf("eval var %d\n", eval->val);
 	*result = eval;
 
