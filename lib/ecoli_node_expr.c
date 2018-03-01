@@ -604,10 +604,13 @@ int ec_node_expr_eval(void **user_result, const struct ec_node *node,
 			ops->eval_parenthesis == NULL || ops->eval_free == NULL)
 		return -EINVAL;
 
+	ret = ec_node_check_type(node, &ec_node_expr_type);
+	if (ret < 0)
+		return ret;
+
 	if (!ec_parsed_matches(parsed))
 		return -EINVAL;
 
-	//ec_parsed_dump(stdout, parsed); //XXX
 	ret = eval_expression(&result, userctx, ops, node, parsed);
 	if (ret < 0)
 		return ret;

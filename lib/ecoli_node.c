@@ -258,7 +258,9 @@ const char *ec_node_desc(const struct ec_node *node)
 int ec_node_check_type(const struct ec_node *node,
 		const struct ec_node_type *type)
 {
-	if (strcmp(node->type->name, type->name))
-		return -EINVAL;
+	if (strcmp(node->type->name, type->name)) {
+		errno = EINVAL;
+		return -1;
+	}
 	return 0;
 }

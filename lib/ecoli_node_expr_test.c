@@ -198,8 +198,6 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 	struct my_eval_result *eval;
 	int ret;
 
-	/* XXX check node type (again and again) */
-
 	p = ec_node_parse(lex_node, str);
 	if (p == NULL)
 		return -1;

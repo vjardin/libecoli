@@ -127,7 +127,8 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	const struct ec_parsed *operator)
 {
 	const struct ec_strvec *vec;
-	struct ec_node *eval = operand;;
+	struct ec_node *in = operand;;
+	struct ec_node *out = NULL;;
 
 	(void)userctx;
 
@@ -136,13 +137,16 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
-	if (!strcmp(ec_strvec_val(vec, 0), "*"))
-		eval = NULL; //XXX
-	else
+	if (!strcmp(ec_strvec_val(vec, 0), "*")) {
+		out = ec_node_many(EC_NO_ID,
+				ec_node_clone(in), 0, 0);
+		if (out == NULL)
+			return -EINVAL;
+		ec_node_free(in);
+		*result = out;
+	} else {
 		return -EINVAL;
-
-	//printf("eval post_op %p\n", eval);
-	*result = eval;
+	}
 
 	return 0;
 }
@@ -158,8 +162,6 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	struct ec_node *in2 = operand2;
 
 	(void)userctx;
-
-	//printf("eval bin_op %p %p\n", in1, in2);
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_strvec(operator);
@@ -191,8 +193,6 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	} else {
 		return -EINVAL;
 	}
-
-	//printf("eval bin_op out %p\n", *result);
 
 	return 0;
 }
@@ -226,7 +226,6 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 		return -EINVAL;
 	}
 
-	//printf("eval paren\n");
 	*result = out;
 
 	return 0;
@@ -373,7 +372,6 @@ static int ec_node_cmd_build(struct ec_node *gen_node)
 	}
 	ec_parsed_free(p);
 	p = NULL;
-	//ec_node_dump(stdout, cmd);
 
 	ec_node_free(node->expr);
 	node->expr = expr;
@@ -500,7 +498,7 @@ static int ec_node_cmd_testcase(void)
 	int ret = 0;
 
 	node = EC_NODE_CMD(EC_NO_ID,
-		"command [option] (subset1, subset2, subset3) x|y",
+		"command [option] (subset1, subset2, subset3) x|y z*",
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
 	);
@@ -511,6 +509,8 @@ static int ec_node_cmd_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "1");
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "23");
 	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "option", "23");
+	ret |= EC_TEST_CHECK_PARSE(node, 5, "command", "option", "23",
+				"z", "z");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "command", "15");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
 	ec_node_free(node);
