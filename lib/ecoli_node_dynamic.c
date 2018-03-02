@@ -61,7 +61,7 @@ ec_node_dynamic_parse(const struct ec_node *gen_node,
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
 	char key[64];
-	int ret;
+	int ret = -1;
 
 	child = node->build(parsed, node->opaque);
 	if (child == NULL)
@@ -92,7 +92,7 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
 	char key[64];
-	int ret;
+	int ret = -1;
 
 	parsed = ec_completed_get_state(completed);
 	child = node->build(parsed, node->opaque);
