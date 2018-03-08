@@ -42,13 +42,6 @@
 
 TAILQ_HEAD(ec_parsed_list, ec_parsed);
 
-/* XXX idea for parse: maintain a "cursor" ?
-struct ec_parsed {
-   struct ec_parsed_tree *root;
-   stuct ec_parsed_tree *cursor;
-};
-*/
-
 struct ec_parsed {
 	TAILQ_ENTRY(ec_parsed) next;
 	struct ec_parsed_list children;

@@ -41,7 +41,6 @@ struct ec_node *__ec_node_seq(const char *id, ...);
 struct ec_node *ec_node_seq(const char *id);
 
 /* child is consumed */
-// XXX add_child?
 int ec_node_seq_add(struct ec_node *node, struct ec_node *child);
 
 #endif

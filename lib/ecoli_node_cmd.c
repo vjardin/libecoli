@@ -104,7 +104,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 			return -ENOMEM;
 	}
 
-	//printf("eval var %s %p\n", str, eval);
+	//printf("eval var %s %p\n", str, eval); //XXX
 	*result = eval;
 
 	return 0;
@@ -165,10 +165,17 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parsed_strvec(operator);
-	if (ec_strvec_len(vec) != 1)
+	if (ec_strvec_len(vec) > 1)
 		return -EINVAL;
 
-	if (!strcmp(ec_strvec_val(vec, 0), "|")) {
+	if (ec_strvec_len(vec) == 0) {
+		out = EC_NODE_SEQ(EC_NO_ID, ec_node_clone(in1), ec_node_clone(in2));
+		if (out == NULL)
+			return -EINVAL;
+		ec_node_free(in1);
+		ec_node_free(in2);
+		*result = out;
+	} else if (!strcmp(ec_strvec_val(vec, 0), "|")) {
 		out = EC_NODE_OR(EC_NO_ID, ec_node_clone(in1), ec_node_clone(in2));
 		if (out == NULL)
 			return -EINVAL;
@@ -250,7 +257,7 @@ static const struct ec_node_expr_eval_ops test_ops = {
 static int ec_node_cmd_build(struct ec_node_cmd *node)
 {
 	struct ec_node *expr = NULL, *lex = NULL, *cmd = NULL;
-	struct ec_parsed *p = NULL, *child;
+	struct ec_parsed *p = NULL;
 	void *result;
 	int ret;
 
@@ -275,6 +282,9 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 	ret = ec_node_expr_add_bin_op(expr, ec_node_str(EC_NO_ID, "|"));
 	if (ret < 0)
 		goto fail;
+	ret = ec_node_expr_add_bin_op(expr, ec_node("empty", EC_NO_ID));
+	if (ret < 0)
+		goto fail;
 	ret = ec_node_expr_add_post_op(expr, ec_node_str(EC_NO_ID, "+"));
 	if (ret < 0)
 		goto fail;
@@ -290,10 +300,9 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 	if (ret < 0)
 		goto fail;
 
-	/* prepend a lexer and a "many" to the expression node */
+	/* prepend a lexer to the expression node */
 	ret = -ENOMEM;
-	lex = ec_node_re_lex(EC_NO_ID,
-		ec_node_many(EC_NO_ID, ec_node_clone(expr), 1, 0));
+	lex = ec_node_re_lex(EC_NO_ID, ec_node_clone(expr));
 	if (lex == NULL)
 		goto fail;
 
@@ -324,29 +333,18 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 		goto fail;
 	if (!ec_parsed_has_child(p))
 		goto fail;
-	if (!ec_parsed_has_child(ec_parsed_get_first_child(p)))
+
+	ret = ec_node_expr_eval(&result, expr, ec_parsed_get_first_child(p),
+				&test_ops, node);
+	if (ret < 0)
 		goto fail;
 
-	ret = -ENOMEM;
-	cmd = ec_node("seq", EC_NO_ID);
-	if (cmd == NULL)
-		goto fail;
-
-	EC_PARSED_FOREACH_CHILD(child, ec_parsed_get_first_child(p)) {
-		ret = ec_node_expr_eval(&result, expr, child,
-			&test_ops, node);
-		if (ret < 0)
-			goto fail;
-		ret = ec_node_seq_add(cmd, result);
-		if (ret < 0)
-			goto fail;
-	}
 	ec_parsed_free(p);
 	p = NULL;
 
 	node->expr = expr;
 	node->lex = lex;
-	node->cmd = cmd;
+	node->cmd = result;
 
 	return 0;
 
@@ -542,6 +540,17 @@ static int ec_node_cmd_testcase(void)
 		"good", "morning", "", EC_NODE_ENDLIST,
 		"bob", "bobby", "michael", EC_NODE_ENDLIST);
 
+	ec_node_free(node);
+
+	node = EC_NODE_CMD(EC_NO_ID, "[foo [bar]]");
+	if (node == NULL) {
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
+		return -1;
+	}
+	ret |= EC_TEST_CHECK_PARSE(node, 0);
+	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
+	ret |= EC_TEST_CHECK_PARSE(node, 0, "x");
 	ec_node_free(node);
 
 	return ret;

@@ -135,6 +135,20 @@ static int ec_node_expr_build(struct ec_node_expr *node)
 			node->post_ops_len == 0)
 		return -EINVAL;
 
+	/*
+	 * Example of created grammar:
+	 *
+	 * pre_op = "!"
+	 * post_op = "^"
+	 * post = val |
+	 *        pre_op expr |
+	 *        "(" expr ")"
+	 * term = post post_op*
+	 * prod = term ( "*" term )*
+	 * sum = prod ( "+" prod )*
+	 * expr = sum
+	 */
+
 	/* create the object, we will initialize it later: this is
 	 * needed because we have a circular dependency */
 	ret = -ENOMEM;

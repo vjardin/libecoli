@@ -377,3 +377,25 @@ int main(void)
 
 	return 0;
 }
+
+
+----
+
+
+expr expr expr
+
+[toto] | tutu
+
+[toto [titi]]
+
+
+
+pre_op = "!"
+post_op = "^"
+post = val |
+       pre_op expr |
+       "(" expr ")"
+term = post post_op*
+prod = term ( "*" term )*
+sum = prod ( "+" prod )*
+expr = sum
