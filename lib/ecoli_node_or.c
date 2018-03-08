@@ -88,20 +88,6 @@ ec_node_or_complete(const struct ec_node *gen_node,
 	return 0;
 }
 
-static size_t ec_node_or_get_max_parse_len(const struct ec_node *gen_node)
-{
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
-	size_t i, ret = 0, len;
-
-	for (i = 0; i < node->len; i++) {
-		len = ec_node_get_max_parse_len(node->table[i]);
-		if (len > ret)
-			ret = len;
-	}
-
-	return ret;
-}
-
 static void ec_node_or_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
@@ -116,7 +102,6 @@ static struct ec_node_type ec_node_or_type = {
 	.name = "or",
 	.parse = ec_node_or_parse,
 	.complete = ec_node_or_complete,
-	.get_max_parse_len = ec_node_or_get_max_parse_len,
 	.size = sizeof(struct ec_node_or),
 	.free_priv = ec_node_or_free_priv,
 };

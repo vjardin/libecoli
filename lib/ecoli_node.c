@@ -156,13 +156,6 @@ void ec_node_free(struct ec_node *node)
 	ec_free(node);
 }
 
-size_t ec_node_get_max_parse_len(const struct ec_node *node)
-{
-	if (node->type->get_max_parse_len == NULL)
-		return SIZE_MAX;
-	return node->type->get_max_parse_len(node);
-}
-
 struct ec_node *ec_node_clone(struct ec_node *node)
 {
 	if (node != NULL)
@@ -268,10 +261,8 @@ static void __ec_node_dump(FILE *out,
 {
 	const char *id, *typename, *desc;
 	struct ec_node *child;
-	size_t maxlen;
 	size_t i, n;
 
-	maxlen = ec_node_get_max_parse_len(node);
 	id = ec_node_id(node);
 	typename = node->type->name;
 	desc = ec_node_desc(node);
@@ -286,10 +277,6 @@ static void __ec_node_dump(FILE *out,
 
 	fprintf(out, "node %p type=%s id=%s desc=%s ",
 		node, typename, id, desc);
-	if (maxlen == SIZE_MAX)
-		fprintf(out, "maxlen=no\n");
-	else
-		fprintf(out, "maxlen=%zu\n", maxlen);
 	n = node->n_children;
 	for (i = 0; i < n; i++) {
 		child = node->children[i];

@@ -110,17 +110,10 @@ static void ec_node_str_free_priv(struct ec_node *gen_node)
 	ec_free(node->string);
 }
 
-static size_t ec_node_str_get_max_parse_len(const struct ec_node *gen_node)
-{
-	(void)gen_node;
-	return 1;
-}
-
 static struct ec_node_type ec_node_str_type = {
 	.name = "str",
 	.parse = ec_node_str_parse,
 	.complete = ec_node_str_complete,
-	.get_max_parse_len = ec_node_str_get_max_parse_len,
 	.desc = ec_node_str_desc,
 	.size = sizeof(struct ec_node_str),
 	.free_priv = ec_node_str_free_priv,

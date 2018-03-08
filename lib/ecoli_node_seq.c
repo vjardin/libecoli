@@ -179,22 +179,6 @@ ec_node_seq_complete(const struct ec_node *gen_node,
 				strvec);
 }
 
-static size_t ec_node_seq_get_max_parse_len(const struct ec_node *gen_node)
-{
-	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
-	size_t i, len, ret = 0;
-
-	for (i = 0; i < node->len; i++) {
-		len = ec_node_get_max_parse_len(node->table[i]);
-		if (len <= SIZE_MAX - ret)
-			ret += len;
-		else
-			ret = SIZE_MAX;
-	}
-
-	return ret;
-}
-
 static void ec_node_seq_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
@@ -209,7 +193,6 @@ static struct ec_node_type ec_node_seq_type = {
 	.name = "seq",
 	.parse = ec_node_seq_parse,
 	.complete = ec_node_seq_complete,
-	.get_max_parse_len = ec_node_seq_get_max_parse_len,
 	.size = sizeof(struct ec_node_seq),
 	.free_priv = ec_node_seq_free_priv,
 };

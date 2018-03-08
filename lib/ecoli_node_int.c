@@ -139,12 +139,6 @@ static int ec_node_int_uint_parse(const struct ec_node *gen_node,
 	return 1;
 }
 
-static size_t ec_node_int_uint_get_max_parse_len(const struct ec_node *gen_node)
-{
-	(void)gen_node;
-	return 1;
-}
-
 static int
 ec_node_uint_init_priv(struct ec_node *gen_node)
 {
@@ -159,7 +153,6 @@ static struct ec_node_type ec_node_int_type = {
 	.name = "int",
 	.parse = ec_node_int_uint_parse,
 	.complete = ec_node_default_complete,
-	.get_max_parse_len = ec_node_int_uint_get_max_parse_len,
 	.size = sizeof(struct ec_node_int_uint),
 	.init_priv = ec_node_uint_init_priv,
 };
@@ -191,7 +184,6 @@ static struct ec_node_type ec_node_uint_type = {
 	.name = "uint",
 	.parse = ec_node_int_uint_parse,
 	.complete = ec_node_default_complete,
-	.get_max_parse_len = ec_node_int_uint_get_max_parse_len,
 	.size = sizeof(struct ec_node_int_uint),
 };
 
