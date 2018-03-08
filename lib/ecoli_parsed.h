@@ -80,10 +80,6 @@ struct ec_parsed *ec_parsed_dup(struct ec_parsed *parsed);
  */
 const struct ec_strvec *ec_parsed_strvec(const struct ec_parsed *parsed);
 
-/* XXX we could use a cache to store possible completions or match: the
- * cache would be per-node, and would be reset for each call to parse()
- * or complete() ? ... not sure, since parse result can depend on state
- */
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
 */
@@ -122,7 +118,6 @@ struct ec_parsed *ec_node_parse_strvec(const struct ec_node *node,
  * EC_PARSED_NOMATCH (positive) if it does not match
  * any other negative value (-errno) for other errors
  * the number of matched strings in strvec
- * XXX state is not freed on error ?
  */
 int ec_node_parse_child(const struct ec_node *node,
 			struct ec_parsed *state,

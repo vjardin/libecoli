@@ -83,19 +83,23 @@ int ec_node_weakref_set(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_weakref *node = (struct ec_node_weakref *)gen_node;
 
-	// XXX check node type
-
 	assert(node != NULL);
 
-	if (child == NULL)
-		return -EINVAL;
+	if (child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (ec_node_check_type(gen_node, &ec_node_weakref_type) < 0)
+		goto fail;
 
 	node->child = child;
 
-	// XXX else it breaks the dump()
-	//TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
-
 	return 0;
+
+fail:
+	ec_node_free(child);
+	return -1;
 }
 
 struct ec_node *ec_node_weakref(const char *id, struct ec_node *child)

@@ -30,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
@@ -37,9 +38,9 @@
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
 #include <ecoli_completed.h>
-#include <ecoli_node_option.h>
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
+#include <ecoli_node_option.h>
 
 EC_LOG_TYPE_REGISTER(node_option);
 
@@ -93,26 +94,49 @@ static struct ec_node_type ec_node_option_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_option_type);
 
-struct ec_node *ec_node_option(const char *id, struct ec_node *child)
+int ec_node_option_set(struct ec_node *gen_node, struct ec_node *child)
 {
-	struct ec_node *gen_node = NULL;
-	struct ec_node_option *node = NULL;
+	struct ec_node_option *node = (struct ec_node_option *)gen_node;
 
-	if (child == NULL)
-		return NULL;
-
-	gen_node = __ec_node(&ec_node_option_type, id);
-	if (gen_node == NULL) {
-		ec_node_free(child);
-		return NULL;
+	if (gen_node == NULL || child == NULL) {
+		errno = EINVAL;
+		goto fail;
 	}
-	node = (struct ec_node_option *)gen_node;
+
+	if (ec_node_check_type(gen_node, &ec_node_option_type) < 0)
+		goto fail;
+
+	if (ec_node_add_child(gen_node, child) < 0)
+		goto fail;
 
 	node->child = child;
 
-	TAILQ_INSERT_TAIL(&gen_node->children, child, next);
+	return 0;
 
-	return &node->gen;
+fail:
+	ec_node_free(child);
+	return -1;
+}
+
+struct ec_node *ec_node_option(const char *id, struct ec_node *child)
+{
+	struct ec_node *gen_node = NULL;
+
+	if (child == NULL)
+		goto fail;
+
+	gen_node = __ec_node(&ec_node_option_type, id);
+	if (gen_node == NULL)
+		goto fail;
+
+	ec_node_option_set(gen_node, child);
+	child = NULL;
+
+	return gen_node;
+
+fail:
+	ec_node_free(child);
+	return NULL;
 }
 
 /* LCOV_EXCL_START */

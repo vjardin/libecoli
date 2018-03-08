@@ -146,17 +146,14 @@ struct ec_node_type *ec_node_type_lookup(const char *name);
  */
 void ec_node_type_dump(FILE *out);
 
-TAILQ_HEAD(ec_node_list, ec_node);
-
 struct ec_node {
 	const struct ec_node_type *type;
 	char *id;
 	char *desc;
 	struct ec_keyval *attrs;
 	unsigned int refcnt;
-
-	TAILQ_ENTRY(ec_node) next;
-	struct ec_node_list children;
+	struct ec_node **children;   /* array of children */
+	size_t n_children;           /* number of children in the array */
 };
 
 /* create a new node when the type is known, typically called from the node
@@ -168,6 +165,12 @@ struct ec_node *ec_node(const char *typename, const char *id);
 
 struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_node_free(struct ec_node *node);
+
+size_t ec_node_get_children_count(const struct ec_node *node);
+struct ec_node *
+ec_node_get_child(const struct ec_node *node, size_t i);
+int ec_node_add_child(struct ec_node *node, struct ec_node *child);
+int ec_node_del_child(struct ec_node *node, struct ec_node *child);
 
 /**
  * Get the max len of strvec that can be parsed by this node

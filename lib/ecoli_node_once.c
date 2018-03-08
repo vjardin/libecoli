@@ -100,7 +100,7 @@ ec_node_once_complete(const struct ec_node *gen_node,
 	/* count the number of occurences of the node: if already parsed,
 	 * do not match
 	 */
-	count = count_node(ec_parsed_get_root(parsed), node->child); //XXX
+	count = count_node(ec_parsed_get_root(parsed), node->child);
 	if (count > 0)
 		return 0;
 
@@ -131,20 +131,25 @@ EC_NODE_TYPE_REGISTER(ec_node_once_type);
 int ec_node_once_set(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
-	int ret;
 
-	if (gen_node == NULL || child == NULL)
-		return -EINVAL;
+	if (gen_node == NULL || child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
 
-	ret = ec_node_check_type(gen_node, &ec_node_once_type);
-	if (ret < 0)
-		return ret;
+	if (ec_node_check_type(gen_node, &ec_node_once_type) < 0)
+		goto fail;
+
+	if (ec_node_add_child(gen_node, child) < 0)
+		goto fail;
 
 	node->child = child;
 
-	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
-
 	return 0;
+
+fail:
+	ec_node_free(child);
+	return -1;
 }
 
 struct ec_node *ec_node_once(const char *id, struct ec_node *child)

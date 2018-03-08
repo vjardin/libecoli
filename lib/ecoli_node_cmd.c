@@ -412,12 +412,15 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 	struct ec_node **table;
 	int ret;
 
-	// XXX check node type
-
 	assert(node != NULL);
 
-	if (child == NULL)
-		return -EINVAL;
+	if (child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (ec_node_check_type(gen_node, &ec_node_cmd_type) < 0)
+		goto fail;
 
 	if (node->cmd == NULL) {
 		ret = ec_node_cmd_build(node);
@@ -426,18 +429,22 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 	}
 
 	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
-	if (table == NULL) {
-		ec_node_free(child);
-		return -ENOMEM;
-	}
+	if (table == NULL)
+		goto fail;
 
 	node->table = table;
+
+	if (ec_node_add_child(gen_node, child) < 0)
+		goto fail;
+
 	table[node->len] = child;
 	node->len++;
 
-	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
-
 	return 0;
+
+fail:
+	ec_node_free(child);
+	return -1;
 }
 
 struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)

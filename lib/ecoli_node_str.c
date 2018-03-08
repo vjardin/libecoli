@@ -87,7 +87,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 
 	/* no completion */
 	if (str[n] != '\0')
-		return 0; // XXX add a no_match instead?
+		return EC_PARSED_NOMATCH;
 
 	if (ec_completed_add_item(completed, gen_node, NULL, EC_COMP_FULL,
 					str, node->string) < 0)
@@ -139,9 +139,7 @@ int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 
 	if (str == NULL)
 		return -EINVAL;
-	if (node->string != NULL)
-		return -EEXIST; // XXX allow to replace
-
+	ec_free(node->string);
 	node->string = ec_strdup(str);
 	if (node->string == NULL)
 		return -ENOMEM;

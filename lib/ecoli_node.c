@@ -83,7 +83,7 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	EC_LOG(EC_LOG_DEBUG, "create node type=%s id=%s\n",
 		type->name, id);
 	if (id == NULL) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		goto fail;
 	}
 
@@ -91,7 +91,6 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	if (node == NULL)
 		goto fail;
 
-	TAILQ_INIT(&node->children);
 	node->type = type;
 	node->refcnt = 1;
 
@@ -150,6 +149,7 @@ void ec_node_free(struct ec_node *node)
 
 	if (node->type != NULL && node->type->free_priv != NULL)
 		node->type->free_priv(node);
+	ec_free(node->children);
 	ec_free(node->id);
 	ec_free(node->desc);
 	ec_free(node->attrs);
@@ -170,15 +170,79 @@ struct ec_node *ec_node_clone(struct ec_node *node)
 	return node;
 }
 
+size_t ec_node_get_children_count(const struct ec_node *node)
+{
+	return node->n_children;
+}
+
+struct ec_node *
+ec_node_get_child(const struct ec_node *node, size_t i)
+{
+	if (i >= ec_node_get_children_count(node))
+		return NULL;
+	return node->children[i];
+}
+
+int ec_node_add_child(struct ec_node *node, struct ec_node *child)
+{
+	struct ec_node **children = NULL;
+	size_t n;
+
+	if (node == NULL || child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	n = node->n_children;
+	children = ec_realloc(node->children,
+			(n + 1) * sizeof(child));
+	if (children == NULL)
+		goto fail;
+
+	children[n] = child;
+	node->children = children;
+	node->n_children = n + 1;
+
+	return 0;
+
+fail:
+	ec_free(children);
+	return -1;
+}
+
+int ec_node_del_child(struct ec_node *node, struct ec_node *child)
+{
+	size_t i, n;
+
+	if (node == NULL || child == NULL)
+		goto fail;
+
+	n = node->n_children;
+	for (i = 0; i < n; i++) {
+		if (node->children[i] != child)
+			continue;
+		memcpy(&node->children[i], &node->children[i+1],
+			(n - i - 1) * sizeof(child));
+		return 0;
+	}
+
+fail:
+	errno = EINVAL;
+	return -1;
+}
+
 struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 {
 	struct ec_node *child, *ret;
 	const char *node_id = ec_node_id(node);
+	size_t i, n;
 
 	if (id != NULL && node_id != NULL && !strcmp(node_id, id))
 		return node;
 
-	TAILQ_FOREACH(child, &node->children, next) {
+	n = node->n_children;
+	for (i = 0; i < n; i++) {
+		child = node->children[i];
 		ret = ec_node_find(child, id);
 		if (ret != NULL)
 			return ret;
@@ -205,7 +269,7 @@ static void __ec_node_dump(FILE *out,
 	const char *id, *typename, *desc;
 	struct ec_node *child;
 	size_t maxlen;
-	size_t i;
+	size_t i, n;
 
 	maxlen = ec_node_get_max_parse_len(node);
 	id = ec_node_id(node);
@@ -226,8 +290,11 @@ static void __ec_node_dump(FILE *out,
 		fprintf(out, "maxlen=no\n");
 	else
 		fprintf(out, "maxlen=%zu\n", maxlen);
-	TAILQ_FOREACH(child, &node->children, next)
+	n = node->n_children;
+	for (i = 0; i < n; i++) {
+		child = node->children[i];
 		__ec_node_dump(out, child, indent + 2);
+	}
 }
 
 void ec_node_dump(FILE *out, const struct ec_node *node)

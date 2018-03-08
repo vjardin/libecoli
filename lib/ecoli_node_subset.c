@@ -268,31 +268,6 @@ static void ec_node_subset_free_priv(struct ec_node *gen_node)
 	ec_free(node->table);
 }
 
-int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
-{
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
-	struct ec_node **table;
-
-	assert(node != NULL);
-
-	if (child == NULL)
-		return -EINVAL;
-
-	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
-	if (table == NULL) {
-		ec_node_free(child);
-		return -1;
-	}
-
-	node->table = table;
-	table[node->len] = child;
-	node->len++;
-
-	TAILQ_INSERT_TAIL(&gen_node->children, child, next);
-
-	return 0;
-}
-
 static struct ec_node_type ec_node_subset_type = {
 	.name = "subset",
 	.parse = ec_node_subset_parse,
@@ -302,6 +277,42 @@ static struct ec_node_type ec_node_subset_type = {
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_subset_type);
+
+int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
+{
+	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node **table;
+
+	assert(node != NULL); // XXX specific assert for it, like in libyang
+
+	if (child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (ec_node_check_type(gen_node, &ec_node_subset_type) < 0)
+		goto fail;
+
+	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
+	if (table == NULL) {
+		ec_node_free(child);
+		return -1;
+	}
+
+	node->table = table;
+
+	if (ec_node_add_child(gen_node, child) < 0)
+		goto fail;
+
+	table[node->len] = child;
+	node->len++;
+
+	return 0;
+
+fail:
+	ec_node_free(child);
+	return -1;
+}
 
 struct ec_node *__ec_node_subset(const char *id, ...)
 {

@@ -221,26 +221,33 @@ int ec_node_seq_add(struct ec_node *gen_node, struct ec_node *child)
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
 	struct ec_node **table;
 
-	// XXX check node type
-
 	assert(node != NULL);
 
-	if (child == NULL)
-		return -EINVAL;
-
-	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
-	if (table == NULL) {
-		ec_node_free(child);
-		return -1;
+	if (child == NULL) {
+		errno = EINVAL;
+		goto fail;
 	}
 
+	if (ec_node_check_type(gen_node, &ec_node_seq_type) < 0)
+		goto fail;
+
+	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
+	if (table == NULL)
+		goto fail;
+
 	node->table = table;
+
+	if (ec_node_add_child(gen_node, child) < 0)
+		goto fail;
+
 	table[node->len] = child;
 	node->len++;
 
-	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
-
 	return 0;
+
+fail:
+	ec_node_free(child);
+	return -1;
 }
 
 struct ec_node *__ec_node_seq(const char *id, ...)

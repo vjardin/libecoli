@@ -61,7 +61,7 @@ ec_vec(size_t elt_size, size_t size, ec_vec_elt_copy_t copy,
 	struct ec_vec *vec;
 
 	if (elt_size == 0) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return NULL;
 	}
 
