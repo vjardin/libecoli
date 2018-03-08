@@ -181,9 +181,9 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	struct debug_alloc_ftr *ftr;
 	size_t new_size = size + sizeof(*hdr) + sizeof(*ftr);
 	void *ret;
+	int r = random();
 
-
-	if (alloc_fail_proba != 0 && (random() % 100) < alloc_fail_proba)
+	if (alloc_fail_proba != 0 && (r % 100) < alloc_fail_proba)
 		hdr = NULL;
 	else
 		hdr = malloc(new_size);
@@ -203,8 +203,10 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 		ftr->cookie = 0x87654321;
 	}
 
-	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p\n",
-		file, line, size, ret);
+	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p [rand=%d]\n",
+		file, line, size, ret, r);
+	if (r == 976499400)
+		printf("here\n");
 
 	if (ret)
 		alloc_success++;

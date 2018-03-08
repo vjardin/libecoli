@@ -142,7 +142,6 @@ int ec_node_once_set(struct ec_node *gen_node, struct ec_node *child)
 
 	node->child = child;
 
-	child->parent = gen_node;
 	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
 
 	return 0;
@@ -157,11 +156,16 @@ struct ec_node *ec_node_once(const char *id, struct ec_node *child)
 
 	gen_node = __ec_node(&ec_node_once_type, id);
 	if (gen_node == NULL)
-		return NULL;
+		goto fail;
 
 	ec_node_once_set(gen_node, child);
+	child = NULL;
 
 	return gen_node;
+
+fail:
+	ec_node_free(child);
+	return NULL;
 }
 
 /* LCOV_EXCL_START */

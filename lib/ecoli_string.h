@@ -36,4 +36,10 @@ size_t ec_strcmp_count(const char *s1, const char *s2);
 /* return 1 if 's' starts with 'beginning' */
 int ec_str_startswith(const char *s, const char *beginning);
 
+/* like asprintf, but use libecoli allocator */
+int ec_asprintf(char **buf, const char *fmt, ...);
+
+/* like vasprintf, but use libecoli allocator */
+int ec_vasprintf(char **buf, const char *fmt, va_list ap);
+
 #endif

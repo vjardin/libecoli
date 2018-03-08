@@ -92,7 +92,6 @@ int ec_node_weakref_set(struct ec_node *gen_node, struct ec_node *child)
 
 	node->child = child;
 
-	child->parent = gen_node;
 	// XXX else it breaks the dump()
 	//TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
 

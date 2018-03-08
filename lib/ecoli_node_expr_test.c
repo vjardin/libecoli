@@ -308,7 +308,7 @@ fail:
 /* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_expr_test = {
-	.name = "expr",
+	.name = "node_expr",
 	.test = ec_node_expr_testcase,
 };
 

@@ -238,7 +238,6 @@ int ec_node_seq_add(struct ec_node *gen_node, struct ec_node *child)
 	table[node->len] = child;
 	node->len++;
 
-	child->parent = gen_node;
 	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
 
 	return 0;

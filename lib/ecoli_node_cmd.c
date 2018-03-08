@@ -250,7 +250,7 @@ static const struct ec_node_expr_eval_ops test_ops = {
 static int ec_node_cmd_build(struct ec_node_cmd *node)
 {
 	struct ec_node *expr = NULL, *lex = NULL, *cmd = NULL;
-	struct ec_parsed *p, *child;
+	struct ec_parsed *p = NULL, *child;
 	void *result;
 	int ret;
 
@@ -435,7 +435,6 @@ int ec_node_cmd_add_child(struct ec_node *gen_node, struct ec_node *child)
 	table[node->len] = child;
 	node->len++;
 
-	child->parent = gen_node;
 	TAILQ_INSERT_TAIL(&gen_node->children, child, next); // XXX really needed?
 
 	return 0;
@@ -451,12 +450,14 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 
 	gen_node = __ec_node(&ec_node_cmd_type, id);
 	if (gen_node == NULL)
-		goto fail;
+		fail = 1;
 
-	node = (struct ec_node_cmd *)gen_node;
-	node->cmd_str = ec_strdup(cmd);
-	if (node->cmd_str == NULL)
-		goto fail;
+	if (fail == 0) {
+		node = (struct ec_node_cmd *)gen_node;
+		node->cmd_str = ec_strdup(cmd);
+		if (node->cmd_str == NULL)
+			fail = 1;
+	}
 
 	va_start(ap, cmd);
 
@@ -472,10 +473,10 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 		}
 	}
 
+	va_end(ap);
+
 	if (fail == 1)
 		goto fail;
-
-	va_end(ap);
 
 	if (ec_node_cmd_build(node) < 0)
 		goto fail;
@@ -484,7 +485,6 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 
 fail:
 	ec_node_free(gen_node); /* will also free children */
-	va_end(ap);
 	return NULL;
 }
 

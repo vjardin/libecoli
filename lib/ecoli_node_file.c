@@ -25,7 +25,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _GNU_SOURCE /* for asprintf */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -202,23 +201,23 @@ ec_node_file_complete(const struct ec_node *gen_node,
 
 		if (is_dir) {
 			type = EC_COMP_PARTIAL;
-			if (asprintf(&comp_str, "%s%s/", input,
+			if (ec_asprintf(&comp_str, "%s%s/", input,
 					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
 				goto out;
 			}
-			if (asprintf(&disp_str, "%s/", de->d_name) < 0) {
+			if (ec_asprintf(&disp_str, "%s/", de->d_name) < 0) {
 				ret = -errno;
 				goto out;
 			}
 		} else {
 			type = EC_COMP_FULL;
-			if (asprintf(&comp_str, "%s%s", input,
+			if (ec_asprintf(&comp_str, "%s%s", input,
 					&de->d_name[bname_len]) < 0) {
 				ret = -errno;
 				goto out;
 			}
-			if (asprintf(&disp_str, "%s", de->d_name) < 0) {
+			if (ec_asprintf(&disp_str, "%s", de->d_name) < 0) {
 				ret = -errno;
 				goto out;
 			}
@@ -235,16 +234,16 @@ ec_node_file_complete(const struct ec_node *gen_node,
 			goto out;
 
 		item = NULL;
-		free(comp_str);
+		ec_free(comp_str);
 		comp_str = NULL;
-		free(disp_str);
+		ec_free(disp_str);
 		disp_str = NULL;
 	}
 	ret = 0;
 
 out:
-	free(comp_str);
-	free(disp_str);
+	ec_free(comp_str);
+	ec_free(disp_str);
 	ec_free(dname);
 	ec_free(bname);
 	if (dir != NULL)

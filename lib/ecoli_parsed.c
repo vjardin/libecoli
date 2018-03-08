@@ -63,7 +63,7 @@ static int __ec_node_parse_child(const struct ec_node *node,
 				bool is_root, const struct ec_strvec *strvec)
 {
 	struct ec_strvec *match_strvec;
-	struct ec_parsed *child;
+	struct ec_parsed *child = NULL;
 	int ret;
 
 	if (node->type->parse == NULL)
@@ -79,24 +79,24 @@ static int __ec_node_parse_child(const struct ec_node *node,
 		child = state;
 	}
 	ret = node->type->parse(node, child, strvec);
-	if (ret < 0) // XXX should we free state, child?
-		return ret;
-
-	if (ret == EC_PARSED_NOMATCH) {
-		if (!is_root) {
-			ec_parsed_del_child(state, child);
-			assert(TAILQ_EMPTY(&child->children));
-			ec_parsed_free(child);
-		}
-		return ret;
-	}
+	if (ret < 0 || ret == EC_PARSED_NOMATCH)
+		goto free;
 
 	match_strvec = ec_strvec_ndup(strvec, 0, ret);
-	if (match_strvec == NULL)
-		return -ENOMEM;
+	if (match_strvec == NULL) {
+		ret = -ENOMEM;
+		goto free;
+	}
 
 	child->strvec = match_strvec;
 
+	return ret;
+
+free:
+	if (!is_root) {
+		ec_parsed_del_child(state, child);
+		ec_parsed_free(child);
+	}
 	return ret;
 }
 

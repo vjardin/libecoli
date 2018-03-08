@@ -288,7 +288,6 @@ int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
 	table[node->len] = child;
 	node->len++;
 
-	child->parent = gen_node;
 	TAILQ_INSERT_TAIL(&gen_node->children, child, next);
 
 	return 0;

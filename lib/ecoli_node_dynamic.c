@@ -72,8 +72,10 @@ ec_node_dynamic_parse(const struct ec_node *gen_node,
 	snprintf(key, sizeof(key), "_dyn_%p", child);
 	ret = ec_keyval_set(ec_parsed_get_attrs(parsed), key, child,
 			(void *)node_free);
-	if (ret < 0)
+	if (ret < 0) {
+		child = NULL; /* already freed */
 		goto fail;
+	}
 
 	return ec_node_parse_child(child, parsed, strvec);
 
@@ -104,8 +106,10 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	snprintf(key, sizeof(key), "_dyn_%p", child);
 	ret = ec_keyval_set(completed->attrs, key, child,
 			(void *)node_free);
-	if (ret < 0)
+	if (ret < 0) {
+		child = NULL; /* already freed */
 		goto fail;
+	}
 
 	return ec_node_complete_child(child, completed, strvec);
 

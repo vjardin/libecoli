@@ -260,7 +260,7 @@ ec_completed_item(const struct ec_node *node, enum ec_completed_type type,
 	return item;
 
 fail:
-	ec_keyval_free(item->attrs);
+	ec_keyval_free(attrs);
 	ec_free(comp_cp);
 	ec_free(start_cp);
 	ec_free(full_cp);
@@ -599,10 +599,13 @@ ec_completed_iter(struct ec_completed *completed,
 struct ec_completed_item *ec_completed_iter_next(
 	struct ec_completed_iter *iter)
 {
-	struct ec_completed *completed = iter->completed;
+	struct ec_completed *completed;
 	struct ec_completed_group *cur_node;
 	struct ec_completed_item *cur_match;
 
+	if (iter == NULL)
+		return NULL;
+	completed = iter->completed;
 	if (completed == NULL)
 		return NULL;
 

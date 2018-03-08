@@ -459,15 +459,15 @@ static int ec_vec_testcase(void)
 
 	if (ec_vec_get(&vals, vec, 0) < 0)
 		GOTO_FAIL;
-	if (strcmp(vals, "0"))
+	if (vals == NULL || strcmp(vals, "0"))
 		GOTO_FAIL;
 	if (ec_vec_get(&vals, vec, 1) < 0)
 		GOTO_FAIL;
-	if (strcmp(vals, "1"))
+	if (vals == NULL || strcmp(vals, "1"))
 		GOTO_FAIL;
 	if (ec_vec_get(&vals, vec, 2) < 0)
 		GOTO_FAIL;
-	if (strcmp(vals, "2"))
+	if (vals == NULL || strcmp(vals, "2"))
 		GOTO_FAIL;
 
 	ec_vec_free(vec);

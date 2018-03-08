@@ -32,6 +32,7 @@
 #include <errno.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_string.h>
 #include <ecoli_log.h>
 
 static ec_log_t ec_log_fct = ec_log_default_cb;
@@ -145,6 +146,9 @@ int ec_vlog(int type, enum ec_log_level level, const char *format, va_list ap)
 	char *s;
 	int ret;
 
+	/* don't use ec_vasprintf here, because it will call
+	 * ec_malloc(), then ec_log(), ec_vasprintf()...
+	 * -> stack overflow */
 	ret = vasprintf(&s, format, ap);
 	if (ret < 0)
 		return ret;

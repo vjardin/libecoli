@@ -25,7 +25,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define _GNU_SOURCE /* for asprintf */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +35,7 @@
 
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
+#include <ecoli_string.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
@@ -323,25 +323,25 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 			goto fail;
 		while ((item = ec_completed_iter_next(iter)) != NULL) {
 			str = ec_completed_item_get_str(item);
-			if (asprintf(&new_str, "%c%s%c", missing_quote, str,
+			if (ec_asprintf(&new_str, "%c%s%c", missing_quote, str,
 					missing_quote) < 0) {
 				new_str = NULL;
 				goto fail;
 			}
 			if (ec_completed_item_set_str(item, new_str) < 0)
 				goto fail;
-			free(new_str);
+			ec_free(new_str);
 			new_str = NULL;
 
 			str = ec_completed_item_get_completion(item);
-			if (asprintf(&new_str, "%s%c", str,
+			if (ec_asprintf(&new_str, "%s%c", str,
 					missing_quote) < 0) {
 				new_str = NULL;
 				goto fail;
 			}
 			if (ec_completed_item_set_completion(item, new_str) < 0)
 				goto fail;
-			free(new_str);
+			ec_free(new_str);
 			new_str = NULL;
 		}
 	}
@@ -357,7 +357,7 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 	ec_completed_free(tmp_completed);
 	ec_completed_iter_free(iter);
 	ec_strvec_free(new_vec);
-	free(new_str);
+	ec_free(new_str);
 
 	return -1;
 }

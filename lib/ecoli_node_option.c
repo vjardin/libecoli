@@ -110,7 +110,6 @@ struct ec_node *ec_node_option(const char *id, struct ec_node *child)
 
 	node->child = child;
 
-	child->parent = gen_node;
 	TAILQ_INSERT_TAIL(&gen_node->children, child, next);
 
 	return &node->gen;

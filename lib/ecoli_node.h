@@ -153,8 +153,6 @@ struct ec_node {
 	char *id;
 	char *desc;
 	struct ec_keyval *attrs;
-	/* XXX ensure parent and child are properly set in all nodes */
-	struct ec_node *parent;
 	unsigned int refcnt;
 
 	TAILQ_ENTRY(ec_node) next;
@@ -180,7 +178,6 @@ size_t ec_node_get_max_parse_len(const struct ec_node *node);
 
 /* XXX add more accessors */
 struct ec_keyval *ec_node_attrs(const struct ec_node *node);
-struct ec_node *ec_node_parent(const struct ec_node *node);
 const char *ec_node_id(const struct ec_node *node);
 const char *ec_node_desc(const struct ec_node *node);
 

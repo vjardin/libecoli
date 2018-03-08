@@ -33,6 +33,7 @@
 #include <errno.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_string.h>
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
@@ -78,7 +79,6 @@ void ec_node_type_dump(FILE *out)
 struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 {
 	struct ec_node *node = NULL;
-	char buf[256]; // XXX
 
 	EC_LOG(EC_LOG_DEBUG, "create node type=%s id=%s\n",
 		type->name, id);
@@ -99,9 +99,7 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	if (node->id == NULL)
 		goto fail;
 
-	snprintf(buf, sizeof(buf), "<%s>", type->name);
-	node->desc = ec_strdup(buf); // XXX ec_asprintf ?
-	if (node->desc == NULL)
+	if (ec_asprintf(&node->desc, "<%s>", type->name) < 0)
 		goto fail;
 
 	node->attrs = ec_keyval();
@@ -116,9 +114,11 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 	return node;
 
  fail:
-	ec_keyval_free(node->attrs);
-	ec_free(node->desc);
-	ec_free(node->id);
+	if (node != NULL) {
+		ec_keyval_free(node->attrs);
+		ec_free(node->desc);
+		ec_free(node->id);
+	}
 	ec_free(node);
 
 	return NULL;
@@ -197,11 +197,6 @@ const char *ec_node_id(const struct ec_node *node)
 	if (node->id == NULL)
 		return "None";
 	return node->id;
-}
-
-struct ec_node *ec_node_parent(const struct ec_node *node)
-{
-	return node->parent;
 }
 
 static void __ec_node_dump(FILE *out,
