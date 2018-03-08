@@ -120,7 +120,7 @@ ec_node_file_complete(const struct ec_node *gen_node,
 	char *dname = NULL, *bname = NULL, *effective_dir;
 	struct ec_completed_item *item = NULL;
 	enum ec_completed_type type;
-	struct stat st;
+	struct stat st, st2;
 	const char *input;
 	size_t bname_len;
 	struct dirent *de = NULL;
@@ -194,7 +194,19 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		/* add '/' if it's a dir */
 		if (de->d_type == DT_DIR) {
 			is_dir = 1;
-		} else if (de->d_type == DT_UNKNOWN) { // XXX todo
+		} else if (de->d_type == DT_UNKNOWN) {
+			int dir_fd = dirfd(dir);
+
+			if (dir_fd < 0)
+				goto out;
+			ret = fstatat(dir_fd, de->d_name, &st2, 0);
+			if (ret != 0) {
+				ret = -errno;
+				goto out;
+			}
+			if (!S_ISDIR(st2.st_mode))
+				goto out;
+			is_dir = 1;
 		} else {
 			is_dir = 0;
 		}
@@ -278,26 +290,22 @@ static int ec_node_file_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, -1);
 
 	/* test completion */
-#if 0 // XXX how to properly test file completion?
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
+		"/tmp/toto/t", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
+	ret |= EC_TEST_CHECK_COMPLETE_PARTIAL(node,
+		"/tmp/toto/t", EC_NODE_ENDLIST,
+		"/tmp/toto/titi/", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
-		"/", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"/tmp/toto/f", EC_NODE_ENDLIST,
+		"/tmp/toto/foo", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp/", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp/.", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
-#endif
+		"/tmp/toto/b", EC_NODE_ENDLIST,
+		"/tmp/toto/bar", "/tmp/toto/bar2", EC_NODE_ENDLIST);
+
 	ec_node_free(node);
 
 	return ret;

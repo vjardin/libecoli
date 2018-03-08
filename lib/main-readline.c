@@ -93,7 +93,7 @@ static char *my_completion_entry(const char *s, int state)
 		return NULL;
 
 	item_str = ec_completed_item_get_str(item);
-	if (c->count_match == 1) {
+	if (c->count_full == 1) {
 
 		/* don't add the trailing space for partial completions */
 		if (state == 0) {

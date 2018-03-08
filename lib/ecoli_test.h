@@ -31,7 +31,9 @@
 #include <sys/queue.h>
 
 #include <ecoli_log.h>
-#include <ecoli_node.h>
+
+struct ec_node;
+enum ec_completed_type;
 
 // XXX check if already exists?
 #define EC_TEST_REGISTER(t)						\
@@ -96,10 +98,18 @@ int ec_test_check_parse(struct ec_node *node, int expected, ...);
 	ret_;								\
 })
 
-int ec_test_check_complete(struct ec_node *node, ...);
+int ec_test_check_complete(struct ec_node *node,
+			enum ec_completed_type type, ...);
 
 #define EC_TEST_CHECK_COMPLETE(node, args...) ({			\
-	int ret_ = ec_test_check_complete(node, args);			\
+	int ret_ = ec_test_check_complete(node, EC_COMP_FULL, args);	\
+	if (ret_)							\
+		EC_TEST_ERR("complete test failed");			\
+	ret_;								\
+})
+
+#define EC_TEST_CHECK_COMPLETE_PARTIAL(node, args...) ({		\
+	int ret_ = ec_test_check_complete(node, EC_COMP_PARTIAL, args);	\
 	if (ret_)							\
 		EC_TEST_ERR("complete test failed");			\
 	ret_;								\

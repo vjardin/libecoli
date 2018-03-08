@@ -85,7 +85,6 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 	for (i = 0; i < node->len; i++) {
 		id = ec_node_id(node->table[i]);
-		//printf("i=%d id=%s\n", i, id);
 		if (id == NULL)
 			continue;
 		if (strcmp(str, id))
@@ -104,7 +103,6 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 			return -ENOMEM;
 	}
 
-	//printf("eval var %s %p\n", str, eval); //XXX
 	*result = eval;
 
 	return 0;

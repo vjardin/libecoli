@@ -355,10 +355,13 @@ ec_completed_item_add(struct ec_completed *completed,
 
 	switch (item->type) {
 	case EC_COMP_UNKNOWN:
+		completed->count_unknown++;
 		break;
 	case EC_COMP_FULL:
+		completed->count_full++;
+		break;
 	case EC_COMP_PARTIAL:
-		completed->count_match++; //XXX
+		completed->count_partial++;
 		break;
 	default:
 		return -EINVAL;
@@ -521,8 +524,9 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 		return;
 	}
 
-	fprintf(out, "completion: count=%u match=%u\n",
-		completed->count, completed->count_match);
+	fprintf(out, "completion: count=%u full=%u full=%u unknown=%u\n",
+		completed->count, completed->count_full,
+		completed->count_partial,  completed->count_unknown);
 
 	TAILQ_FOREACH(grp, &completed->groups, next) {
 		fprintf(out, "node=%p, node_type=%s\n",
@@ -555,7 +559,9 @@ int ec_completed_merge(struct ec_completed *to,
 		TAILQ_INSERT_TAIL(&to->groups, grp, next);
 	}
 	to->count += from->count;
-	to->count_match += from->count_match;
+	to->count_full += from->count_full;
+	to->count_partial += from->count_partial;
+	to->count_unknown += from->count_unknown;
 
 	ec_completed_free(from);
 	return 0;
@@ -571,9 +577,11 @@ unsigned int ec_completed_count(
 		return count;
 
 	if (type & EC_COMP_FULL)
-		count += completed->count_match;
+		count += completed->count_full;
+	if (type & EC_COMP_PARTIAL)
+		count += completed->count_partial;
 	if (type & EC_COMP_UNKNOWN)
-		count += (completed->count - completed->count_match); //XXX
+		count += completed->count_unknown;
 
 	return count;
 }

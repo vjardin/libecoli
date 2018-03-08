@@ -66,7 +66,9 @@ TAILQ_HEAD(ec_completed_group_list, ec_completed_group);
 
 struct ec_completed {
 	unsigned count;
-	unsigned count_match;
+	unsigned count_full;
+	unsigned count_partial;
+	unsigned count_unknown;
 	struct ec_parsed *cur_state;
 	struct ec_completed_group *cur_group;
 	struct ec_completed_group_list groups;

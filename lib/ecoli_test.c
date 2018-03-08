@@ -99,7 +99,7 @@ out:
 	return ret;
 }
 
-int ec_test_check_complete(struct ec_node *tk, ...)
+int ec_test_check_complete(struct ec_node *tk, enum ec_completed_type type, ...)
 {
 	struct ec_completed *c = NULL;
 	struct ec_strvec *vec = NULL;
@@ -108,7 +108,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	unsigned int count = 0;
 	va_list ap;
 
-	va_start(ap, tk);
+	va_start(ap, type);
 
 	/* build a string vector */
 	vec = ec_strvec();
@@ -146,7 +146,7 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 		count++;
 
 		/* only check matching completions */
-		iter = ec_completed_iter(c, EC_COMP_FULL);
+		iter = ec_completed_iter(c, type);
 		while ((item = ec_completed_iter_next(iter)) != NULL) {
 			const char *str = ec_completed_item_get_str(item);
 			if (str != NULL && strcmp(str, s) == 0)
@@ -162,10 +162,10 @@ int ec_test_check_complete(struct ec_node *tk, ...)
 	}
 
 	/* check if we have more completions (or less) than expected */
-	if (count != ec_completed_count(c, EC_COMP_FULL)) {
+	if (count != ec_completed_count(c, type)) {
 		EC_LOG(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_count(c, EC_COMP_FULL));
+			count, ec_completed_count(c, type));
 		ec_completed_dump(stdout, c);
 		ret = -1;
 	}
