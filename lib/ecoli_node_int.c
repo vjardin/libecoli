@@ -70,10 +70,8 @@ static int parse_llint(struct ec_node_int_uint *node, const char *str,
 	errno = 0;
 	*val = strtoll(str, &endptr, node->base);
 
-	if (errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN))
-		return -1;
-
-	if (errno != 0 && *val == 0)
+	if ((errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN)) ||
+			(errno != 0 && *val == 0))
 		return -1;
 
 	if (node->check_min && *val < node->min)
@@ -101,10 +99,8 @@ static int parse_ullint(struct ec_node_int_uint *node, const char *str,
 	errno = 0;
 	*val = strtoull(str, &endptr, node->base);
 
-	if (errno == ERANGE && *val == ULLONG_MAX)
-		return -1;
-
-	if (errno != 0 && *val == 0)
+	if ((errno == ERANGE && *val == ULLONG_MAX) ||
+			(errno != 0 && *val == 0))
 		return -1;
 
 	if (node->check_min && *val < node->umin)
@@ -125,7 +121,8 @@ static int ec_node_int_uint_parse(const struct ec_node *gen_node,
 {
 	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
 	const char *str;
-	int64_t val;
+	uint64_t u64;
+	int64_t i64;
 
 	(void)state;
 
@@ -133,9 +130,13 @@ static int ec_node_int_uint_parse(const struct ec_node *gen_node,
 		return EC_PARSED_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
-	if (parse_llint(node, str, &val) < 0)
-		return EC_PARSED_NOMATCH;
-
+	if (node->is_signed) {
+		if (parse_llint(node, str, &i64) < 0)
+			return EC_PARSED_NOMATCH;
+	} else {
+		if (parse_ullint(node, str, &u64) < 0)
+			return EC_PARSED_NOMATCH;
+	}
 	return 1;
 }
 
@@ -357,23 +358,30 @@ static int ec_node_int_testcase(void)
 	uint64_t u64;
 	int64_t i64;
 
-	node = ec_node_uint(EC_NO_ID, 0, 256, 0);
+	node = ec_node_uint(EC_NO_ID, 1, 256, 0);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "0");
+	ret |= EC_TEST_CHECK_PARSE(node, 1, "1");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "256", "foo");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "0x100");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, " 1");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "-1");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x101");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x100000000000000000");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "4r");
+	ec_node_uint_disable_limits(node);
+	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
 
-	p = ec_node_parse(node, "0");
+	p = ec_node_parse(node, "1");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
 	EC_TEST_ASSERT(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
-		u64 == 0);
+		u64 == 1);
 	ec_parsed_free(p);
 
 	p = ec_node_parse(node, "10");
@@ -393,7 +401,12 @@ static int ec_node_int_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "-1");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "7fffffffffffffff");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "0x7fffffffffffffff");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x8000000000000000");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "-2");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
+	ret |= EC_TEST_CHECK_PARSE(node, -1, "4r");
+	ec_node_int_disable_limits(node);
+	ret |= EC_TEST_CHECK_PARSE(node, 1, "-2");
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);

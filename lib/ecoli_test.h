@@ -81,6 +81,7 @@ int ec_test_check_parse(struct ec_node *node, int expected, ...);
 
 /* XXX this is not an assert, it does not abort */
 // XXX use it instead of ec_log to have the file:line
+// XXX set test result?
 #define EC_TEST_ASSERT_STR(cond, fmt, ...)				\
 	do {								\
 		if (!(cond))						\

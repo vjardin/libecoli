@@ -171,6 +171,7 @@ static int ec_node_str_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
+	EC_TEST_ASSERT(!strcmp(ec_node_desc(node), "foo"));
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo", "bar");
 	ret |= EC_TEST_CHECK_PARSE(node, -1, "foobar");
