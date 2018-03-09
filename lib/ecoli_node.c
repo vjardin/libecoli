@@ -275,7 +275,7 @@ static void __ec_node_dump(FILE *out,
 			fprintf(out, "|");
 	}
 
-	fprintf(out, "node %p type=%s id=%s desc=%s ",
+	fprintf(out, "node %p type=%s id=%s desc=%s\n",
 		node, typename, id, desc);
 	n = node->n_children;
 	for (i = 0; i < n; i++) {
