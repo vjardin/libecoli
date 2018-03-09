@@ -259,34 +259,25 @@ const char *ec_node_id(const struct ec_node *node)
 static void __ec_node_dump(FILE *out,
 	const struct ec_node *node, size_t indent)
 {
-	const char *id, *typename, *desc;
+	const char *id, *typename;
 	struct ec_node *child;
 	size_t i, n;
 
 	id = ec_node_id(node);
 	typename = node->type->name;
-	desc = ec_node_desc(node);
 
-	/* XXX enhance */
-	for (i = 0; i < indent; i++) {
-		if (i % 2)
-			fprintf(out, " ");
-		else
-			fprintf(out, "|");
-	}
-
-	fprintf(out, "node %p type=%s id=%s desc=%s\n",
-		node, typename, id, desc);
+	fprintf(out, "%*s" "type=%s id=%s %p\n",
+		(int)indent * 4, "", typename, id, node);
 	n = node->n_children;
 	for (i = 0; i < n; i++) {
 		child = node->children[i];
-		__ec_node_dump(out, child, indent + 2);
+		__ec_node_dump(out, child, indent + 1);
 	}
 }
 
 void ec_node_dump(FILE *out, const struct ec_node *node)
 {
-	fprintf(out, "------------------- node dump:\n"); //XXX
+	fprintf(out, "------------------- node dump:\n");
 
 	if (node == NULL) {
 		fprintf(out, "node is NULL\n");

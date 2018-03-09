@@ -524,7 +524,7 @@ void ec_completed_dump(FILE *out, const struct ec_completed *completed)
 		return;
 	}
 
-	fprintf(out, "completion: count=%u full=%u full=%u unknown=%u\n",
+	fprintf(out, "completion: count=%u full=%u partial=%u unknown=%u\n",
 		completed->count, completed->count_full,
 		completed->count_partial,  completed->count_unknown);
 

@@ -260,24 +260,16 @@ static void __ec_parsed_dump(FILE *out,
 {
 	struct ec_parsed *child;
 	const struct ec_strvec *vec;
-	size_t i;
-	const char *id = "none", *typename = "none";
+	const char *id, *typename = "none";
 
+	/* node can be null when parsing is incomplete */
 	if (parsed->node != NULL) {
-		if (parsed->node->id != NULL)
-			id = parsed->node->id;
+		id = parsed->node->id;
 		typename = parsed->node->type->name;
 	}
 
-	/* XXX enhance */
-	for (i = 0; i < indent; i++) {
-		if (i % 2)
-			fprintf(out, " ");
-		else
-			fprintf(out, "|");
-	}
-
-	fprintf(out, "node_type=%s id=%s vec=", typename, id);
+	fprintf(out, "%*s" "type=%s id=%s vec=",
+		(int)indent * 4, "", typename, id);
 	vec = ec_parsed_strvec(parsed);
 	ec_strvec_dump(out, vec);
 
@@ -287,7 +279,7 @@ static void __ec_parsed_dump(FILE *out,
 
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed)
 {
-	fprintf(out, "------------------- parsed dump:\n"); //XXX
+	fprintf(out, "------------------- parsed dump:\n");
 
 	if (parsed == NULL) {
 		fprintf(out, "parsed is NULL, error in parse\n");
