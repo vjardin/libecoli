@@ -167,25 +167,51 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 		return -EINVAL;
 
 	if (ec_strvec_len(vec) == 0) {
-		out = EC_NODE_SEQ(EC_NO_ID, ec_node_clone(in1), ec_node_clone(in2));
-		if (out == NULL)
-			return -EINVAL;
-		ec_node_free(in1);
-		ec_node_free(in2);
-		*result = out;
+		if (!strcmp(in1->type->name, "seq")) {
+			if (ec_node_seq_add(in1, ec_node_clone(in2)) < 0)
+				return -EINVAL;
+			ec_node_free(in2);
+			*result = in1;
+		} else {
+			out = EC_NODE_SEQ(EC_NO_ID, ec_node_clone(in1),
+					ec_node_clone(in2));
+			if (out == NULL)
+				return -EINVAL;
+			ec_node_free(in1);
+			ec_node_free(in2);
+			*result = out;
+		}
 	} else if (!strcmp(ec_strvec_val(vec, 0), "|")) {
-		out = EC_NODE_OR(EC_NO_ID, ec_node_clone(in1), ec_node_clone(in2));
-		if (out == NULL)
-			return -EINVAL;
-		ec_node_free(in1);
-		ec_node_free(in2);
-		*result = out;
+		if (!strcmp(in2->type->name, "or")) {
+			if (ec_node_or_add(in2, ec_node_clone(in1)) < 0)
+				return -EINVAL;
+			ec_node_free(in1);
+			*result = in2;
+		} else if (!strcmp(in1->type->name, "or")) {
+			if (ec_node_or_add(in1, ec_node_clone(in2)) < 0)
+				return -EINVAL;
+			ec_node_free(in2);
+			*result = in1;
+		} else {
+			out = EC_NODE_OR(EC_NO_ID, ec_node_clone(in1),
+					ec_node_clone(in2));
+			if (out == NULL)
+				return -EINVAL;
+			ec_node_free(in1);
+			ec_node_free(in2);
+			*result = out;
+		}
 	} else if (!strcmp(ec_strvec_val(vec, 0), ",")) {
 		if (!strcmp(in2->type->name, "subset")) {
 			if (ec_node_subset_add(in2, ec_node_clone(in1)) < 0)
 				return -EINVAL;
 			ec_node_free(in1);
 			*result = in2;
+		} else if (!strcmp(in1->type->name, "subset")) {
+			if (ec_node_subset_add(in1, ec_node_clone(in2)) < 0)
+				return -EINVAL;
+			ec_node_free(in2);
+			*result = in1;
 		} else {
 			out = EC_NODE_SUBSET(EC_NO_ID, ec_node_clone(in1),
 					ec_node_clone(in2));
@@ -503,7 +529,7 @@ static int ec_node_cmd_testcase(void)
 	int ret = 0;
 
 	node = EC_NODE_CMD(EC_NO_ID,
-		"command [option] (subset1, subset2, subset3) x|y z*",
+		"command [option] (subset1, subset2, subset3, subset4) x|y z*",
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
 	);
@@ -512,6 +538,13 @@ static int ec_node_cmd_testcase(void)
 		return -1;
 	}
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "1");
+	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "subset1", "1");
+	ret |= EC_TEST_CHECK_PARSE(node, 4, "command", "subset3", "subset2",
+				"1");
+	ret |= EC_TEST_CHECK_PARSE(node, 5, "command", "subset2", "subset3",
+				"subset1", "1");
+	ret |= EC_TEST_CHECK_PARSE(node, 6, "command", "subset3", "subset1",
+				"subset4", "subset2", "4");
 	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "23");
 	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "option", "23");
 	ret |= EC_TEST_CHECK_PARSE(node, 5, "command", "option", "23",
