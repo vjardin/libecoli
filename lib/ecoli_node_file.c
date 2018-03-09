@@ -48,6 +48,15 @@ EC_LOG_TYPE_REGISTER(node_file);
 
 struct ec_node_file {
 	struct ec_node gen;
+
+	/* below functions pointers are only useful for test */
+	int (*lstat)(const char *pathname, struct stat *buf);
+	DIR *(*opendir)(const char *name);
+	struct dirent *(*readdir)(DIR *dirp);
+	int (*closedir)(DIR *dirp);
+	int (*dirfd)(DIR *dirp);
+	int (*fstatat)(int dirfd, const char *pathname, struct stat *buf,
+		int flags);
 };
 
 static int
@@ -97,13 +106,13 @@ static int split_path(const char *path, char **dname_p, char **bname_p)
 
 	dname = ec_strdup(path);
 	if (dname == NULL)
-		return -ENOMEM;
+		return -1;
 	dname[dirlen] = '\0';
 
 	bname = ec_strdup(path + dirlen);
 	if (bname == NULL) {
 		ec_free(dname);
-		return -ENOMEM;
+		return -1;
 	}
 
 	*dname_p = dname;
@@ -117,6 +126,7 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		struct ec_completed *completed,
 		const struct ec_strvec *strvec)
 {
+	struct ec_node_file *node = (struct ec_node_file *)gen_node;
 	char *dname = NULL, *bname = NULL, *effective_dir;
 	struct ec_completed_item *item = NULL;
 	enum ec_completed_type type;
@@ -127,7 +137,6 @@ ec_node_file_complete(const struct ec_node *gen_node,
 	DIR *dir = NULL;
 	char *comp_str = NULL;
 	char *disp_str = NULL;
-	int ret;
 	int is_dir = 0;
 
 	/*
@@ -153,38 +162,36 @@ ec_node_file_complete(const struct ec_node *gen_node,
 	 */
 
 	if (ec_strvec_len(strvec) != 1)
-		goto out;
+		return 0;
 
 	input = ec_strvec_val(strvec, 0);
-	ret = split_path(input, &dname, &bname);
-	if (ret < 0) {
-		ec_completed_free(completed);
-		completed = NULL;
-		goto out;
-	}
+	if (split_path(input, &dname, &bname) < 0)
+		return -1;
 
 	if (strcmp(dname, "") == 0)
 		effective_dir = ".";
 	else
 		effective_dir = dname;
 
-	ret = lstat(effective_dir, &st);
-	if (ret != 0) {
-		ret = -errno;
-		goto out;
-	}
+	if (node->lstat(effective_dir, &st) < 0)
+		goto fail;
 	if (!S_ISDIR(st.st_mode))
 		goto out;
 
-	dir = opendir(effective_dir);
+	dir = node->opendir(effective_dir);
 	if (dir == NULL)
-		goto out;
+		goto fail;
 
 	bname_len = strlen(bname);
 	while (1) {
-		de = readdir(dir);
-		if (de == NULL)
-			goto out;
+		errno = 0;
+		de = node->readdir(dir);
+		if (de == NULL) {
+			if (errno == 0)
+				goto out;
+			else
+				goto fail;
+		}
 
 		if (!ec_str_startswith(de->d_name, bname))
 			continue;
@@ -195,18 +202,16 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		if (de->d_type == DT_DIR) {
 			is_dir = 1;
 		} else if (de->d_type == DT_UNKNOWN) {
-			int dir_fd = dirfd(dir);
+			int dir_fd = node->dirfd(dir);
 
 			if (dir_fd < 0)
-				goto out;
-			ret = fstatat(dir_fd, de->d_name, &st2, 0);
-			if (ret != 0) {
-				ret = -errno;
-				goto out;
-			}
-			if (!S_ISDIR(st2.st_mode))
-				goto out;
-			is_dir = 1;
+				goto fail;
+			if (node->fstatat(dir_fd, de->d_name, &st2, 0) < 0)
+				goto fail;
+			if (S_ISDIR(st2.st_mode))
+				is_dir = 1;
+			else
+				is_dir = 0;
 		} else {
 			is_dir = 0;
 		}
@@ -214,35 +219,25 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		if (is_dir) {
 			type = EC_COMP_PARTIAL;
 			if (ec_asprintf(&comp_str, "%s%s/", input,
-					&de->d_name[bname_len]) < 0) {
-				ret = -errno;
-				goto out;
-			}
-			if (ec_asprintf(&disp_str, "%s/", de->d_name) < 0) {
-				ret = -errno;
-				goto out;
-			}
+					&de->d_name[bname_len]) < 0)
+				goto fail;
+			if (ec_asprintf(&disp_str, "%s/", de->d_name) < 0)
+				goto fail;
 		} else {
 			type = EC_COMP_FULL;
 			if (ec_asprintf(&comp_str, "%s%s", input,
-					&de->d_name[bname_len]) < 0) {
-				ret = -errno;
-				goto out;
-			}
-			if (ec_asprintf(&disp_str, "%s", de->d_name) < 0) {
-				ret = -errno;
-				goto out;
-			}
+					&de->d_name[bname_len]) < 0)
+				goto fail;
+			if (ec_asprintf(&disp_str, "%s", de->d_name) < 0)
+				goto fail;
 		}
-		ret = ec_completed_add_item(completed, gen_node, &item,
-					type, input, comp_str);
-		if (ret < 0)
+		if (ec_completed_add_item(completed, gen_node, &item,
+						type, input, comp_str) < 0)
 			goto out;
 
 		/* fix the display string: we don't want to display the full
 		 * path. */
-		ret = ec_completed_item_set_display(item, disp_str);
-		if (ret < 0)
+		if (ec_completed_item_set_display(item, disp_str) < 0)
 			goto out;
 
 		item = NULL;
@@ -251,17 +246,39 @@ ec_node_file_complete(const struct ec_node *gen_node,
 		ec_free(disp_str);
 		disp_str = NULL;
 	}
-	ret = 0;
-
 out:
 	ec_free(comp_str);
 	ec_free(disp_str);
 	ec_free(dname);
 	ec_free(bname);
 	if (dir != NULL)
-		closedir(dir);
+		node->closedir(dir);
 
-	return ret;
+	return 0;
+
+fail:
+	ec_free(comp_str);
+	ec_free(disp_str);
+	ec_free(dname);
+	ec_free(bname);
+	if (dir != NULL)
+		node->closedir(dir);
+
+	return -1;
+}
+
+static int
+ec_node_file_init_priv(struct ec_node *gen_node)
+{
+	struct ec_node_file *node = (struct ec_node_file *)gen_node;
+
+	node->lstat = lstat;
+	node->opendir = opendir;
+	node->readdir = readdir;
+	node->dirfd = dirfd;
+	node->fstatat = fstatat;
+
+	return 0;
 }
 
 static struct ec_node_type ec_node_file_type = {
@@ -269,11 +286,120 @@ static struct ec_node_type ec_node_file_type = {
 	.parse = ec_node_file_parse,
 	.complete = ec_node_file_complete,
 	.size = sizeof(struct ec_node_file),
+	.init_priv = ec_node_file_init_priv,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_file_type);
 
 /* LCOV_EXCL_START */
+static int
+test_lstat(const char *pathname, struct stat *buf)
+{
+//	return lstat(pathname, buf);
+
+	if (!strcmp(pathname, "/tmp/toto/")) {
+		struct stat st = { .st_mode = S_IFDIR };
+		memcpy(buf, &st, sizeof(*buf));
+		return 0;
+	}
+
+	errno = ENOENT;
+	return -1;
+}
+
+static DIR *
+test_opendir(const char *name)
+{
+//	return opendir(name);
+	int *p;
+
+	if (strcmp(name, "/tmp/toto/")) {
+		errno = ENOENT;
+		return NULL;
+	}
+
+	p = malloc(sizeof(int));
+	if (p)
+		*p = 0;
+
+	return (DIR *)p;
+}
+
+static struct dirent *
+test_readdir(DIR *dirp)
+{
+	//return readdir(dirp);
+	static struct dirent de[] = {
+		{ .d_type = DT_DIR, .d_name = ".." },
+		{ .d_type = DT_DIR, .d_name = "." },
+		{ .d_type = DT_REG, .d_name = "bar" },
+		{ .d_type = DT_UNKNOWN, .d_name = "bar2" },
+		{ .d_type = DT_REG, .d_name = "foo" },
+		{ .d_type = DT_DIR, .d_name = "titi" },
+		{ .d_type = DT_UNKNOWN, .d_name = "tutu" },
+		{ .d_name = "" },
+	};
+	int *p = (int *)dirp;
+	struct dirent *ret = &de[*p];
+
+	if (!strcmp(ret->d_name, ""))
+		return NULL;
+
+	*p = *p + 1;
+
+	return ret;
+}
+
+static int
+test_closedir(DIR *dirp)
+{
+	free(dirp);
+	return 0;
+}
+
+static int
+test_dirfd(DIR *dirp)
+{
+	int *p = (int *)dirp;
+	return *p;
+}
+
+static int
+test_fstatat(int dirfd, const char *pathname, struct stat *buf,
+	int flags)
+{
+	(void)dirfd;
+	(void)flags;
+
+	if (!strcmp(pathname, "bar2")) {
+		struct stat st = { .st_mode = S_IFREG };
+		memcpy(buf, &st, sizeof(*buf));
+		return 0;
+	} else if (!strcmp(pathname, "tutu")) {
+		struct stat st = { .st_mode = S_IFDIR };
+		memcpy(buf, &st, sizeof(*buf));
+		return 0;
+	}
+
+	errno = ENOENT;
+	return -1;
+}
+
+static int
+ec_node_file_override_functions(struct ec_node *gen_node)
+{
+	struct ec_node_file *node = (struct ec_node_file *)gen_node;
+
+	node->lstat = test_lstat;
+	node->opendir = test_opendir;
+	node->readdir = test_readdir;
+	node->closedir = test_closedir;
+	node->dirfd = test_dirfd;
+	node->fstatat = test_fstatat;
+
+	return 0;
+}
+
 static int ec_node_file_testcase(void)
 {
 	struct ec_node *node;
@@ -284,6 +410,8 @@ static int ec_node_file_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
+	ec_node_file_override_functions(node);
+
 	/* any string matches */
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "/tmp/bar");
@@ -298,7 +426,7 @@ static int ec_node_file_testcase(void)
 		EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE_PARTIAL(node,
 		"/tmp/toto/t", EC_NODE_ENDLIST,
-		"/tmp/toto/titi/", EC_NODE_ENDLIST);
+		"/tmp/toto/titi/", "/tmp/toto/tutu/", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/toto/f", EC_NODE_ENDLIST,
 		"/tmp/toto/foo", EC_NODE_ENDLIST);

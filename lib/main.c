@@ -206,8 +206,6 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 
 	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p seq=%d\n",
 		file, line, size, ret, seq++);
-	if (seq == 100)
-		printf("here\n");
 
 	if (ret)
 		alloc_success++;

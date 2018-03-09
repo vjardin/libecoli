@@ -399,3 +399,14 @@ term = post post_op*
 prod = term ( "*" term )*
 sum = prod ( "+" prod )*
 expr = sum
+
+
+-----
+
+break on malloc:
+
+b debug_malloc
+run <args...>
+watch seq
+condition <breakpoint num> seq == <value>
+c

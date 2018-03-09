@@ -199,29 +199,23 @@ static int ec_node_once_testcase(void)
 	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo", "foo");
 	ret |= EC_TEST_CHECK_PARSE(node, 0, "foox");
 
-	ec_node_free(node);
-
-#if 0 //XXX no completion test for node_once
-	/* test completion */
-	node = EC_NODE_OR(EC_NO_ID,
-		ec_node_str(EC_NO_ID, "foo"),
-		ec_node_str(EC_NO_ID, "bar"),
-		ec_node_str(EC_NO_ID, "bar2"),
-		ec_node_str(EC_NO_ID, "toto"),
-		ec_node_str(EC_NO_ID, "titi")
-	);
-	if (node == NULL) {
-		EC_LOG(EC_LOG_ERR, "cannot create node\n");
-		return -1;
-	}
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
-		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST);
+		"foo", "bar", EC_NODE_ENDLIST);
 	ret |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"b", EC_NODE_ENDLIST,
+		"bar", EC_NODE_ENDLIST);
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"foo", "", EC_NODE_ENDLIST,
+		"bar", EC_NODE_ENDLIST);
+	ret |= EC_TEST_CHECK_COMPLETE(node,
+		"bar", "", EC_NODE_ENDLIST,
+		"foo", "bar", EC_NODE_ENDLIST);
 	ec_node_free(node);
-#endif
+
 	return ret;
 }
 /* LCOV_EXCL_STOP */
