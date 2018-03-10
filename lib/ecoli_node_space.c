@@ -81,18 +81,18 @@ EC_NODE_TYPE_REGISTER(ec_node_space_type);
 static int ec_node_space_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = ec_node("space", EC_NO_ID);
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, " ");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, " ", "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, " foo");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo ");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, " ");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, " ", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, " foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo ");
 	ec_node_free(node);
 
 	/* test completion */
@@ -102,18 +102,18 @@ static int ec_node_space_testcase(void)
 		return -1;
 	}
 	/* never completes whatever the input */
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		" ", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

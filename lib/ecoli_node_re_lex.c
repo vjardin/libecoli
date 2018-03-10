@@ -223,7 +223,7 @@ struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)
 static int ec_node_re_lex_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int ret, testres = 0;
 
 	node = ec_node_re_lex(EC_NO_ID,
 		ec_node_many(EC_NO_ID,
@@ -239,27 +239,32 @@ static int ec_node_re_lex_testcase(void)
 		return -1;
 	}
 
-	/* XXX add ^ automatically ? */
-	ret |= ec_node_re_lex_add(node, "[a-zA-Z]+", 1);
-	ret |= ec_node_re_lex_add(node, "[0-9]+", 1);
-	ret |= ec_node_re_lex_add(node, "=", 1);
-	ret |= ec_node_re_lex_add(node, "-", 1);
-	ret |= ec_node_re_lex_add(node, "\\+", 1);
-	ret |= ec_node_re_lex_add(node, "[ 	]+", 0);
+	ret = ec_node_re_lex_add(node, "[a-zA-Z]+", 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ret = ec_node_re_lex_add(node, "[0-9]+", 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ret = ec_node_re_lex_add(node, "=", 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ret = ec_node_re_lex_add(node, "-", 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ret = ec_node_re_lex_add(node, "\\+", 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ret = ec_node_re_lex_add(node, "[ 	]+", 0);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
 	if (ret != 0) {
 		EC_LOG(EC_LOG_ERR, "cannot add regexp to node\n");
 		ec_node_free(node);
 		return -1;
 	}
 
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "  foo bar  324 bar234");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo bar324");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foobar");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "  foo bar  324 bar234");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo bar324");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foobar");
 
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

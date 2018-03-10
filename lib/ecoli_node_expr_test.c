@@ -226,7 +226,7 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 static int ec_node_expr_testcase(void)
 {
 	struct ec_node *node = NULL, *lex_node = NULL;
-	int ret = 0;
+	int testres = 0;
 
 	node = ec_node("expr", "my_expr");
 	if (node == NULL)
@@ -239,66 +239,67 @@ static int ec_node_expr_testcase(void)
 	ec_node_expr_add_post_op(node, ec_node_str(EC_NO_ID, "^")); /* square */
 	ec_node_expr_add_parenthesis(node, ec_node_str(EC_NO_ID, "("),
 		ec_node_str(EC_NO_ID, ")"));
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "1", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "1", "*");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "1", "*", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "1", "*", "1", "*");
-	ret |= EC_TEST_CHECK_PARSE(node, 4, "1", "+", "!", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 4, "1", "^", "+", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 5, "1", "*", "1", "*", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 5, "1", "*", "1", "+", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 7, "1", "*", "1", "*", "1", "*", "1");
-	ret |= EC_TEST_CHECK_PARSE(
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "1", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "1", "*");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "1", "*", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "1", "*", "1", "*");
+	testres |= EC_TEST_CHECK_PARSE(node, 4, "1", "+", "!", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 4, "1", "^", "+", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 5, "1", "*", "1", "*", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 5, "1", "*", "1", "+", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 7, "1", "*", "1", "*", "1", "*",
+				"1");
+	testres |= EC_TEST_CHECK_PARSE(
 		node, 10, "!", "(", "1", "*", "(", "1", "+", "1", ")", ")");
-	ret |= EC_TEST_CHECK_PARSE(node, 5, "1", "+", "!", "1", "^");
+	testres |= EC_TEST_CHECK_PARSE(node, 5, "1", "+", "!", "1", "^");
 
 	/* prepend a lexer to the expression node */
 	lex_node = ec_node_re_lex(EC_NO_ID, ec_node_clone(node));
 	if (lex_node == NULL)
 		goto fail;
 
-	ret |= ec_node_re_lex_add(lex_node, "[0-9]+", 1); /* vars */
-	ret |= ec_node_re_lex_add(lex_node, "[+*!^()]", 1); /* operators */
-	ret |= ec_node_re_lex_add(lex_node, "[ 	]+", 0); /* spaces */
+	testres |= ec_node_re_lex_add(lex_node, "[0-9]+", 1); /* vars */
+	testres |= ec_node_re_lex_add(lex_node, "[+*!^()]", 1); /* operators */
+	testres |= ec_node_re_lex_add(lex_node, "[ 	]+", 0); /* spaces */
 
 	/* valid expressions */
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "!1");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "1^");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "1^ + 1");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "1 + 4 * (2 + 3^)^");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "(1)");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "3*!3+!3*(2+ 2)");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "!!(!1)^ + !(4 + (2*3))");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, 1, "(1 + 1)^ * 1^");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "!1");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "1^");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "1^ + 1");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "1 + 4 * (2 + 3^)^");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "(1)");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "3*!3+!3*(2+ 2)");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "!!(!1)^ + !(4 + (2*3))");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, 1, "(1 + 1)^ * 1^");
 
 	/* invalid expressions */
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "()");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "(");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, ")");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "+1");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+*1");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+(1*1");
-	ret |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+!1!1)");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "()");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "(");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, ")");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "+1");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+*1");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+(1*1");
+	testres |= EC_TEST_CHECK_PARSE(lex_node, -1, "1+!1!1)");
 
-	ret |= ec_node_expr_test_eval(lex_node, node, "1^", 1);
-	ret |= ec_node_expr_test_eval(lex_node, node, "2^", 4);
-	ret |= ec_node_expr_test_eval(lex_node, node, "!1", 0);
-	ret |= ec_node_expr_test_eval(lex_node, node, "!0", 1);
+	testres |= ec_node_expr_test_eval(lex_node, node, "1^", 1);
+	testres |= ec_node_expr_test_eval(lex_node, node, "2^", 4);
+	testres |= ec_node_expr_test_eval(lex_node, node, "!1", 0);
+	testres |= ec_node_expr_test_eval(lex_node, node, "!0", 1);
 
-	ret |= ec_node_expr_test_eval(lex_node, node, "1+1", 2);
-	ret |= ec_node_expr_test_eval(lex_node, node, "1+2+3", 6);
-	ret |= ec_node_expr_test_eval(lex_node, node, "1+1*2", 4);
-	ret |= ec_node_expr_test_eval(lex_node, node, "2 * 2^", 8);
-	ret |= ec_node_expr_test_eval(lex_node, node, "(1 + !0)^ * !0^", 4);
-	ret |= ec_node_expr_test_eval(lex_node, node, "(1 + !1) * 3", 3);
+	testres |= ec_node_expr_test_eval(lex_node, node, "1+1", 2);
+	testres |= ec_node_expr_test_eval(lex_node, node, "1+2+3", 6);
+	testres |= ec_node_expr_test_eval(lex_node, node, "1+1*2", 4);
+	testres |= ec_node_expr_test_eval(lex_node, node, "2 * 2^", 8);
+	testres |= ec_node_expr_test_eval(lex_node, node, "(1 + !0)^ * !0^", 4);
+	testres |= ec_node_expr_test_eval(lex_node, node, "(1 + !1) * 3", 3);
 
 	ec_node_free(node);
 	ec_node_free(lex_node);
 
-	return ret;
+	return testres;
 
 fail:
 	ec_node_free(lex_node);

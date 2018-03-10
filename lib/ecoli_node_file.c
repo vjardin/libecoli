@@ -295,8 +295,6 @@ EC_NODE_TYPE_REGISTER(ec_node_file_type);
 static int
 test_lstat(const char *pathname, struct stat *buf)
 {
-//	return lstat(pathname, buf);
-
 	if (!strcmp(pathname, "/tmp/toto/")) {
 		struct stat st = { .st_mode = S_IFDIR };
 		memcpy(buf, &st, sizeof(*buf));
@@ -310,7 +308,6 @@ test_lstat(const char *pathname, struct stat *buf)
 static DIR *
 test_opendir(const char *name)
 {
-//	return opendir(name);
 	int *p;
 
 	if (strcmp(name, "/tmp/toto/")) {
@@ -328,7 +325,6 @@ test_opendir(const char *name)
 static struct dirent *
 test_readdir(DIR *dirp)
 {
-	//return readdir(dirp);
 	static struct dirent de[] = {
 		{ .d_type = DT_DIR, .d_name = ".." },
 		{ .d_type = DT_DIR, .d_name = "." },
@@ -403,7 +399,7 @@ ec_node_file_override_functions(struct ec_node *gen_node)
 static int ec_node_file_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = ec_node("file", EC_NO_ID);
 	if (node == NULL) {
@@ -413,30 +409,30 @@ static int ec_node_file_testcase(void)
 	ec_node_file_override_functions(node);
 
 	/* any string matches */
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "/tmp/bar");
-	ret |= EC_TEST_CHECK_PARSE(node, -1);
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "/tmp/bar");
+	testres |= EC_TEST_CHECK_PARSE(node, -1);
 
 	/* test completion */
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/toto/t", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE_PARTIAL(node,
+	testres |= EC_TEST_CHECK_COMPLETE_PARTIAL(node,
 		"/tmp/toto/t", EC_NODE_ENDLIST,
 		"/tmp/toto/titi/", "/tmp/toto/tutu/", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/toto/f", EC_NODE_ENDLIST,
 		"/tmp/toto/foo", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"/tmp/toto/b", EC_NODE_ENDLIST,
 		"/tmp/toto/bar", "/tmp/toto/bar2", EC_NODE_ENDLIST);
 
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

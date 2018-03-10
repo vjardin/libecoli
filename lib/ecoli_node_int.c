@@ -354,7 +354,7 @@ static int ec_node_int_testcase(void)
 	struct ec_parsed *p;
 	struct ec_node *node;
 	const char *s;
-	int ret = 0;
+	int testres = 0, ret;
 	uint64_t u64;
 	int64_t i64;
 
@@ -363,32 +363,33 @@ static int ec_node_int_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "0");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "256", "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0x100");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, " 1");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "-1");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x101");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x100000000000000000");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "4r");
-	ec_node_uint_disable_limits(node);
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "0");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "256", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "0x100");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, " 1");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "-1");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "0x101");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "0x100000000000000000");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
+	ret = ec_node_uint_disable_limits(node);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot disable limits");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "0");
 
 	p = ec_node_parse(node, "1");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
+	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
-		u64 == 1);
+		u64 == 1, "bad integer value");
 	ec_parsed_free(p);
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
+	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
-		u64 == 10);
+		u64 == 10, "bad integer value");
 	ec_parsed_free(p);
 	ec_node_free(node);
 
@@ -397,22 +398,23 @@ static int ec_node_int_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "-1");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "7fffffffffffffff");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0x7fffffffffffffff");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x8000000000000000");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "-2");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "4r");
-	ec_node_int_disable_limits(node);
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "-2");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "0");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "-1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "7fffffffffffffff");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "0x7fffffffffffffff");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "0x8000000000000000");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "-2");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
+	ret = ec_node_int_disable_limits(node);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot disable limits");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "-2");
 
 	p = ec_node_parse(node, "10");
 	s = ec_strvec_val(ec_parsed_strvec(p), 0);
-	EC_TEST_ASSERT(s != NULL &&
+	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_int_getval(node, s, &i64) == 0 &&
-		i64 == 16);
+		i64 == 16, "bad integer value");
 	ec_parsed_free(p);
 	ec_node_free(node);
 
@@ -421,11 +423,11 @@ static int ec_node_int_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "0");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "-1");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "-9223372036854775808");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "0x0");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "0");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "-1");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "-9223372036854775808");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "0x0");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "1");
 	ec_node_free(node);
 
 	/* test completion */
@@ -434,18 +436,18 @@ static int ec_node_int_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"x", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"1", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

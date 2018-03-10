@@ -365,7 +365,7 @@ static int ec_keyval_testcase(void)
 	struct ec_keyval *keyval, *dup;
 	char *val;
 	size_t i;
-	int ret;
+	int ret, testres = 0;
 
 	keyval = ec_keyval();
 	if (keyval == NULL) {
@@ -373,36 +373,43 @@ static int ec_keyval_testcase(void)
 		return -1;
 	}
 
-	EC_TEST_ASSERT(ec_keyval_len(keyval) == 0);
+	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 0, "bad keyval len");
 	ret = ec_keyval_set(keyval, "key1", "val1", NULL);
-	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	testres |= EC_TEST_CHECK(ret == 0, "cannot set key");
 	ret = ec_keyval_set(keyval, "key2", ec_strdup("val2"), ec_free_func);
-	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
-	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot set key");
+	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 2, "bad keyval len");
 
 	val = ec_keyval_get(keyval, "key1");
-	EC_TEST_ASSERT(val != NULL && !strcmp(val, "val1"));
+	testres |= EC_TEST_CHECK(val != NULL && !strcmp(val, "val1"),
+				"invalid keyval value");
 	val = ec_keyval_get(keyval, "key2");
-	EC_TEST_ASSERT(val != NULL && !strcmp(val, "val2"));
+	testres |= EC_TEST_CHECK(val != NULL && !strcmp(val, "val2"),
+				"invalid keyval value");
 	val = ec_keyval_get(keyval, "key3");
-	EC_TEST_ASSERT(val == NULL);
+	testres |= EC_TEST_CHECK(val == NULL, "key3 should be NULL");
 
 	ret = ec_keyval_set(keyval, "key1", "another_val1", NULL);
-	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+	testres |= EC_TEST_CHECK(ret == 0, "cannot set key");
 	ret = ec_keyval_set(keyval, "key2", ec_strdup("another_val2"),
 			ec_free_func);
-	EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
-	EC_TEST_ASSERT(ec_keyval_len(keyval) == 2);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot set key");
+	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 2,
+				"bad keyval len");
 
 	val = ec_keyval_get(keyval, "key1");
-	EC_TEST_ASSERT(val != NULL && !strcmp(val, "another_val1"));
+	testres |= EC_TEST_CHECK(val != NULL && !strcmp(val, "another_val1"),
+		"invalid keyval value");
 	val = ec_keyval_get(keyval, "key2");
-	EC_TEST_ASSERT(val != NULL && !strcmp(val, "another_val2"));
-	EC_TEST_ASSERT(ec_keyval_has_key(keyval, "key1"));
+	testres |= EC_TEST_CHECK(val != NULL && !strcmp(val, "another_val2"),
+		"invalid keyval value");
+	testres |= EC_TEST_CHECK(ec_keyval_has_key(keyval, "key1"),
+		"key1 should be in keyval");
 
 	ret = ec_keyval_del(keyval, "key1");
-	EC_TEST_ASSERT_STR(ret == 0, "cannot del key");
-	EC_TEST_ASSERT(ec_keyval_len(keyval) == 1);
+	testres |= EC_TEST_CHECK(ret == 0, "cannot del key");
+	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 1,
+		"invalid keyval len");
 
 	ec_keyval_dump(stdout, NULL);
 	ec_keyval_dump(stdout, keyval);
@@ -411,16 +418,18 @@ static int ec_keyval_testcase(void)
 		char key[8];
 		snprintf(key, sizeof(key), "k%zd", i);
 		ret = ec_keyval_set(keyval, key, "val", NULL);
-		EC_TEST_ASSERT_STR(ret == 0, "cannot set key");
+		testres |= EC_TEST_CHECK(ret == 0, "cannot set key");
 	}
 	dup = ec_keyval_dup(keyval);
-	EC_TEST_ASSERT_STR(dup != NULL, "cannot duplicate keyval");
+	testres |= EC_TEST_CHECK(dup != NULL, "cannot duplicate keyval");
 	if (dup != NULL) {
 		for (i = 0; i < 100; i++) {
 			char key[8];
 			snprintf(key, sizeof(key), "k%zd", i);
 			val = ec_keyval_get(dup, key);
-			EC_TEST_ASSERT(val != NULL && !strcmp(val, "val"));
+			testres |= EC_TEST_CHECK(
+				val != NULL && !strcmp(val, "val"),
+				"invalid keyval value");
 		}
 		ec_keyval_free(dup);
 		dup = NULL;
@@ -428,13 +437,13 @@ static int ec_keyval_testcase(void)
 
 	/* einval */
 	ret = ec_keyval_set(keyval, NULL, "val1", NULL);
-	EC_TEST_ASSERT(ret == -1);
+	testres |= EC_TEST_CHECK(ret == -1, "should not be able to set key");
 	val = ec_keyval_get(keyval, NULL);
-	EC_TEST_ASSERT(val == NULL);
+	testres |= EC_TEST_CHECK(val == NULL, "get(NULL) should no success");
 
 	ec_keyval_free(keyval);
 
-	return 0;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

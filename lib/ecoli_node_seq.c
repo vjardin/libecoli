@@ -276,7 +276,7 @@ fail:
 static int ec_node_seq_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = EC_NODE_SEQ(EC_NO_ID,
 		ec_node_str(EC_NO_ID, "foo"),
@@ -286,13 +286,13 @@ static int ec_node_seq_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar", "toto");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foox", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo", "barx");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "bar", "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar", "toto");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foox", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo", "barx");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "bar", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "", "foo");
 	ec_node_free(node);
 
 	/* test completion */
@@ -305,38 +305,36 @@ static int ec_node_seq_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
-	ec_node_free(node);
-	return 0;
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "", EC_NODE_ENDLIST,
 		"bar", "toto", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "t", EC_NODE_ENDLIST,
 		"toto", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "b", EC_NODE_ENDLIST,
 		"bar", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "bar", EC_NODE_ENDLIST,
 		"bar", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"x", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foobarx", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

@@ -177,7 +177,7 @@ fail:
 static int ec_node_once_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = ec_node_many(EC_NO_ID,
 			EC_NODE_OR(EC_NO_ID,
@@ -189,34 +189,34 @@ static int ec_node_once_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 0);
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "foo", "bar", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "bar", "foo", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "bar", "foo", "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo", "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 0, "foox");
+	testres |= EC_TEST_CHECK_PARSE(node, 0);
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "foo", "bar", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "bar", "foo", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "bar", "foo", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 0, "foox");
 
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		"foo", "bar", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"b", EC_NODE_ENDLIST,
 		"bar", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"foo", "", EC_NODE_ENDLIST,
 		"bar", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", "", EC_NODE_ENDLIST,
 		"foo", "bar", EC_NODE_ENDLIST);
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

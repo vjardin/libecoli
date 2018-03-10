@@ -526,7 +526,7 @@ struct ec_node *ec_node_cmd(const char *id, const char *cmd_str)
 static int ec_node_cmd_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = EC_NODE_CMD(EC_NO_ID,
 		"command [option] (subset1, subset2, subset3, subset4) x|y z*",
@@ -537,20 +537,20 @@ static int ec_node_cmd_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "subset1", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 4, "command", "subset3", "subset2",
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "command", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "command", "subset1", "1");
+	testres |= EC_TEST_CHECK_PARSE(node, 4, "command", "subset3", "subset2",
 				"1");
-	ret |= EC_TEST_CHECK_PARSE(node, 5, "command", "subset2", "subset3",
+	testres |= EC_TEST_CHECK_PARSE(node, 5, "command", "subset2", "subset3",
 				"subset1", "1");
-	ret |= EC_TEST_CHECK_PARSE(node, 6, "command", "subset3", "subset1",
+	testres |= EC_TEST_CHECK_PARSE(node, 6, "command", "subset3", "subset1",
 				"subset4", "subset2", "4");
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "command", "23");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "command", "option", "23");
-	ret |= EC_TEST_CHECK_PARSE(node, 5, "command", "option", "23",
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "command", "23");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "command", "option", "23");
+	testres |= EC_TEST_CHECK_PARSE(node, 5, "command", "option", "23",
 				"z", "z");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "command", "15");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "command", "15");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo");
 	ec_node_free(node);
 
 	node = EC_NODE_CMD(EC_NO_ID, "good morning [count] bob|bobby|michael",
@@ -559,15 +559,15 @@ static int ec_node_cmd_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "1", "bob");
+	testres |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "1", "bob");
 
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		"good", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"g", EC_NODE_ENDLIST,
 		"good", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"good", "morning", "", EC_NODE_ENDLIST,
 		"bob", "bobby", "michael", EC_NODE_ENDLIST);
 
@@ -578,13 +578,13 @@ static int ec_node_cmd_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 0);
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 0, "x");
+	testres |= EC_TEST_CHECK_PARSE(node, 0);
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 0, "x");
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

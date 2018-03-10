@@ -178,7 +178,7 @@ build_counter(struct ec_parsed *parsed, void *opaque)
 static int ec_node_dynamic_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = ec_node_many(EC_NO_ID,
 			ec_node_dynamic(EC_NO_ID, build_counter, NULL),
@@ -187,22 +187,22 @@ static int ec_node_dynamic_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "count-0");
-	ret |= EC_TEST_CHECK_PARSE(node, 3, "count-0", "count-1", "count-2");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "count-0", "count-0");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "count-0");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "count-0", "count-1", "count-2");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "count-0", "count-0");
 
 	/* test completion */
 
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"c", EC_NODE_ENDLIST,
 		"count-0", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"count-0", "", EC_NODE_ENDLIST,
 		"count-1", EC_NODE_ENDLIST,
 		"count-1");
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

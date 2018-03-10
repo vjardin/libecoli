@@ -187,7 +187,7 @@ fail:
 static int ec_node_or_testcase(void)
 {
 	struct ec_node *node;
-	int ret = 0;
+	int testres = 0;
 
 	node = EC_NODE_OR(EC_NO_ID,
 		ec_node_str(EC_NO_ID, "foo"),
@@ -197,13 +197,13 @@ static int ec_node_or_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, 1, "foo", "bar");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, " ");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "foox");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "toto");
-	ret |= EC_TEST_CHECK_PARSE(node, -1, "");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo", "bar");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, " ");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foox");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "toto");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "");
 	ec_node_free(node);
 
 	/* test completion */
@@ -218,30 +218,30 @@ static int ec_node_or_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"", EC_NODE_ENDLIST,
 		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"f", EC_NODE_ENDLIST,
 		"foo", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"b", EC_NODE_ENDLIST,
 		"bar", "bar2", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"bar", EC_NODE_ENDLIST,
 		"bar", "bar2", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"t", EC_NODE_ENDLIST,
 		"toto", "titi", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"to", EC_NODE_ENDLIST,
 		"toto", EC_NODE_ENDLIST);
-	ret |= EC_TEST_CHECK_COMPLETE(node,
+	testres |= EC_TEST_CHECK_COMPLETE(node,
 		"x", EC_NODE_ENDLIST,
 		EC_NODE_ENDLIST);
 	ec_node_free(node);
 
-	return ret;
+	return testres;
 }
 /* LCOV_EXCL_STOP */
 

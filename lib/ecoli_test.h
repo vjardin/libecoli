@@ -79,17 +79,15 @@ int ec_test_check_parse(struct ec_node *node, int expected, ...);
 	EC_LOG(EC_LOG_ERR, "%s:%d: error: " fmt "\n",			\
 		__FILE__, __LINE__, ##__VA_ARGS__);			\
 
-/* XXX this is not an assert, it does not abort */
-// XXX use it instead of ec_log to have the file:line
-// XXX set test result?
-#define EC_TEST_ASSERT_STR(cond, fmt, ...)				\
-	do {								\
-		if (!(cond))						\
-			EC_TEST_ERR("assert failure: (" #cond ") " fmt,	\
-				##__VA_ARGS__);				\
-	} while (0)
-
-#define EC_TEST_ASSERT(cond) EC_TEST_ASSERT_STR(cond, "")
+#define EC_TEST_CHECK(cond, fmt, ...) ({				\
+	int ret_ = 0;							\
+	if (!(cond)) {							\
+		EC_TEST_ERR("(" #cond ") is wrong. "			\
+			##__VA_ARGS__);					\
+		ret_ = -1;						\
+	}								\
+	ret_;								\
+})
 
 /* node, input, [expected1, expected2, ...] */
 #define EC_TEST_CHECK_PARSE(node, args...) ({				\
