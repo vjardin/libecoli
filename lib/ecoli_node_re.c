@@ -75,8 +75,10 @@ static void ec_node_re_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_re *node = (struct ec_node_re *)gen_node;
 
-	ec_free(node->re_str);
-	regfree(&node->re);
+	if (node->re_str != NULL) {
+		ec_free(node->re_str);
+		regfree(&node->re);
+	}
 }
 
 static struct ec_node_type ec_node_re_type = {
@@ -92,26 +94,33 @@ EC_NODE_TYPE_REGISTER(ec_node_re_type);
 int ec_node_re_set_regexp(struct ec_node *gen_node, const char *str)
 {
 	struct ec_node_re *node = (struct ec_node_re *)gen_node;
+	char *str_copy = NULL;
+	regex_t re;
 	int ret;
 
 	if (str == NULL)
 		return -EINVAL;
-	if (node->re_str != NULL) // XXX allow to replace
-		return -EEXIST;
 
 	ret = -ENOMEM;
-	node->re_str = ec_strdup(str);
-	if (node->re_str == NULL)
+	str_copy = ec_strdup(str);
+	if (str_copy == NULL)
 		goto fail;
 
 	ret = -EINVAL;
-	if (regcomp(&node->re, node->re_str, REG_EXTENDED) != 0)
+	if (regcomp(&re, str_copy, REG_EXTENDED) != 0)
 		goto fail;
+
+	if (node->re_str != NULL) {
+		ec_free(node->re_str);
+		regfree(&node->re);
+	}
+	node->re_str = str_copy;
+	node->re = re;
 
 	return 0;
 
 fail:
-	ec_free(node->re_str);
+	ec_free(str_copy);
 	return ret;
 }
 
