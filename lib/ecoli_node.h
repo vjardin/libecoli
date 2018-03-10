@@ -79,13 +79,15 @@ struct ec_completed;
 struct ec_strvec;
 struct ec_keyval;
 
-#define EC_NODE_TYPE_REGISTER(t)						\
+#define EC_NODE_TYPE_REGISTER(t)					\
 	static void ec_node_init_##t(void);				\
 	static void __attribute__((constructor, used))			\
 	ec_node_init_##t(void)						\
 	{								\
 		if (ec_node_type_register(&t) < 0)			\
-			fprintf(stderr, "cannot register %s\n", t.name); \
+			fprintf(stderr,					\
+				"cannot register node type %s\n",	\
+				t.name);				\
 	}
 
 TAILQ_HEAD(ec_node_type_list, ec_node_type);

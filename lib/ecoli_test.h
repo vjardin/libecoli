@@ -35,13 +35,14 @@
 struct ec_node;
 enum ec_completed_type;
 
-// XXX check if already exists?
 #define EC_TEST_REGISTER(t)						\
 	static void ec_test_init_##t(void);				\
 	static void __attribute__((constructor, used))			\
 	ec_test_init_##t(void)						\
 	{								\
-		 ec_test_register(&t);					\
+		if (ec_test_register(&t) < 0)				\
+			fprintf(stderr, "cannot register test %s\n",	\
+				t.name);				\
 	}
 
 /**
@@ -66,8 +67,10 @@ struct ec_test {
  * @param test
  *   A pointer to a ec_test structure describing the test
  *   to be registered.
+ * @return
+ *   0 on success, -1 on error (errno is set).
  */
-void ec_test_register(struct ec_test *test);
+int ec_test_register(struct ec_test *test);
 
 int ec_test_all(void);
 int ec_test_one(const char *name);

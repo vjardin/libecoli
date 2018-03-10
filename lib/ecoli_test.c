@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include <ecoli_log.h>
 #include <ecoli_malloc.h>
@@ -43,11 +44,27 @@ static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 
 EC_LOG_TYPE_REGISTER(test);
 
-/* register a test case */
-void ec_test_register(struct ec_test *test)
+static struct ec_test *ec_test_lookup(const char *name)
 {
+	struct ec_test *test;
+
+	TAILQ_FOREACH(test, &test_list, next) {
+		if (!strcmp(name, test->name))
+			return test;
+	}
+
+	errno = EEXIST;
+	return NULL;
+}
+
+int ec_test_register(struct ec_test *test)
+{
+	if (ec_test_lookup(test->name) != NULL)
+		return -1;
+
 	TAILQ_INSERT_TAIL(&test_list, test, next);
-	// XXX check if already exist, like for type
+
+	return 0;
 }
 
 int ec_test_check_parse(struct ec_node *tk, int expected, ...)
