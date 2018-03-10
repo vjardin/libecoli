@@ -124,7 +124,18 @@ void ec_keyval_free(struct ec_keyval *keyval);
  */
 size_t ec_keyval_len(const struct ec_keyval *keyval);
 
-/* XXX help */
+/**
+ * Duplicate a hash table
+ *
+ * A reference counter is shared between the clones of
+ * hash tables so that the objects are freed only when
+ * the last reference is destroyed.
+ *
+ * @param keyval
+ *   The hash table.
+ * @return
+ *   The duplicated hash table, or NULL on error (errno is set).
+ */
 struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval);
 
 /**
