@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2016, Olivier MATZ <zer0@droids-corp.org>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
