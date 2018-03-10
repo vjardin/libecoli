@@ -9,27 +9,24 @@ X tk_re
 cleanup / rework
 ================
 
-- ec_completed_item_update()
-- ec_completed_item_set_display_value()
-
-- add_no_match
-- add_partial_match
+X ec_completed_item_update()
+X ec_completed_item_set_display_value()
+X add_no_match
+X add_partial_match
 - check XXX in code
-- properly manage quotes in shlex
+X properly manage quotes in shlex
 X remove the _new() functions
-- iterate children nodes without chaining them
-- add a tk vector type: will be used in several nodes (ex: or, seq, ...)
+X iterate children nodes without chaining them
+- add a node vector type: will be used in several nodes (ex: or, seq, ...)
 - check allocation model everywhere
 - checkpatch?
 - use linux style (update .emacs)
 - better logs
-- return values
-- use errno when returning pointers
-- missing static / const
-- license: "s/neither the name...may/the names of its contributors may not/"
+- check return values (-1 or NULL) + use errno
+- check missing static / const
+- license: SPDX
 - check all completion nodes
 X split ecoli_tk.h
-- cache results when appropriate?
 - size_t or unsigned int?
 X rename:
   X ec_tk -> ec_node
@@ -37,12 +34,10 @@ X rename:
   X ec_completed_tk -> ec_completed
   X tk, gen_tk, token, ... -> node
   X tokens -> input_str / input_strvec ?
-- use is_err() or errno for funcs returning ptrs, or use errno for all funcs
-- save node path in completion to fix help string
+X save node path in completion to fix help string
 - code coverage
 - try to hide structures
 - anything better than weakref?
-- add get_max_parse_len() for all relevant nodes
 - add ec_node_defaults.[ch] providing usual implementations of node methods
 X use vec for strvec
 
