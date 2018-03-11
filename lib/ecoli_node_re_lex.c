@@ -14,6 +14,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_completed.h>
 #include <ecoli_parsed.h>
 #include <ecoli_node_many.h>
 #include <ecoli_node_or.h>
@@ -156,7 +157,7 @@ static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
 static struct ec_node_type ec_node_re_lex_type = {
 	.name = "re_lex",
 	.parse = ec_node_re_lex_parse,
-	//.complete = ec_node_re_lex_complete, //XXX
+	.complete = ec_node_default_complete,
 	.size = sizeof(struct ec_node_re_lex),
 	.free_priv = ec_node_re_lex_free_priv,
 };
@@ -265,6 +266,11 @@ static int ec_node_re_lex_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo bar324");
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "foobar");
+
+	/* no completion */
+	testres |= EC_TEST_CHECK_COMPLETE(node,
+		"", EC_NODE_ENDLIST,
+		EC_NODE_ENDLIST);
 
 	ec_node_free(node);
 
