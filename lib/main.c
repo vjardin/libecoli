@@ -15,6 +15,7 @@
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
 
+/* LCOV_EXCL_START */
 EC_LOG_TYPE_REGISTER(main);
 
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
@@ -399,3 +400,4 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+/* LCOV_EXCL_STOP */
