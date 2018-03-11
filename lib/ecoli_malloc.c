@@ -3,11 +3,14 @@
  */
 
 #include <ecoli_init.h>
+#include <ecoli_test.h>
 #include <ecoli_malloc.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+
+EC_LOG_TYPE_REGISTER(malloc);
 
 static int init_done = 0;
 
@@ -120,3 +123,52 @@ static struct ec_init ec_malloc_init = {
 };
 
 EC_INIT_REGISTER(ec_malloc_init);
+
+/* LCOV_EXCL_START */
+static int ec_malloc_testcase(void)
+{
+	int ret, testres = 0;
+	char *ptr, *ptr2;
+
+	ret = ec_malloc_register(NULL, NULL, NULL);
+	testres |= EC_TEST_CHECK(ret == -1,
+		"should not be able to register NULL malloc handlers");
+	ret = ec_malloc_register(__ec_malloc, __ec_free, __ec_realloc);
+	testres |= EC_TEST_CHECK(ret == -1,
+		"should not be able to register after init");
+
+	/* registration is tested in the test main.c */
+
+	ptr = ec_malloc(10);
+	if (ptr == NULL)
+		return -1;
+	memset(ptr, 0, 10);
+	ptr2 = ec_realloc(ptr, 20);
+	EC_TEST_CHECK(ptr2 != NULL, "cannot realloc ptr\n");
+	if (ptr2 == NULL)
+		ec_free(ptr);
+	else
+		ec_free(ptr2);
+	ptr = NULL;
+	ptr2 = NULL;
+
+	ptr = ec_malloc_func(10);
+	if (ptr == NULL)
+		return -1;
+	memset(ptr, 0, 10);
+	ec_free_func(ptr);
+	ptr = NULL;
+
+	ptr = ec_calloc(2, (size_t)-1);
+	EC_TEST_CHECK(ptr == NULL, "bad overflow check in ec_calloc\n");
+
+	return testres;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_malloc_test = {
+	.name = "malloc",
+	.test = ec_malloc_testcase,
+};
+
+EC_TEST_REGISTER(ec_malloc_test);

@@ -121,7 +121,8 @@ extern struct ec_malloc_handler ec_malloc_handler;
 /**
  * Ecoli malloc function.
  *
- * On use this function when the macro ec_malloc() cannot be used.
+ * Use this function when the macro ec_malloc() cannot be used,
+ * for instance when it is passed as a callback pointer.
  */
 void *ec_malloc_func(size_t size);
 
@@ -145,7 +146,8 @@ void *ec_malloc_func(size_t size);
 /**
  * Ecoli free function.
  *
- * On use this function when the macro ec_free() cannot be used.
+ * Use this function when the macro ec_free() cannot be used,
+ * for instance when it is passed as a callback pointer.
  */
 void ec_free_func(void *ptr);
 

@@ -16,9 +16,11 @@ void __ec_assert_print(bool expr, const char *expr_str, const char *format, ...)
 	if (expr)
 		return;
 
+	/* LCOV_EXCL_START */
 	va_start(ap, format);
 	fprintf(stderr, "assertion failed: '%s' is false\n", expr_str);
 	vfprintf(stderr, format, ap);
 	va_end(ap);
 	abort();
+	/* LCOV_EXCL_END */
 }
