@@ -119,7 +119,7 @@ static int ec_malloc_init_func(void)
 
 static struct ec_init ec_malloc_init = {
 	.init = ec_malloc_init_func,
-	.priority = 50,
+	.priority = 40,
 };
 
 EC_INIT_REGISTER(ec_malloc_init);

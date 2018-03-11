@@ -213,6 +213,7 @@ void ec_parsed_free_children(struct ec_parsed *parsed)
 	while (!TAILQ_EMPTY(&parsed->children)) {
 		child = TAILQ_FIRST(&parsed->children);
 		TAILQ_REMOVE(&parsed->children, child, next);
+		child->parent = NULL;
 		ec_parsed_free(child);
 	}
 }
@@ -222,9 +223,8 @@ void ec_parsed_free(struct ec_parsed *parsed)
 	if (parsed == NULL)
 		return;
 
-	// assert(parsed->parent == NULL); XXX
-	// or
-	// parsed = ec_parsed_get_root(parsed);
+	ec_assert_print(parsed->parent == NULL,
+			"parent not NULL in ec_parsed_free()");
 
 	ec_parsed_free_children(parsed);
 	ec_strvec_free(parsed->strvec);
