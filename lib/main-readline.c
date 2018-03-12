@@ -114,7 +114,6 @@ static char *get_node_help(const struct ec_completed_item *item)
 
 	grp = ec_completed_item_get_grp(item);
 	state = grp->state;
-	ec_parsed_dump(stdout, ec_parsed_get_root(state));
 	for (state = grp->state; state != NULL;
 	     state = ec_parsed_get_parent(state)) {
 		node = ec_parsed_get_node(state);
@@ -146,6 +145,7 @@ static int show_help(int ignore, int invoking_key)
 	unsigned int count;
 	char **helps = NULL;
 	int match = 0;
+	int cols;
 
 	(void)ignore;
 	(void)invoking_key;
@@ -168,8 +168,6 @@ static int show_help(int ignore, int invoking_key)
 	line = NULL;
 	if (c == NULL)
 		goto fail;
-
-	ec_completed_dump(stdout, c);
 
 	/* let's display one contextual help per node */
 	count = 0;
@@ -205,7 +203,9 @@ static int show_help(int ignore, int invoking_key)
 
 	ec_completed_iter_free(iter);
 	ec_completed_free(c);
-	rl_display_match_list(helps, count + match, 1000); /* XXX 1000 */
+	/* ensure not more than 1 entry per line */
+	rl_get_screen_size(NULL, &cols);
+	rl_display_match_list(helps, count + match, cols);
 	rl_forced_update_display();
 
 	return 0;
