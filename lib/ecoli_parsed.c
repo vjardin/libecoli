@@ -252,7 +252,7 @@ static void __ec_parsed_dump(FILE *out,
 	ec_strvec_dump(out, vec);
 
 	TAILQ_FOREACH(child, &parsed->children, next)
-		__ec_parsed_dump(out, child, indent + 2);
+		__ec_parsed_dump(out, child, indent + 1);
 }
 
 void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed)
