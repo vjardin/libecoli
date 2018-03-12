@@ -14,7 +14,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
@@ -30,11 +30,11 @@ struct ec_node_many {
 };
 
 static int ec_node_many_parse(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_many *node = (struct ec_node_many *)gen_node;
-	struct ec_parsed *child_parsed;
+	struct ec_parse *child_parse;
 	struct ec_strvec *childvec = NULL;
 	size_t off = 0, count;
 	int ret;
@@ -54,14 +54,14 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (ret == EC_PARSED_NOMATCH)
+		if (ret == EC_PARSE_NOMATCH)
 			break;
 
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
-			child_parsed = ec_parsed_get_last_child(state);
-			ec_parsed_unlink_child(state, child_parsed);
-			ec_parsed_free(child_parsed);
+			child_parse = ec_parse_get_last_child(state);
+			ec_parse_unlink_child(state, child_parse);
+			ec_parse_free(child_parse);
 			break;
 		}
 
@@ -69,8 +69,8 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 	}
 
 	if (count < node->min) {
-		ec_parsed_free_children(state);
-		return EC_PARSED_NOMATCH;
+		ec_parse_free_children(state);
+		return EC_PARSE_NOMATCH;
 	}
 
 	return off;
@@ -85,7 +85,7 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_comp_get_state(comp);
+	struct ec_parse *parse = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
@@ -110,7 +110,7 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(node->child, parsed, childvec);
+		ret = ec_node_parse_child(node->child, parse, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -118,19 +118,19 @@ __ec_node_many_complete(struct ec_node_many *node, unsigned int max,
 		childvec = NULL;
 
 		if ((unsigned int)ret != i) {
-			if (ret != EC_PARSED_NOMATCH)
-				ec_parsed_del_last_child(parsed);
+			if (ret != EC_PARSE_NOMATCH)
+				ec_parse_del_last_child(parse);
 			continue;
 		}
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
 		if (childvec == NULL) {
-			ec_parsed_del_last_child(parsed);
+			ec_parse_del_last_child(parse);
 			goto fail;
 		}
 
 		ret = __ec_node_many_complete(node, max, comp, childvec);
-		ec_parsed_del_last_child(parsed);
+		ec_parse_del_last_child(parse);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 

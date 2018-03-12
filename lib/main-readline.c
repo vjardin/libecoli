@@ -13,7 +13,7 @@
 
 #include <ecoli_init.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_keyval.h>
 #include <ecoli_node_str.h>
@@ -106,7 +106,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 static char *get_node_help(const struct ec_comp_item *item)
 {
 	const struct ec_comp_group *grp;
-	const struct ec_parsed *state;
+	const struct ec_parse *state;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
@@ -115,8 +115,8 @@ static char *get_node_help(const struct ec_comp_item *item)
 	grp = ec_comp_item_get_grp(item);
 	state = grp->state;
 	for (state = grp->state; state != NULL;
-	     state = ec_parsed_get_parent(state)) {
-		node = ec_parsed_get_node(state);
+	     state = ec_parse_get_parent(state)) {
+		node = ec_parse_get_node(state);
 		if (node_help == NULL)
 			node_help = ec_keyval_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -140,7 +140,7 @@ static int show_help(int ignore, int invoking_key)
 	const struct ec_comp_group *grp, *prev_grp = NULL;
 	const struct ec_comp_item *item;
 	struct ec_comp *c;
-	struct ec_parsed *p;
+	struct ec_parse *p;
 	char *line = NULL;
 	unsigned int count;
 	char **helps = NULL;
@@ -156,9 +156,9 @@ static int show_help(int ignore, int invoking_key)
 
 	/* check if the current line matches */
 	p = ec_node_parse(commands, line);
-	if (ec_parsed_matches(p))
+	if (ec_parse_matches(p))
 		match = 1;
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	p = NULL;
 
 	/* complete at current cursor position */
@@ -212,7 +212,7 @@ static int show_help(int ignore, int invoking_key)
 
 fail:
 	ec_comp_iter_free(iter);
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	free(line);
 	ec_comp_free(c);
 	if (helps != NULL) {
@@ -329,7 +329,7 @@ static int create_commands(void)
 
 int main(void)
 {
-	struct ec_parsed *p;
+	struct ec_parse *p;
 	char *line;
 
 	if (ec_init() < 0) {
@@ -349,9 +349,9 @@ int main(void)
 			break;
 
 		p = ec_node_parse(commands, line);
-		ec_parsed_dump(stdout, p);
+		ec_parse_dump(stdout, p);
 		add_history(line);
-		ec_parsed_free(p);
+		ec_parse_free(p);
 	}
 
 

@@ -50,7 +50,7 @@ srcs += ecoli_node_space.c
 srcs += ecoli_node_str.c
 srcs += ecoli_node_subset.c
 srcs += ecoli_node_weakref.c
-srcs += ecoli_parsed.c
+srcs += ecoli_parse.c
 srcs += ecoli_string.c
 srcs += ecoli_vec.c
 

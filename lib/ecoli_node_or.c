@@ -13,7 +13,7 @@
 #include <ecoli_log.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_or.h>
 #include <ecoli_node_str.h>
@@ -29,7 +29,7 @@ struct ec_node_or {
 
 static int
 ec_node_or_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
@@ -38,12 +38,12 @@ ec_node_or_parse(const struct ec_node *gen_node,
 
 	for (i = 0; i < node->len; i++) {
 		ret = ec_node_parse_child(node->table[i], state, strvec);
-		if (ret == EC_PARSED_NOMATCH)
+		if (ret == EC_PARSE_NOMATCH)
 			continue;
 		return ret;
 	}
 
-	return EC_PARSED_NOMATCH;
+	return EC_PARSE_NOMATCH;
 }
 
 static int

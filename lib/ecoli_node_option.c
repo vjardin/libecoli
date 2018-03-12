@@ -13,7 +13,7 @@
 #include <ecoli_log.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
@@ -28,7 +28,7 @@ struct ec_node_option {
 
 static int
 ec_node_option_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_option *node = (struct ec_node_option *)gen_node;
@@ -38,7 +38,7 @@ ec_node_option_parse(const struct ec_node *gen_node,
 	if (ret < 0)
 		return ret;
 
-	if (ret == EC_PARSED_NOMATCH)
+	if (ret == EC_PARSE_NOMATCH)
 		return 0;
 
 	return ret;

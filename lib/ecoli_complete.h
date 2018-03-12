@@ -35,7 +35,7 @@ struct ec_comp_group {
 	TAILQ_ENTRY(ec_comp_group) next;
 	const struct ec_node *node;
 	struct ec_comp_item_list items;
-	struct ec_parsed *state;
+	struct ec_parse *state;
 	struct ec_keyval *attrs;
 };
 
@@ -46,7 +46,7 @@ struct ec_comp {
 	unsigned count_full;
 	unsigned count_partial;
 	unsigned count_unknown;
-	struct ec_parsed *cur_state;
+	struct ec_parse *cur_state;
 	struct ec_comp_group *cur_group;
 	struct ec_comp_group_list groups;
 	struct ec_keyval *attrs;
@@ -71,7 +71,7 @@ int ec_node_complete_child(const struct ec_node *node,
  *
  *
  */
-struct ec_comp *ec_comp(struct ec_parsed *state);
+struct ec_comp *ec_comp(struct ec_parse *state);
 
 /**
  * Free a completion object and all its items.
@@ -96,7 +96,7 @@ void ec_comp_dump(FILE *out,
 int ec_comp_merge(struct ec_comp *to,
 		struct ec_comp *from);
 
-struct ec_parsed *ec_comp_get_state(struct ec_comp *comp);
+struct ec_parse *ec_comp_get_state(struct ec_comp *comp);
 
 /* shortcut for ec_comp_item() + ec_comp_item_add() */
 int ec_comp_add_item(struct ec_comp *comp,

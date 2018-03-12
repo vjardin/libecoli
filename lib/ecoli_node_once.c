@@ -14,7 +14,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_or.h>
@@ -29,18 +29,18 @@ struct ec_node_once {
 };
 
 static unsigned int
-count_node(struct ec_parsed *parsed, const struct ec_node *node)
+count_node(struct ec_parse *parse, const struct ec_node *node)
 {
-	struct ec_parsed *child;
+	struct ec_parse *child;
 	unsigned int count = 0;
 
-	if (parsed == NULL)
+	if (parse == NULL)
 		return 0;
 
-	if (ec_parsed_get_node(parsed) == node)
+	if (ec_parse_get_node(parse) == node)
 		count++;
 
-	EC_PARSED_FOREACH_CHILD(child, parsed)
+	EC_PARSE_FOREACH_CHILD(child, parse)
 		count += count_node(child, node);
 
 	return count;
@@ -48,7 +48,7 @@ count_node(struct ec_parsed *parsed, const struct ec_node *node)
 
 static int
 ec_node_once_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
@@ -57,9 +57,9 @@ ec_node_once_parse(const struct ec_node *gen_node,
 	/* count the number of occurences of the node: if already parsed,
 	 * do not match
 	 */
-	count = count_node(ec_parsed_get_root(state), node->child);
+	count = count_node(ec_parse_get_root(state), node->child);
 	if (count > 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	return ec_node_parse_child(node->child, state, strvec);
 }
@@ -70,14 +70,14 @@ ec_node_once_complete(const struct ec_node *gen_node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
-	struct ec_parsed *parsed = ec_comp_get_state(comp);
+	struct ec_parse *parse = ec_comp_get_state(comp);
 	unsigned int count;
 	int ret;
 
 	/* count the number of occurences of the node: if already parsed,
 	 * do not match
 	 */
-	count = count_node(ec_parsed_get_root(parsed), node->child);
+	count = count_node(ec_parse_get_root(parse), node->child);
 	if (count > 0)
 		return 0;
 

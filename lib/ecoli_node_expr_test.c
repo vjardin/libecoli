@@ -11,7 +11,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_test.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_node_int.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_re_lex.h>
@@ -25,7 +25,7 @@ struct my_eval_result {
 
 static int
 ec_node_expr_test_eval_var(void **result, void *userctx,
-	const struct ec_parsed *var)
+	const struct ec_parse *var)
 {
 	const struct ec_strvec *vec;
 	const struct ec_node *node;
@@ -35,11 +35,11 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(var);
+	vec = ec_parse_strvec(var);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
-	node = ec_parsed_get_node(var);
+	node = ec_parse_get_node(var);
 	if (ec_node_int_getval(node, ec_strvec_val(vec, 0), &val) < 0)
 		return -EINVAL;
 
@@ -56,7 +56,7 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 
 static int
 ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
-	const struct ec_parsed *operator)
+	const struct ec_parse *operator)
 {
 	const struct ec_strvec *vec;
 	struct my_eval_result *eval = operand;;
@@ -64,7 +64,7 @@ ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(operator);
+	vec = ec_parse_strvec(operator);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
@@ -81,7 +81,7 @@ ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
-	const struct ec_parsed *operator)
+	const struct ec_parse *operator)
 {
 	const struct ec_strvec *vec;
 	struct my_eval_result *eval = operand;;
@@ -89,7 +89,7 @@ ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(operator);
+	vec = ec_parse_strvec(operator);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
@@ -106,7 +106,7 @@ ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
-	const struct ec_parsed *operator, void *operand2)
+	const struct ec_parse *operator, void *operand2)
 
 {
 	const struct ec_strvec *vec;
@@ -116,7 +116,7 @@ ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(operator);
+	vec = ec_parse_strvec(operator);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
@@ -136,8 +136,8 @@ ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
 
 static int
 ec_node_expr_test_eval_parenthesis(void **result, void *userctx,
-	const struct ec_parsed *open_paren,
-	const struct ec_parsed *close_paren,
+	const struct ec_parse *open_paren,
+	const struct ec_parse *close_paren,
 	void *value)
 {
 	(void)userctx;
@@ -170,7 +170,7 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 	const struct ec_node *expr_node,
 	const char *str, int val)
 {
-	struct ec_parsed *p;
+	struct ec_parse *p;
 	void *result;
 	struct my_eval_result *eval;
 	int ret;
@@ -180,11 +180,11 @@ static int ec_node_expr_test_eval(struct ec_node *lex_node,
 		return -1;
 
 	ret = ec_node_expr_eval(&result, expr_node, p, &test_ops, NULL);
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	if (ret < 0)
 		return -1;
 
-	/* the parsed value is an integer */
+	/* the parse value is an integer */
 	eval = result;
 	assert(eval != NULL);
 

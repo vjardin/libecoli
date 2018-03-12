@@ -16,7 +16,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_str.h>
@@ -214,12 +214,12 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 
 static int
 ec_node_sh_lex_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
 	struct ec_strvec *new_vec = NULL;
-	struct ec_parsed *child_parsed;
+	struct ec_parse *child_parse;
 	const char *str;
 	int ret;
 
@@ -231,7 +231,7 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	}
 	if (new_vec == NULL) {
 		if (errno == EINVAL)
-			ret = EC_PARSED_NOMATCH;
+			ret = EC_PARSE_NOMATCH;
 		else
 			ret = -ENOMEM;
 		goto fail;
@@ -243,11 +243,11 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 
 	if ((unsigned)ret == ec_strvec_len(new_vec)) {
 		ret = 1;
-	} else if (ret != EC_PARSED_NOMATCH) {
-		child_parsed = ec_parsed_get_last_child(state);
-		ec_parsed_unlink_child(state, child_parsed);
-		ec_parsed_free(child_parsed);
-		ret = EC_PARSED_NOMATCH;
+	} else if (ret != EC_PARSE_NOMATCH) {
+		child_parse = ec_parse_get_last_child(state);
+		ec_parse_unlink_child(state, child_parse);
+		ec_parse_free(child_parse);
+		ret = EC_PARSE_NOMATCH;
 	}
 
 	ec_strvec_free(new_vec);

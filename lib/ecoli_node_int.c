@@ -15,7 +15,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_int.h>
 #include <ecoli_test.h>
@@ -93,7 +93,7 @@ static int parse_ullint(struct ec_node_int_uint *node, const char *str,
 }
 
 static int ec_node_int_uint_parse(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
@@ -104,15 +104,15 @@ static int ec_node_int_uint_parse(const struct ec_node *gen_node,
 	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
 	if (node->is_signed) {
 		if (parse_llint(node, str, &i64) < 0)
-			return EC_PARSED_NOMATCH;
+			return EC_PARSE_NOMATCH;
 	} else {
 		if (parse_ullint(node, str, &u64) < 0)
-			return EC_PARSED_NOMATCH;
+			return EC_PARSE_NOMATCH;
 	}
 	return 1;
 }
@@ -328,7 +328,7 @@ int ec_node_uint_getval(const struct ec_node *gen_node, const char *str,
 /* LCOV_EXCL_START */
 static int ec_node_int_testcase(void)
 {
-	struct ec_parsed *p;
+	struct ec_parse *p;
 	struct ec_node *node;
 	const char *s;
 	int testres = 0, ret;
@@ -356,18 +356,18 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "0");
 
 	p = ec_node_parse(node, "1");
-	s = ec_strvec_val(ec_parsed_strvec(p), 0);
+	s = ec_strvec_val(ec_parse_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 1, "bad integer value");
-	ec_parsed_free(p);
+	ec_parse_free(p);
 
 	p = ec_node_parse(node, "10");
-	s = ec_strvec_val(ec_parsed_strvec(p), 0);
+	s = ec_strvec_val(ec_parse_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 10, "bad integer value");
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	ec_node_free(node);
 
 	node = ec_node_int(EC_NO_ID, -1, LLONG_MAX, 16);
@@ -388,11 +388,11 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "-2");
 
 	p = ec_node_parse(node, "10");
-	s = ec_strvec_val(ec_parsed_strvec(p), 0);
+	s = ec_strvec_val(ec_parse_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_int_getval(node, s, &i64) == 0 &&
 		i64 == 16, "bad integer value");
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	ec_node_free(node);
 
 	node = ec_node_int(EC_NO_ID, LLONG_MIN, 0, 10);

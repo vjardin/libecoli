@@ -13,9 +13,9 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
 
@@ -46,7 +46,7 @@ int ec_test_register(struct ec_test *test)
 
 int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 {
-	struct ec_parsed *p;
+	struct ec_parse *p;
 	struct ec_strvec *vec = NULL;
 	const char *s;
 	int ret = -1, match;
@@ -71,21 +71,21 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 
 	p = ec_node_parse_strvec(tk, vec);
 	if (p == NULL) {
-		EC_LOG(EC_LOG_ERR, "parsed is NULL\n");
+		EC_LOG(EC_LOG_ERR, "parse is NULL\n");
 	}
-	if (ec_parsed_matches(p))
-		match = ec_parsed_len(p);
+	if (ec_parse_matches(p))
+		match = ec_parse_len(p);
 	else
 		match = -1;
 	if (expected == match) {
 		ret = 0;
 	} else {
 		EC_LOG(EC_LOG_ERR,
-			"tk parsed len (%d) does not match expected (%d)\n",
+			"parse len (%d) does not match expected (%d)\n",
 			match, expected);
 	}
 
-	ec_parsed_free(p);
+	ec_parse_free(p);
 
 out:
 	ec_strvec_free(vec);

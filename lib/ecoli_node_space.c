@@ -12,7 +12,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_space.h>
 
@@ -24,7 +24,7 @@ struct ec_node_space {
 
 static int
 ec_node_space_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	const char *str;
@@ -34,13 +34,13 @@ ec_node_space_parse(const struct ec_node *gen_node,
 	(void)gen_node;
 
 	if (ec_strvec_len(strvec) == 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
 	while (isspace(str[len]))
 		len++;
 	if (len == 0 || len != strlen(str))
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	return 1;
 }

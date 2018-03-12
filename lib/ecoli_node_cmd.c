@@ -16,7 +16,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_expr.h>
 #include <ecoli_node_str.h>
@@ -44,7 +44,7 @@ struct ec_node_cmd {
 
 static int
 ec_node_cmd_eval_var(void **result, void *userctx,
-	const struct ec_parsed *var)
+	const struct ec_parse *var)
 {
 	const struct ec_strvec *vec;
 	struct ec_node_cmd *node = userctx;
@@ -55,7 +55,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(var);
+	vec = ec_parse_strvec(var);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 	str = ec_strvec_val(vec, 0);
@@ -87,7 +87,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 static int
 ec_node_cmd_eval_pre_op(void **result, void *userctx, void *operand,
-	const struct ec_parsed *operator)
+	const struct ec_parse *operator)
 {
 	(void)result;
 	(void)userctx;
@@ -99,7 +99,7 @@ ec_node_cmd_eval_pre_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
-	const struct ec_parsed *operator)
+	const struct ec_parse *operator)
 {
 	const struct ec_strvec *vec;
 	struct ec_node *in = operand;;
@@ -108,7 +108,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(operator);
+	vec = ec_parse_strvec(operator);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
@@ -128,7 +128,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
-	const struct ec_parsed *operator, void *operand2)
+	const struct ec_parse *operator, void *operand2)
 
 {
 	const struct ec_strvec *vec;
@@ -139,7 +139,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(operator);
+	vec = ec_parse_strvec(operator);
 	if (ec_strvec_len(vec) > 1)
 		return -EINVAL;
 
@@ -207,8 +207,8 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 
 static int
 ec_node_cmd_eval_parenthesis(void **result, void *userctx,
-	const struct ec_parsed *open_paren,
-	const struct ec_parsed *close_paren,
+	const struct ec_parse *open_paren,
+	const struct ec_parse *close_paren,
 	void *value)
 {
 	const struct ec_strvec *vec;
@@ -219,7 +219,7 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 	(void)close_paren;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parsed_strvec(open_paren);
+	vec = ec_parse_strvec(open_paren);
 	if (ec_strvec_len(vec) != 1)
 		return -EINVAL;
 
@@ -258,7 +258,7 @@ static const struct ec_node_expr_eval_ops test_ops = {
 static int ec_node_cmd_build(struct ec_node_cmd *node)
 {
 	struct ec_node *expr = NULL, *lex = NULL, *cmd = NULL;
-	struct ec_parsed *p = NULL;
+	struct ec_parse *p = NULL;
 	void *result;
 	int ret;
 
@@ -330,17 +330,17 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 		goto fail;
 
 	ret = -EINVAL;
-	if (!ec_parsed_matches(p))
+	if (!ec_parse_matches(p))
 		goto fail;
-	if (!ec_parsed_has_child(p))
+	if (!ec_parse_has_child(p))
 		goto fail;
 
-	ret = ec_node_expr_eval(&result, expr, ec_parsed_get_first_child(p),
+	ret = ec_node_expr_eval(&result, expr, ec_parse_get_first_child(p),
 				&test_ops, node);
 	if (ret < 0)
 		goto fail;
 
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	p = NULL;
 
 	node->expr = expr;
@@ -350,7 +350,7 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 	return 0;
 
 fail:
-	ec_parsed_free(p);
+	ec_parse_free(p);
 	ec_node_free(expr);
 	ec_node_free(lex);
 	ec_node_free(cmd);
@@ -358,7 +358,7 @@ fail:
 }
 
 static int
-ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parsed *state,
+ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;

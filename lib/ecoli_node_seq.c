@@ -15,7 +15,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
@@ -33,7 +33,7 @@ struct ec_node_seq {
 
 static int
 ec_node_seq_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
@@ -57,9 +57,9 @@ ec_node_seq_parse(const struct ec_node *gen_node,
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
-		if (ret == EC_PARSED_NOMATCH) {
-			ec_parsed_free_children(state);
-			return EC_PARSED_NOMATCH;
+		if (ret == EC_PARSE_NOMATCH) {
+			ec_parse_free_children(state);
+			return EC_PARSE_NOMATCH;
 		}
 
 		len += ret;
@@ -77,7 +77,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_comp_get_state(comp);
+	struct ec_parse *parse = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
@@ -108,7 +108,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(table[0], parsed, childvec);
+		ret = ec_node_parse_child(table[0], parse, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -116,21 +116,21 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		childvec = NULL;
 
 		if ((unsigned int)ret != i) {
-			if (ret != EC_PARSED_NOMATCH)
-				ec_parsed_del_last_child(parsed);
+			if (ret != EC_PARSE_NOMATCH)
+				ec_parse_del_last_child(parse);
 			continue;
 		}
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
 		if (childvec == NULL) {
-			ec_parsed_del_last_child(parsed);
+			ec_parse_del_last_child(parse);
 			goto fail;
 		}
 
 		ret = __ec_node_seq_complete(&table[1],
 					table_len - 1,
 					comp, childvec);
-		ec_parsed_del_last_child(parsed);
+		ec_parse_del_last_child(parse);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 

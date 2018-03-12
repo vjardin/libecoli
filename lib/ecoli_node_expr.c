@@ -16,7 +16,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_many.h>
@@ -46,7 +46,7 @@ struct ec_node_expr {
 };
 
 static int ec_node_expr_parse(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
@@ -444,7 +444,7 @@ static enum expr_node_type get_node_type(const struct ec_node *expr_gen_node,
 struct result {
 	bool has_val;
 	void *val;
-	const struct ec_parsed *op;
+	const struct ec_parse *op;
 	enum expr_node_type op_type;
 };
 
@@ -505,32 +505,32 @@ static int eval_expression(struct result *result,
 	void *userctx,
 	const struct ec_node_expr_eval_ops *ops,
 	const struct ec_node *expr_gen_node,
-	const struct ec_parsed *parsed)
+	const struct ec_parse *parse)
 
 {
-	struct ec_parsed *open = NULL, *close = NULL;
+	struct ec_parse *open = NULL, *close = NULL;
 	struct result child_result;
-	struct ec_parsed *child;
+	struct ec_parse *child;
 	enum expr_node_type type;
 	int ret;
 
 	memset(result, 0, sizeof(*result));
 	memset(&child_result, 0, sizeof(child_result));
 
-	type = get_node_type(expr_gen_node, ec_parsed_get_node(parsed));
+	type = get_node_type(expr_gen_node, ec_parse_get_node(parse));
 	if (type == VAL) {
-		ret = ops->eval_var(&result->val, userctx, parsed);
+		ret = ops->eval_var(&result->val, userctx, parse);
 		if (ret < 0)
 			goto fail;
 		result->has_val = 1;
 	} else if (type == PRE_OP || type == POST_OP || type == BIN_OP) {
-		result->op = parsed;
+		result->op = parse;
 		result->op_type = type;
 	}
 
-	EC_PARSED_FOREACH_CHILD(child, parsed) {
+	EC_PARSE_FOREACH_CHILD(child, parse) {
 
-		type = get_node_type(expr_gen_node, ec_parsed_get_node(child));
+		type = get_node_type(expr_gen_node, ec_parse_get_node(child));
 		if (type == PAREN_OPEN) {
 			open = child;
 			continue;
@@ -571,7 +571,7 @@ fail:
 }
 
 int ec_node_expr_eval(void **user_result, const struct ec_node *node,
-	struct ec_parsed *parsed, const struct ec_node_expr_eval_ops *ops,
+	struct ec_parse *parse, const struct ec_node_expr_eval_ops *ops,
 	void *userctx)
 {
 	struct result result;
@@ -586,10 +586,10 @@ int ec_node_expr_eval(void **user_result, const struct ec_node *node,
 	if (ret < 0)
 		return ret;
 
-	if (!ec_parsed_matches(parsed))
+	if (!ec_parse_matches(parse))
 		return -EINVAL;
 
-	ret = eval_expression(&result, userctx, ops, node, parsed);
+	ret = eval_expression(&result, userctx, ops, node, parse);
 	if (ret < 0)
 		return ret;
 

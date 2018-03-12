@@ -12,7 +12,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_any.h>
 
@@ -23,14 +23,14 @@ struct ec_node_any {
 };
 
 static int ec_node_any_parse(const struct ec_node *gen_node,
-			struct ec_parsed *state,
+			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
 	(void)gen_node;
 	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	return 1;
 }

@@ -17,14 +17,14 @@
  *   A user-defined context passed to all callback functions, which
  *   can be used to maintain a state or store global information.
  * @param var
- *   The parsed result referencing the variable.
+ *   The parse result referencing the variable.
  * @return
  *   0 on success (*result must be set), or -errno on error (*result
  *   is undefined).
  */
 typedef int (*ec_node_expr_eval_var_t)(
 	void **result, void *userctx,
-	const struct ec_parsed *var);
+	const struct ec_parse *var);
 
 /**
  * Callback function type for evaluating a prefix-operator
@@ -38,7 +38,7 @@ typedef int (*ec_node_expr_eval_var_t)(
  * @param operand
  *   The evaluated expression on which the operation should be applied.
  * @param var
- *   The parsed result referencing the operator.
+ *   The parse result referencing the operator.
  * @return
  *   0 on success (*result must be set, operand is freed),
  *   or -errno on error (*result is undefined, operand is not freed).
@@ -46,23 +46,23 @@ typedef int (*ec_node_expr_eval_var_t)(
 typedef int (*ec_node_expr_eval_pre_op_t)(
 	void **result, void *userctx,
 	void *operand,
-	const struct ec_parsed *operator);
+	const struct ec_parse *operator);
 
 typedef int (*ec_node_expr_eval_post_op_t)(
 	void **result, void *userctx,
 	void *operand,
-	const struct ec_parsed *operator);
+	const struct ec_parse *operator);
 
 typedef int (*ec_node_expr_eval_bin_op_t)(
 	void **result, void *userctx,
 	void *operand1,
-	const struct ec_parsed *operator,
+	const struct ec_parse *operator,
 	void *operand2);
 
 typedef int (*ec_node_expr_eval_parenthesis_t)(
 	void **result, void *userctx,
-	const struct ec_parsed *open_paren,
-	const struct ec_parsed *close_paren,
+	const struct ec_parse *open_paren,
+	const struct ec_parse *close_paren,
 	void * value);
 
 typedef void (*ec_node_expr_eval_free_t)(
@@ -87,7 +87,7 @@ struct ec_node_expr_eval_ops {
 };
 
 int ec_node_expr_eval(void **result, const struct ec_node *node,
-	struct ec_parsed *parsed, const struct ec_node_expr_eval_ops *ops,
+	struct ec_parse *parse, const struct ec_node_expr_eval_ops *ops,
 	void *userctx);
 
 #endif

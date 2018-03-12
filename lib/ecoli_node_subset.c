@@ -14,7 +14,7 @@
 #include <ecoli_log.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_subset.h>
 #include <ecoli_node_str.h>
@@ -30,7 +30,7 @@ struct ec_node_subset {
 };
 
 struct parse_result {
-	size_t parsed_len;          /* number of parsed node */
+	size_t parse_len;           /* number of parsed nodes */
 	size_t len;                 /* consumed strings */
 };
 
@@ -38,14 +38,14 @@ struct parse_result {
  * updated accordingly. */
 static int
 __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
-		size_t table_len, struct ec_parsed *state,
+		size_t table_len, struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node **child_table;
 	struct ec_strvec *childvec = NULL;
 	size_t i, j, len = 0;
 	struct parse_result best_result, result;
-	struct ec_parsed *best_parsed = NULL;
+	struct ec_parse *best_parse = NULL;
 	int ret;
 
 	if (table_len == 0)
@@ -65,7 +65,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 		if (ret < 0)
 			goto fail;
 
-		if (ret == EC_PARSED_NOMATCH)
+		if (ret == EC_PARSE_NOMATCH)
 			continue;
 
 		/* build a new table without elt i */
@@ -94,18 +94,18 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 			goto fail;
 
 		/* if result is not the best, ignore */
-		if (result.parsed_len < best_result.parsed_len) {
+		if (result.parse_len < best_result.parse_len) {
 			memset(&result, 0, sizeof(result));
-			ec_parsed_del_last_child(state);
+			ec_parse_del_last_child(state);
 			continue;
 		}
 
 		/* replace the previous best result */
-		ec_parsed_free(best_parsed);
-		best_parsed = ec_parsed_get_last_child(state);
-		ec_parsed_unlink_child(state, best_parsed);
+		ec_parse_free(best_parse);
+		best_parse = ec_parse_get_last_child(state);
+		ec_parse_unlink_child(state, best_parse);
 
-		best_result.parsed_len = result.parsed_len + 1;
+		best_result.parse_len = result.parse_len + 1;
 		best_result.len = len + result.len;
 
 		memset(&result, 0, sizeof(result));
@@ -113,13 +113,13 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 
 	*out = best_result;
 	ec_free(child_table);
-	if (best_parsed != NULL)
-		ec_parsed_link_child(state, best_parsed);
+	if (best_parse != NULL)
+		ec_parse_link_child(state, best_parse);
 
 	return 0;
 
  fail:
-	ec_parsed_free(best_parsed);
+	ec_parse_free(best_parse);
 	ec_strvec_free(childvec);
 	ec_free(child_table);
 	return ret;
@@ -127,11 +127,11 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 
 static int
 ec_node_subset_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
-	struct ec_parsed *parsed = NULL;
+	struct ec_parse *parse = NULL;
 	struct parse_result result;
 	int ret;
 
@@ -143,13 +143,13 @@ ec_node_subset_parse(const struct ec_node *gen_node,
 		goto fail;
 
 	/* if no child node matches, return a matching empty strvec */
-	if (result.parsed_len == 0)
+	if (result.parse_len == 0)
 		return 0;
 
 	return result.len;
 
  fail:
-	ec_parsed_free(parsed);
+	ec_parse_free(parse);
 	return ret;
 }
 
@@ -158,7 +158,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_comp_get_state(comp);
+	struct ec_parse *parse = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	struct ec_node *save;
 	size_t i, len;
@@ -190,18 +190,18 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 		if (table[i] == NULL)
 			continue;
 
-		ret = ec_node_parse_child(table[i], parsed, strvec);
+		ret = ec_node_parse_child(table[i], parse, strvec);
 		if (ret < 0)
 			goto fail;
 
-		if (ret == EC_PARSED_NOMATCH)
+		if (ret == EC_PARSE_NOMATCH)
 			continue;
 
 		len = ret;
 		childvec = ec_strvec_ndup(strvec, len,
 					ec_strvec_len(strvec) - len);
 		if (childvec == NULL) {
-			ec_parsed_del_last_child(parsed);
+			ec_parse_del_last_child(parse);
 			goto fail;
 		}
 
@@ -212,7 +212,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 		table[i] = save;
 		ec_strvec_free(childvec);
 		childvec = NULL;
-		ec_parsed_del_last_child(parsed);
+		ec_parse_del_last_child(parse);
 
 		if (ret < 0)
 			goto fail;

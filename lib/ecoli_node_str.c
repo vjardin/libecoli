@@ -12,7 +12,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 
@@ -26,7 +26,7 @@ struct ec_node_str {
 
 static int
 ec_node_str_parse(const struct ec_node *gen_node,
-		struct ec_parsed *state,
+		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
@@ -35,11 +35,11 @@ ec_node_str_parse(const struct ec_node *gen_node,
 	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
 	if (strcmp(str, node->string) != 0)
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	return 1;
 }
@@ -64,7 +64,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 
 	/* no completion */
 	if (str[n] != '\0')
-		return EC_PARSED_NOMATCH;
+		return EC_PARSE_NOMATCH;
 
 	if (ec_comp_add_item(comp, gen_node, NULL, EC_COMP_FULL,
 					str, node->string) < 0)

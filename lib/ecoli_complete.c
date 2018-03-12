@@ -14,7 +14,7 @@
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 
 struct ec_comp_item {
@@ -29,7 +29,7 @@ struct ec_comp_item {
 	struct ec_keyval *attrs;
 };
 
-struct ec_comp *ec_comp(struct ec_parsed *state)
+struct ec_comp *ec_comp(struct ec_parse *state)
 {
 	struct ec_comp *comp = NULL;
 
@@ -55,7 +55,7 @@ struct ec_comp *ec_comp(struct ec_parsed *state)
 	return NULL;
 }
 
-struct ec_parsed *ec_comp_get_state(struct ec_comp *comp)
+struct ec_parse *ec_comp_get_state(struct ec_comp *comp)
 {
 	return comp->cur_state;
 }
@@ -65,7 +65,7 @@ ec_node_complete_child(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_parsed *child_state, *cur_state;
+	struct ec_parse *child_state, *cur_state;
 	struct ec_comp_group *cur_group;
 	int ret;
 
@@ -74,12 +74,12 @@ ec_node_complete_child(const struct ec_node *node,
 
 	/* save previous parse state, prepare child state */
 	cur_state = comp->cur_state;
-	child_state = ec_parsed(node);
+	child_state = ec_parse(node);
 	if (child_state == NULL)
 		return -ENOMEM;
 
 	if (cur_state != NULL)
-		ec_parsed_link_child(cur_state, child_state);
+		ec_parse_link_child(cur_state, child_state);
 	comp->cur_state = child_state;
 	cur_group = comp->cur_group;
 	comp->cur_group = NULL;
@@ -89,10 +89,10 @@ ec_node_complete_child(const struct ec_node *node,
 
 	/* restore parent parse state */
 	if (cur_state != NULL) {
-		ec_parsed_unlink_child(cur_state, child_state);
-		assert(!ec_parsed_has_child(child_state));
+		ec_parse_unlink_child(cur_state, child_state);
+		assert(!ec_parse_has_child(child_state));
 	}
-	ec_parsed_free(child_state);
+	ec_parse_free(child_state);
 	comp->cur_state = cur_state;
 	comp->cur_group = cur_group;
 
@@ -150,7 +150,7 @@ struct ec_comp *ec_node_complete(const struct ec_node *node,
 }
 
 static struct ec_comp_group *
-ec_comp_group(const struct ec_node *node, struct ec_parsed *parsed)
+ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
 {
 	struct ec_comp_group *grp = NULL;
 
@@ -162,7 +162,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parsed *parsed)
 	if (grp->attrs == NULL)
 		goto fail;
 
-	grp->state = ec_parsed_dup(parsed);
+	grp->state = ec_parse_dup(parse);
 	if (grp->state == NULL)
 		goto fail;
 
@@ -173,7 +173,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parsed *parsed)
 
 fail:
 	if (grp != NULL) {
-		ec_parsed_free(grp->state);
+		ec_parse_free(grp->state);
 		ec_keyval_free(grp->attrs);
 	}
 	ec_free(grp);
@@ -470,7 +470,7 @@ static void ec_comp_group_free(struct ec_comp_group *grp)
 		TAILQ_REMOVE(&grp->items, item, next);
 		ec_comp_item_free(item);
 	}
-	ec_parsed_free(ec_parsed_get_root(grp->state));
+	ec_parse_free(ec_parse_get_root(grp->state));
 	ec_keyval_free(grp->attrs);
 	ec_free(grp);
 }

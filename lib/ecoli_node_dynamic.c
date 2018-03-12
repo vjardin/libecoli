@@ -13,7 +13,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_node.h>
-#include <ecoli_parsed.h>
+#include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_string.h>
 #include <ecoli_node_str.h>
@@ -31,7 +31,7 @@ struct ec_node_dynamic {
 
 static int
 ec_node_dynamic_parse(const struct ec_node *gen_node,
-		struct ec_parsed *parsed,
+		struct ec_parse *parse,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_dynamic *node = (struct ec_node_dynamic *)gen_node;
@@ -40,21 +40,21 @@ ec_node_dynamic_parse(const struct ec_node *gen_node,
 	char key[64];
 	int ret = -1;
 
-	child = node->build(parsed, node->opaque);
+	child = node->build(parse, node->opaque);
 	if (child == NULL)
 		goto fail;
 
 	/* add the node pointer in the attributes, so it will be freed
-	 * when parsed is freed */
+	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_keyval_set(ec_parsed_get_attrs(parsed), key, child,
+	ret = ec_keyval_set(ec_parse_get_attrs(parse), key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */
 		goto fail;
 	}
 
-	return ec_node_parse_child(child, parsed, strvec);
+	return ec_node_parse_child(child, parse, strvec);
 
 fail:
 	ec_node_free(child);
@@ -67,19 +67,19 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_dynamic *node = (struct ec_node_dynamic *)gen_node;
-	struct ec_parsed *parsed;
+	struct ec_parse *parse;
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
 	char key[64];
 	int ret = -1;
 
-	parsed = ec_comp_get_state(comp);
-	child = node->build(parsed, node->opaque);
+	parse = ec_comp_get_state(comp);
+	child = node->build(parse, node->opaque);
 	if (child == NULL)
 		goto fail;
 
 	/* add the node pointer in the attributes, so it will be freed
-	 * when parsed is freed */
+	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
 	ret = ec_keyval_set(comp->attrs, key, child,
 			(void *)node_free);
@@ -132,17 +132,17 @@ fail:
 EC_NODE_TYPE_REGISTER(ec_node_dynamic_type);
 
 static struct ec_node *
-build_counter(struct ec_parsed *parsed, void *opaque)
+build_counter(struct ec_parse *parse, void *opaque)
 {
 	const struct ec_node *node;
-	struct ec_parsed *iter;
+	struct ec_parse *iter;
 	unsigned int count = 0;
 	char buf[32];
 
 	(void)opaque;
-	for (iter = ec_parsed_get_root(parsed); iter != NULL;
-	     iter = ec_parsed_iter_next(iter)) {
-		node = ec_parsed_get_node(iter);
+	for (iter = ec_parse_get_root(parse); iter != NULL;
+	     iter = ec_parse_iter_next(iter)) {
+		node = ec_parse_get_node(iter);
 		if (node->id && !strcmp(node->id, "my-id"))
 			count++;
 	}

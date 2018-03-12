@@ -6,12 +6,12 @@
 #define ECOLI_NODE_DYNAMIC_
 
 struct ec_node;
-struct ec_parsed;
+struct ec_parse;
 
 /* callback invoked by parse() or complete() to build the dynamic node
  * the behavior of the node can depend on what is already parsed */
 typedef struct ec_node *(*ec_node_dynamic_build_t)(
-	struct ec_parsed *state, void *opaque);
+	struct ec_parse *state, void *opaque);
 
 struct ec_node *ec_node_dynamic(const char *id, ec_node_dynamic_build_t build,
 				void *opaque);

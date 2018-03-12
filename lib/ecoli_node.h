@@ -51,7 +51,7 @@
 #define EC_NODE_ENDLIST ((void *)1)
 
 struct ec_node;
-struct ec_parsed;
+struct ec_parse;
 struct ec_comp;
 struct ec_strvec;
 struct ec_keyval;
@@ -73,7 +73,7 @@ TAILQ_HEAD(ec_node_type_list, ec_node_type);
 typedef int (*ec_node_build_t)(struct ec_node *node);
 
 typedef int (*ec_node_parse_t)(const struct ec_node *node,
-			struct ec_parsed *state,
+			struct ec_parse *state,
 			const struct ec_strvec *strvec);
 typedef int (*ec_node_complete_t)(const struct ec_node *node,
 				struct ec_comp *comp_state,
