@@ -15,15 +15,13 @@
  *   freeable, due to reference counters
  *
  * Example:
+ *  expr = or()
  *  val = int(0, 10)
  *  op = str("!")
- *  expr = or()
- *  seq = seq(clone(op), clone(expr))
- *  expr.add(clone(seq))
- *  expr.add(clone(val))
- *  free(val)
- *  free(op)
- *  free(seq)
+ *  seq = seq(op, clone(expr))
+ *  expr.add(seq)
+ *  expr.add(val)
+ *  free(expr) // just decrease ref
  *
  * FAIL: expr cannot be freed due to cyclic refs
  * The references are like this:
@@ -31,27 +29,23 @@
  *                   val
  *                    ^
  *                    |
- *        $user ---> expr ---> seq ---> op
+ *     $user ~ ~ ~ > expr ---> seq ---> op
  *                        <---
  *
  * It is solved with:
+ *  expr = or()
  *  val = int(0, 10)
  *  op = str("!")
- *  expr = or()
  *  weak = weak(expr)
- *  seq = seq(clone(op), clone(weak))
- *  expr.add(clone(seq))
- *  expr.add(clone(val))
- *  free(val)
- *  free(op)
- *  free(weak)
- *  free(seq)
+ *  seq = seq(op, weak)
+ *  expr.add(op)
+ *  expr.add(val)
  *
  *
  *                   val
  *                    ^
  *                    |
- *        $user ---> expr ---------------> seq ---> op
+ *     $user ~ ~ ~ > expr ---------------> seq ---> op
  *                        <- - - weak <---
  *
  * The node expr can be freed.

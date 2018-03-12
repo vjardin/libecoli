@@ -19,6 +19,9 @@
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
 #include <ecoli_node_weakref.h>
+#include <ecoli_node_int.h>
+#include <ecoli_node_seq.h>
+#include <ecoli_node_or.h>
 
 EC_LOG_TYPE_REGISTER(node_weakref);
 
@@ -75,7 +78,7 @@ int ec_node_weakref_set(struct ec_node *gen_node, struct ec_node *child)
 	return 0;
 
 fail:
-	ec_node_free(child);
+	/* do not free child */
 	return -1;
 }
 
@@ -98,8 +101,49 @@ struct ec_node *ec_node_weakref(const char *id, struct ec_node *child)
 /* LCOV_EXCL_START */
 static int ec_node_weakref_testcase(void)
 {
-	//XXX weakref testcase
-	return 0;
+	struct ec_node *weak = NULL, *expr = NULL, *val = NULL;
+	struct ec_node *seq = NULL, *op = NULL;
+	int testres = 0;
+
+	expr = ec_node("or", EC_NO_ID);
+	val = ec_node_int(EC_NO_ID, 0, 10, 10);
+	op = ec_node_str(EC_NO_ID, "!");
+	weak = ec_node_weakref(EC_NO_ID, expr);
+	if (weak == NULL || expr == NULL || val == NULL || op == NULL)
+		goto fail;
+	seq = EC_NODE_SEQ(EC_NO_ID, op, weak);
+	op = NULL;
+	weak = NULL;
+
+	if (ec_node_or_add(expr, seq) < 0)
+		goto fail;
+	seq = NULL;
+	if (ec_node_or_add(expr, val) < 0)
+		goto fail;
+	val = NULL;
+
+	testres |= EC_TEST_CHECK_PARSE(expr, 1, "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, 2, "!", "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, 3, "!", "!", "1");
+
+	testres |= EC_TEST_CHECK_COMPLETE(expr,
+		"", EC_NODE_ENDLIST,
+		"!", EC_NODE_ENDLIST);
+	testres |= EC_TEST_CHECK_COMPLETE(expr,
+		"!", "", EC_NODE_ENDLIST,
+		"!", EC_NODE_ENDLIST);
+
+	ec_node_free(expr);
+
+	return testres;
+
+fail:
+	ec_node_free(weak);
+	ec_node_free(expr);
+	ec_node_free(val);
+	ec_node_free(seq);
+	ec_node_free(op);
+	return -1;
 }
 /* LCOV_EXCL_STOP */
 
