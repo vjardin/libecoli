@@ -14,7 +14,7 @@
 #include <ecoli_init.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_keyval.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_seq.h>
@@ -32,10 +32,10 @@ static struct ec_node *commands;
 
 static char *my_completion_entry(const char *s, int state)
 {
-	static struct ec_completed *c;
-	static struct ec_completed_iter *iter;
-	const struct ec_completed_item *item;
-	enum ec_completed_type item_type;
+	static struct ec_comp *c;
+	static struct ec_comp_iter *iter;
+	const struct ec_comp_item *item;
+	enum ec_comp_type item_type;
 	const char *item_str, *item_display;
 
 	(void)s;
@@ -48,7 +48,7 @@ static char *my_completion_entry(const char *s, int state)
 	if (state == 0) {
 		char *line;
 
-		ec_completed_free(c);
+		ec_comp_free(c);
 		line = strdup(rl_line_buffer);
 		if (line == NULL)
 			return NULL;
@@ -59,22 +59,22 @@ static char *my_completion_entry(const char *s, int state)
 		if (c == NULL)
 			return NULL;
 
-		ec_completed_iter_free(iter);
-		iter = ec_completed_iter(c, EC_COMP_FULL | EC_COMP_PARTIAL);
+		ec_comp_iter_free(iter);
+		iter = ec_comp_iter(c, EC_COMP_FULL | EC_COMP_PARTIAL);
 		if (iter == NULL)
 			return NULL;
 	}
 
-	item = ec_completed_iter_next(iter);
+	item = ec_comp_iter_next(iter);
 	if (item == NULL)
 		return NULL;
 
-	item_str = ec_completed_item_get_str(item);
+	item_str = ec_comp_item_get_str(item);
 	if (c->count_full == 1) {
 
 		/* don't add the trailing space for partial completions */
 		if (state == 0) {
-			item_type = ec_completed_item_get_type(item);
+			item_type = ec_comp_item_get_type(item);
 			if (item_type == EC_COMP_FULL)
 				rl_completion_suppress_append = 0;
 			else
@@ -84,7 +84,7 @@ static char *my_completion_entry(const char *s, int state)
 		return strdup(item_str);
 	} else if (rl_completion_type == '?') {
 		/* on second try only show the display part */
-		item_display = ec_completed_item_get_display(item);
+		item_display = ec_comp_item_get_display(item);
 		return strdup(item_display);
 	}
 
@@ -103,16 +103,16 @@ static char **my_attempted_completion(const char *text, int start, int end)
 }
 
 /* this function builds the help string */
-static char *get_node_help(const struct ec_completed_item *item)
+static char *get_node_help(const struct ec_comp_item *item)
 {
-	const struct ec_completed_group *grp;
+	const struct ec_comp_group *grp;
 	const struct ec_parsed *state;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
 
-	grp = ec_completed_item_get_grp(item);
+	grp = ec_comp_item_get_grp(item);
 	state = grp->state;
 	for (state = grp->state; state != NULL;
 	     state = ec_parsed_get_parent(state)) {
@@ -136,10 +136,10 @@ static char *get_node_help(const struct ec_completed_item *item)
 
 static int show_help(int ignore, int invoking_key)
 {
-	struct ec_completed_iter *iter;
-	const struct ec_completed_group *grp, *prev_grp = NULL;
-	const struct ec_completed_item *item;
-	struct ec_completed *c;
+	struct ec_comp_iter *iter;
+	const struct ec_comp_group *grp, *prev_grp = NULL;
+	const struct ec_comp_item *item;
+	struct ec_comp *c;
 	struct ec_parsed *p;
 	char *line = NULL;
 	unsigned int count;
@@ -171,7 +171,7 @@ static int show_help(int ignore, int invoking_key)
 
 	/* let's display one contextual help per node */
 	count = 0;
-	iter = ec_completed_iter(c,
+	iter = ec_comp_iter(c,
 		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL);
 	if (iter == NULL)
 		goto fail;
@@ -183,11 +183,11 @@ static int show_help(int ignore, int invoking_key)
 	if (match)
 		helps[1] = "<return>";
 
-	while ((item = ec_completed_iter_next(iter)) != NULL) {
+	while ((item = ec_comp_iter_next(iter)) != NULL) {
 		char **tmp;
 
 		/* keep one help per group, skip other items  */
-		grp = ec_completed_item_get_grp(item);
+		grp = ec_comp_item_get_grp(item);
 		if (grp == prev_grp)
 			continue;
 
@@ -201,8 +201,8 @@ static int show_help(int ignore, int invoking_key)
 		count++;
 	}
 
-	ec_completed_iter_free(iter);
-	ec_completed_free(c);
+	ec_comp_iter_free(iter);
+	ec_comp_free(c);
 	/* ensure not more than 1 entry per line */
 	rl_get_screen_size(NULL, &cols);
 	rl_display_match_list(helps, count + match, cols);
@@ -211,10 +211,10 @@ static int show_help(int ignore, int invoking_key)
 	return 0;
 
 fail:
-	ec_completed_iter_free(iter);
+	ec_comp_iter_free(iter);
 	ec_parsed_free(p);
 	free(line);
-	ec_completed_free(c);
+	ec_comp_free(c);
 	if (helps != NULL) {
 		while (count--)
 			free(helps[count + match + 1]);

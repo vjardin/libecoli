@@ -14,7 +14,7 @@
 #include <ecoli_keyval.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_string.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_many.h>
@@ -63,7 +63,7 @@ fail:
 
 static int
 ec_node_dynamic_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_dynamic *node = (struct ec_node_dynamic *)gen_node;
@@ -73,7 +73,7 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	char key[64];
 	int ret = -1;
 
-	parsed = ec_completed_get_state(completed);
+	parsed = ec_comp_get_state(comp);
 	child = node->build(parsed, node->opaque);
 	if (child == NULL)
 		goto fail;
@@ -81,14 +81,14 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	/* add the node pointer in the attributes, so it will be freed
 	 * when parsed is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_keyval_set(completed->attrs, key, child,
+	ret = ec_keyval_set(comp->attrs, key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */
 		goto fail;
 	}
 
-	return ec_node_complete_child(child, completed, strvec);
+	return ec_node_complete_child(child, comp, strvec);
 
 fail:
 	ec_node_free(child);

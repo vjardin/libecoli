@@ -14,7 +14,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_or.h>
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
@@ -48,7 +48,7 @@ ec_node_or_parse(const struct ec_node *gen_node,
 
 static int
 ec_node_or_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
@@ -57,7 +57,7 @@ ec_node_or_complete(const struct ec_node *gen_node,
 
 	for (n = 0; n < node->len; n++) {
 		ret = ec_node_complete_child(node->table[n],
-					completed, strvec);
+					comp, strvec);
 		if (ret < 0)
 			return ret;
 	}

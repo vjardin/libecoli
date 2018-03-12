@@ -17,7 +17,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
@@ -262,14 +262,14 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 
 static int
 ec_node_sh_lex_complete(const struct ec_node *gen_node,
-			struct ec_completed *completed,
+			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
-	struct ec_completed *tmp_completed = NULL;
+	struct ec_comp *tmp_comp = NULL;
 	struct ec_strvec *new_vec = NULL;
-	struct ec_completed_iter *iter = NULL;
-	struct ec_completed_item *item = NULL;
+	struct ec_comp_iter *iter = NULL;
+	struct ec_comp_item *item = NULL;
 	char *new_str = NULL;
 	const char *str;
 	char missing_quote = '\0';
@@ -285,54 +285,54 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 
 	/* we will store the completions in a temporary struct, because
 	 * we want to update them (ex: add missing quotes) */
-	tmp_completed = ec_completed(ec_completed_get_state(completed));
-	if (tmp_completed == NULL)
+	tmp_comp = ec_comp(ec_comp_get_state(comp));
+	if (tmp_comp == NULL)
 		goto fail;
 
-	ret = ec_node_complete_child(node->child, tmp_completed, new_vec);
+	ret = ec_node_complete_child(node->child, tmp_comp, new_vec);
 	if (ret < 0)
 		goto fail;
 
 	/* add missing quote for full completions  */
 	if (missing_quote != '\0') {
-		iter = ec_completed_iter(tmp_completed, EC_COMP_FULL);
+		iter = ec_comp_iter(tmp_comp, EC_COMP_FULL);
 		if (iter == NULL)
 			goto fail;
-		while ((item = ec_completed_iter_next(iter)) != NULL) {
-			str = ec_completed_item_get_str(item);
+		while ((item = ec_comp_iter_next(iter)) != NULL) {
+			str = ec_comp_item_get_str(item);
 			if (ec_asprintf(&new_str, "%c%s%c", missing_quote, str,
 					missing_quote) < 0) {
 				new_str = NULL;
 				goto fail;
 			}
-			if (ec_completed_item_set_str(item, new_str) < 0)
+			if (ec_comp_item_set_str(item, new_str) < 0)
 				goto fail;
 			ec_free(new_str);
 			new_str = NULL;
 
-			str = ec_completed_item_get_completion(item);
+			str = ec_comp_item_get_completion(item);
 			if (ec_asprintf(&new_str, "%s%c", str,
 					missing_quote) < 0) {
 				new_str = NULL;
 				goto fail;
 			}
-			if (ec_completed_item_set_completion(item, new_str) < 0)
+			if (ec_comp_item_set_completion(item, new_str) < 0)
 				goto fail;
 			ec_free(new_str);
 			new_str = NULL;
 		}
 	}
 
-	ec_completed_iter_free(iter);
+	ec_comp_iter_free(iter);
 	ec_strvec_free(new_vec);
 
-	ec_completed_merge(completed, tmp_completed);
+	ec_comp_merge(comp, tmp_comp);
 
 	return 0;
 
  fail:
-	ec_completed_free(tmp_completed);
-	ec_completed_iter_free(iter);
+	ec_comp_free(tmp_comp);
+	ec_comp_iter_free(iter);
 	ec_strvec_free(new_vec);
 	ec_free(new_str);
 

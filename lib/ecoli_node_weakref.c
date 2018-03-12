@@ -15,7 +15,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
 #include <ecoli_node_weakref.h>
@@ -42,12 +42,12 @@ ec_node_weakref_parse(const struct ec_node *gen_node,
 
 static int
 ec_node_weakref_complete(const struct ec_node *gen_node,
-			struct ec_completed *completed,
+			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_weakref *node = (struct ec_node_weakref *)gen_node;
 
-	return ec_node_complete_child(node->child, completed, strvec);
+	return ec_node_complete_child(node->child, comp, strvec);
 }
 
 static struct ec_node_type ec_node_weakref_type = {

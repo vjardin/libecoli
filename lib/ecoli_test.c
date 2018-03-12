@@ -14,7 +14,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_parsed.h>
 
 static struct ec_test_list test_list = TAILQ_HEAD_INITIALIZER(test_list);
@@ -93,9 +93,9 @@ out:
 	return ret;
 }
 
-int ec_test_check_complete(struct ec_node *tk, enum ec_completed_type type, ...)
+int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 {
-	struct ec_completed *c = NULL;
+	struct ec_comp *c = NULL;
 	struct ec_strvec *vec = NULL;
 	const char *s;
 	int ret = 0;
@@ -129,8 +129,8 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_completed_type type, ...)
 	for (s = va_arg(ap, const char *);
 	     s != EC_NODE_ENDLIST;
 	     s = va_arg(ap, const char *)) {
-		struct ec_completed_iter *iter;
-		const struct ec_completed_item *item;
+		struct ec_comp_iter *iter;
+		const struct ec_comp_item *item;
 
 		if (s == NULL) {
 			ret = -1;
@@ -140,9 +140,9 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_completed_type type, ...)
 		count++;
 
 		/* only check matching completions */
-		iter = ec_completed_iter(c, type);
-		while ((item = ec_completed_iter_next(iter)) != NULL) {
-			const char *str = ec_completed_item_get_str(item);
+		iter = ec_comp_iter(c, type);
+		while ((item = ec_comp_iter_next(iter)) != NULL) {
+			const char *str = ec_comp_item_get_str(item);
 			if (str != NULL && strcmp(str, s) == 0)
 				break;
 		}
@@ -152,21 +152,21 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_completed_type type, ...)
 				"completion <%s> not in list\n", s);
 			ret = -1;
 		}
-		ec_completed_iter_free(iter);
+		ec_comp_iter_free(iter);
 	}
 
 	/* check if we have more completions (or less) than expected */
-	if (count != ec_completed_count(c, type)) {
+	if (count != ec_comp_count(c, type)) {
 		EC_LOG(EC_LOG_ERR,
 			"nb_completion (%d) does not match (%d)\n",
-			count, ec_completed_count(c, type));
-		ec_completed_dump(stdout, c);
+			count, ec_comp_count(c, type));
+		ec_comp_dump(stdout, c);
 		ret = -1;
 	}
 
 out:
 	ec_strvec_free(vec);
-	ec_completed_free(c);
+	ec_comp_free(c);
 	va_end(ap);
 	return ret;
 }

@@ -52,7 +52,7 @@
 
 struct ec_node;
 struct ec_parsed;
-struct ec_completed;
+struct ec_comp;
 struct ec_strvec;
 struct ec_keyval;
 
@@ -76,7 +76,7 @@ typedef int (*ec_node_parse_t)(const struct ec_node *node,
 			struct ec_parsed *state,
 			const struct ec_strvec *strvec);
 typedef int (*ec_node_complete_t)(const struct ec_node *node,
-				struct ec_completed *completed_state,
+				struct ec_comp *comp_state,
 				const struct ec_strvec *strvec);
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
 typedef int (*ec_node_init_priv_t)(struct ec_node *);

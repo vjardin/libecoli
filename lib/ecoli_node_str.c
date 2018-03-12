@@ -13,7 +13,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 
 EC_LOG_TYPE_REGISTER(node_str);
@@ -46,7 +46,7 @@ ec_node_str_parse(const struct ec_node *gen_node,
 
 static int
 ec_node_str_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
@@ -66,7 +66,7 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	if (str[n] != '\0')
 		return EC_PARSED_NOMATCH;
 
-	if (ec_completed_add_item(completed, gen_node, NULL, EC_COMP_FULL,
+	if (ec_comp_add_item(comp, gen_node, NULL, EC_COMP_FULL,
 					str, node->string) < 0)
 		return -1;
 

@@ -18,7 +18,7 @@
 #include <ecoli_string.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_file.h>
 
 EC_LOG_TYPE_REGISTER(node_file);
@@ -100,13 +100,13 @@ static int split_path(const char *path, char **dname_p, char **bname_p)
 
 static int
 ec_node_file_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_file *node = (struct ec_node_file *)gen_node;
 	char *dname = NULL, *bname = NULL, *effective_dir;
-	struct ec_completed_item *item = NULL;
-	enum ec_completed_type type;
+	struct ec_comp_item *item = NULL;
+	enum ec_comp_type type;
 	struct stat st, st2;
 	const char *input;
 	size_t bname_len;
@@ -208,13 +208,13 @@ ec_node_file_complete(const struct ec_node *gen_node,
 			if (ec_asprintf(&disp_str, "%s", de->d_name) < 0)
 				goto fail;
 		}
-		if (ec_completed_add_item(completed, gen_node, &item,
+		if (ec_comp_add_item(comp, gen_node, &item,
 						type, input, comp_str) < 0)
 			goto out;
 
 		/* fix the display string: we don't want to display the full
 		 * path. */
-		if (ec_completed_item_set_display(item, disp_str) < 0)
+		if (ec_comp_item_set_display(item, disp_str) < 0)
 			goto out;
 
 		item = NULL;

@@ -17,7 +17,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_expr.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_or.h>
@@ -370,14 +370,14 @@ ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parsed *state,
 
 static int
 ec_node_cmd_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
 	if (node->cmd == NULL)
 		return -ENOENT;
-	return ec_node_complete_child(node->cmd, completed, strvec);
+	return ec_node_complete_child(node->cmd, comp, strvec);
 }
 
 static void ec_node_cmd_free_priv(struct ec_node *gen_node)

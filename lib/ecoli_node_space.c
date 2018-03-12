@@ -13,7 +13,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_space.h>
 
 EC_LOG_TYPE_REGISTER(node_space);

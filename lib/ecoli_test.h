@@ -10,7 +10,7 @@
 #include <ecoli_log.h>
 
 struct ec_node;
-enum ec_completed_type;
+enum ec_comp_type;
 
 #define EC_TEST_REGISTER(t)						\
 	static void ec_test_init_##t(void);				\
@@ -78,7 +78,7 @@ int ec_test_check_parse(struct ec_node *node, int expected, ...);
 })
 
 int ec_test_check_complete(struct ec_node *node,
-			enum ec_completed_type type, ...);
+			enum ec_comp_type type, ...);
 
 #define EC_TEST_CHECK_COMPLETE(node, args...) ({			\
 	int ret_ = ec_test_check_complete(node, EC_COMP_FULL, args);	\

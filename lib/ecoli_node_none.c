@@ -13,7 +13,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_none.h>
 
 EC_LOG_TYPE_REGISTER(node_none);
@@ -35,11 +35,11 @@ static int ec_node_none_parse(const struct ec_node *gen_node,
 
 static int
 ec_node_none_complete(const struct ec_node *gen_node,
-			struct ec_completed *completed,
+			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
 	(void)gen_node;
-	(void)completed;
+	(void)comp;
 	(void)strvec;
 
 	return 0;

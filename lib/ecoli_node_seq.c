@@ -16,7 +16,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parsed.h>
-#include <ecoli_completed.h>
+#include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
 #include <ecoli_node_or.h>
@@ -74,10 +74,10 @@ fail:
 
 static int
 __ec_node_seq_complete(struct ec_node **table, size_t table_len,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_parsed *parsed = ec_completed_get_state(completed);
+	struct ec_parsed *parsed = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
@@ -97,7 +97,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 	 */
 
 	/* first, try to complete with the first node of the table */
-	ret = ec_node_complete_child(table[0], completed, strvec);
+	ret = ec_node_complete_child(table[0], comp, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -129,7 +129,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 
 		ret = __ec_node_seq_complete(&table[1],
 					table_len - 1,
-					completed, childvec);
+					comp, childvec);
 		ec_parsed_del_last_child(parsed);
 		ec_strvec_free(childvec);
 		childvec = NULL;
@@ -147,12 +147,12 @@ fail:
 
 static int
 ec_node_seq_complete(const struct ec_node *gen_node,
-		struct ec_completed *completed,
+		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
 
-	return __ec_node_seq_complete(node->table, node->len, completed,
+	return __ec_node_seq_complete(node->table, node->len, comp,
 				strvec);
 }
 
