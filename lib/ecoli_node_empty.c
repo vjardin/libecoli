@@ -35,7 +35,7 @@ static int ec_node_empty_parse(const struct ec_node *gen_node,
 static struct ec_node_type ec_node_empty_type = {
 	.name = "empty",
 	.parse = ec_node_empty_parse,
-	.complete = ec_node_default_complete,
+	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_empty),
 };
 

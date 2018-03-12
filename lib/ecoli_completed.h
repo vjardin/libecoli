@@ -181,7 +181,7 @@ int ec_completed_item_set_completion(struct ec_completed_item *item,
  *
  */
 int
-ec_node_default_complete(const struct ec_node *gen_node,
+ec_node_complete_unknown(const struct ec_node *gen_node,
 			struct ec_completed *completed,
 			const struct ec_strvec *strvec);
 

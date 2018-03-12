@@ -61,7 +61,7 @@ static void ec_node_re_free_priv(struct ec_node *gen_node)
 static struct ec_node_type ec_node_re_type = {
 	.name = "re",
 	.parse = ec_node_re_parse,
-	.complete = ec_node_default_complete,
+	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_re),
 	.free_priv = ec_node_re_free_priv,
 };

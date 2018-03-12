@@ -130,7 +130,7 @@ ec_node_uint_init_priv(struct ec_node *gen_node)
 static struct ec_node_type ec_node_int_type = {
 	.name = "int",
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_node_default_complete,
+	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 	.init_priv = ec_node_uint_init_priv,
 };
@@ -161,7 +161,7 @@ fail:
 static struct ec_node_type ec_node_uint_type = {
 	.name = "uint",
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_node_default_complete,
+	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 };
 

@@ -439,9 +439,9 @@ fail:
 	return -1;
 }
 
-/* default completion function: return a no-match element */
+/* return a completion item of type "unknown" */
 int
-ec_node_default_complete(const struct ec_node *gen_node, // XXX rename in nomatch
+ec_node_complete_unknown(const struct ec_node *gen_node,
 			struct ec_completed *completed,
 			const struct ec_strvec *strvec)
 {

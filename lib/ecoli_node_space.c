@@ -48,7 +48,7 @@ ec_node_space_parse(const struct ec_node *gen_node,
 static struct ec_node_type ec_node_space_type = {
 	.name = "space",
 	.parse = ec_node_space_parse,
-	.complete = ec_node_default_complete,
+	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_space),
 };
 
