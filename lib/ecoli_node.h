@@ -137,7 +137,7 @@ struct ec_node {
  * code */
 struct ec_node *__ec_node(const struct ec_node_type *type, const char *id);
 
-/* create a_new node node */
+/* create a new node */
 struct ec_node *ec_node(const char *typename, const char *id);
 
 struct ec_node *ec_node_clone(struct ec_node *node);

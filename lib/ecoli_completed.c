@@ -79,7 +79,7 @@ ec_node_complete_child(const struct ec_node *node,
 		return -ENOMEM;
 
 	if (cur_state != NULL)
-		ec_parsed_add_child(cur_state, child_state);
+		ec_parsed_link_child(cur_state, child_state);
 	completed->cur_state = child_state;
 	cur_group = completed->cur_group;
 	completed->cur_group = NULL;
@@ -89,7 +89,7 @@ ec_node_complete_child(const struct ec_node *node,
 
 	/* restore parent parse state */
 	if (cur_state != NULL) {
-		ec_parsed_del_child(cur_state, child_state);
+		ec_parsed_unlink_child(cur_state, child_state);
 		assert(!ec_parsed_has_child(child_state));
 	}
 	ec_parsed_free(child_state);

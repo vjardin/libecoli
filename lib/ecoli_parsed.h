@@ -48,7 +48,7 @@ void ec_parsed_free_children(struct ec_parsed *parsed);
  *
  *
  */
-struct ec_parsed *ec_parsed_dup(struct ec_parsed *parsed);
+struct ec_parsed *ec_parsed_dup(const struct ec_parsed *parsed);
 
 /**
  *
@@ -105,29 +105,39 @@ int ec_node_parse_child(const struct ec_node *node,
  *
  *
  */
-void ec_parsed_add_child(struct ec_parsed *parsed,
+void ec_parsed_link_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
 /**
  *
  *
  *
  */
-void ec_parsed_del_child(struct ec_parsed *parsed,
+void ec_parsed_unlink_child(struct ec_parsed *parsed,
 			struct ec_parsed *child);
 
-/**
- *
- *
- *
- */
-struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed);
+/* keep the const */
+#define ec_parsed_get_root(parsed) ({				\
+	const struct ec_parsed *p_ = parsed; /* check type */	\
+	struct ec_parsed *parsed_ = (struct ec_parsed *)parsed;	\
+	typeof(parsed) res_;					\
+	(void)p_;						\
+	res_ = __ec_parsed_get_root(parsed_);			\
+	res_;							\
+})
 
 /**
  *
  *
  *
  */
-struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed);
+struct ec_parsed *__ec_parsed_get_root(struct ec_parsed *parsed);
+
+/**
+ *
+ *
+ *
+ */
+struct ec_parsed *ec_parsed_get_parent(const struct ec_parsed *parsed);
 
 /**
  * Get the first child of a tree.

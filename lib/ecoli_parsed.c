@@ -44,7 +44,7 @@ static int __ec_node_parse_child(const struct ec_node *node,
 		if (child == NULL)
 			return -ENOMEM;
 
-		ec_parsed_add_child(state, child);
+		ec_parsed_link_child(state, child);
 	} else {
 		child = state;
 	}
@@ -64,7 +64,7 @@ static int __ec_node_parse_child(const struct ec_node *node,
 
 free:
 	if (!is_root) {
-		ec_parsed_del_child(state, child);
+		ec_parsed_unlink_child(state, child);
 		ec_parsed_free(child);
 	}
 	return ret;
@@ -180,7 +180,7 @@ __ec_parsed_dup(const struct ec_parsed *root, const struct ec_parsed *ref,
 		dup_child = __ec_parsed_dup(child, ref, new_ref);
 		if (dup_child == NULL)
 			goto fail;
-		ec_parsed_add_child(dup, dup_child);
+		ec_parsed_link_child(dup, dup_child);
 	}
 
 	return dup;
@@ -190,9 +190,10 @@ fail:
 	return NULL;
 }
 
-struct ec_parsed *ec_parsed_dup(struct ec_parsed *parsed) //XXX const
+struct ec_parsed *ec_parsed_dup(const struct ec_parsed *parsed)
 {
-	struct ec_parsed *root, *dup_root, *dup = NULL;
+	const struct ec_parsed *root;
+	struct ec_parsed *dup_root, *dup = NULL;
 
 	root = ec_parsed_get_root(parsed);
 	dup_root = __ec_parsed_dup(root, parsed, &dup);
@@ -275,15 +276,14 @@ void ec_parsed_dump(FILE *out, const struct ec_parsed *parsed)
 	__ec_parsed_dump(out, parsed, 0);
 }
 
-void ec_parsed_add_child(struct ec_parsed *parsed,
+void ec_parsed_link_child(struct ec_parsed *parsed,
 	struct ec_parsed *child)
 {
 	TAILQ_INSERT_TAIL(&parsed->children, child, next);
 	child->parent = parsed;
 }
 
-// XXX we can remove the first arg ? parsed == child->parent ?
-void ec_parsed_del_child(struct ec_parsed *parsed, // XXX rename del in unlink?
+void ec_parsed_unlink_child(struct ec_parsed *parsed,
 	struct ec_parsed *child)
 {
 	TAILQ_REMOVE(&parsed->children, child, next);
@@ -317,16 +317,16 @@ const struct ec_node *ec_parsed_get_node(const struct ec_parsed *parsed)
 	return parsed->node;
 }
 
-void ec_parsed_del_last_child(struct ec_parsed *parsed) // rename in free
+void ec_parsed_del_last_child(struct ec_parsed *parsed)
 {
 	struct ec_parsed *child;
 
 	child = ec_parsed_get_last_child(parsed);
-	ec_parsed_del_child(parsed, child);
+	ec_parsed_unlink_child(parsed, child);
 	ec_parsed_free(child);
 }
 
-struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed)
+struct ec_parsed *__ec_parsed_get_root(struct ec_parsed *parsed)
 {
 	if (parsed == NULL)
 		return NULL;
@@ -337,7 +337,7 @@ struct ec_parsed *ec_parsed_get_root(struct ec_parsed *parsed)
 	return parsed;
 }
 
-struct ec_parsed *ec_parsed_get_parent(struct ec_parsed *parsed)
+struct ec_parsed *ec_parsed_get_parent(const struct ec_parsed *parsed)
 {
 	if (parsed == NULL)
 		return NULL;

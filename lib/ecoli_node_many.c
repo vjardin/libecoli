@@ -60,7 +60,7 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
 			child_parsed = ec_parsed_get_last_child(state);
-			ec_parsed_del_child(state, child_parsed);
+			ec_parsed_unlink_child(state, child_parsed);
 			ec_parsed_free(child_parsed);
 			break;
 		}

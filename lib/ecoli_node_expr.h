@@ -7,8 +7,6 @@
 
 #include <ecoli_node.h>
 
-/* XXX remove the _new for all other nodes */
-
 /**
  * Callback function type for evaluating a variable
  *

@@ -106,7 +106,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 static char *get_node_help(const struct ec_completed_item *item)
 {
 	const struct ec_completed_group *grp;
-	struct ec_parsed *state; // XXX keep const with macro
+	const struct ec_parsed *state;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;

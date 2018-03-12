@@ -245,7 +245,7 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 		ret = 1;
 	} else if (ret != EC_PARSED_NOMATCH) {
 		child_parsed = ec_parsed_get_last_child(state);
-		ec_parsed_del_child(state, child_parsed);
+		ec_parsed_unlink_child(state, child_parsed);
 		ec_parsed_free(child_parsed);
 		ret = EC_PARSED_NOMATCH;
 	}
@@ -272,7 +272,7 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 	struct ec_completed_item *item = NULL;
 	char *new_str = NULL;
 	const char *str;
-	char missing_quote;
+	char missing_quote = '\0';
 	int ret;
 
 	if (ec_strvec_len(strvec) != 1)
