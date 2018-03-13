@@ -14,14 +14,19 @@
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
+#include <ecoli_test.h>
 #include <ecoli_node.h>
+
+#include <ecoli_node_str.h>
+#include <ecoli_node_seq.h>
 
 EC_LOG_TYPE_REGISTER(node);
 
 static struct ec_node_type_list node_type_list =
 	TAILQ_HEAD_INITIALIZER(node_type_list);
 
-struct ec_node_type *ec_node_type_lookup(const char *name)
+const struct ec_node_type *
+ec_node_type_lookup(const char *name)
 {
 	struct ec_node_type *type;
 
@@ -102,7 +107,7 @@ struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
 
 struct ec_node *ec_node(const char *typename, const char *id)
 {
-	struct ec_node_type *type;
+	const struct ec_node_type *type;
 
 	type = ec_node_type_lookup(typename);
 	if (type == NULL) {
@@ -129,7 +134,7 @@ void ec_node_free(struct ec_node *node)
 	ec_free(node->children);
 	ec_free(node->id);
 	ec_free(node->desc);
-	ec_free(node->attrs);
+	ec_keyval_free(node->attrs);
 	ec_free(node);
 }
 
@@ -180,6 +185,7 @@ fail:
 	return -1;
 }
 
+#if 0 /* later */
 int ec_node_del_child(struct ec_node *node, struct ec_node *child)
 {
 	size_t i, n;
@@ -200,6 +206,7 @@ fail:
 	errno = EINVAL;
 	return -1;
 }
+#endif
 
 struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 {
@@ -219,6 +226,11 @@ struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 	}
 
 	return NULL;
+}
+
+const struct ec_node_type *ec_node_type(const struct ec_node *node)
+{
+	return node->type;
 }
 
 struct ec_keyval *ec_node_attrs(const struct ec_node *node)
@@ -281,3 +293,104 @@ int ec_node_check_type(const struct ec_node *node,
 	}
 	return 0;
 }
+
+/* LCOV_EXCL_START */
+static int ec_node_testcase(void)
+{
+	struct ec_node *node = NULL;
+	const struct ec_node *child;
+	const struct ec_node_type *type;
+	FILE *f = NULL;
+	char *buf = NULL;
+	size_t buflen = 0;
+	int testres = 0;
+	int ret;
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+
+	node = EC_NODE_SEQ(EC_NO_ID,
+			ec_node_str("id_x", "x"),
+			ec_node_str("id_y", "y"));
+	if (node == NULL)
+		goto fail;
+
+	ec_node_dump(f, node);
+	ec_node_type_dump(f);
+	ec_node_dump(f, NULL);
+	fclose(f);
+	f = NULL;
+
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "type=seq id=no-id"), "bad dump\n");
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "type=str id=id_x") &&
+		strstr(strstr(buf, "type=str id=id_x") + 1,
+			"type=str id=id_y"),
+		"bad dump\n");
+	free(buf);
+
+	testres |= EC_TEST_CHECK(
+		ec_node_get_children_count(node) == 2,
+		"bad children count\n");
+	child = ec_node_get_child(node, 0);
+	testres |= EC_TEST_CHECK(child != NULL &&
+		!strcmp(ec_node_type(child)->name, "str") &&
+		!strcmp(ec_node_id(child), "id_x"),
+		"bad child 0");
+	child = ec_node_get_child(node, 1);
+	testres |= EC_TEST_CHECK(child != NULL &&
+		!strcmp(ec_node_type(child)->name, "str") &&
+		!strcmp(ec_node_id(child), "id_y"),
+		"bad child 1");
+	child = ec_node_get_child(node, 2);
+	testres |= EC_TEST_CHECK(child == NULL,
+		"child 2 should be NULL");
+
+	child = ec_node_find(node, "id_x");
+	testres |= EC_TEST_CHECK(child != NULL &&
+		!strcmp(ec_node_type(child)->name, "str") &&
+		!strcmp(ec_node_id(child), "id_x"),
+		"bad child id_x");
+	child = ec_node_find(node, "id_dezdex");
+	testres |= EC_TEST_CHECK(child == NULL,
+		"child with wrong id should be NULL");
+
+	ret = ec_keyval_set(ec_node_attrs(node), "key", "val", NULL);
+	testres |= EC_TEST_CHECK(ret == 0,
+		"cannot set node attribute\n");
+
+	type = ec_node_type_lookup("seq");
+	testres |= EC_TEST_CHECK(type != NULL &&
+		ec_node_check_type(node, type) == 0,
+		"cannot get seq node type");
+	type = ec_node_type_lookup("str");
+	testres |= EC_TEST_CHECK(type != NULL &&
+		ec_node_check_type(node, type) < 0,
+		"node type should not be str");
+
+	ec_node_free(node);
+	node = NULL;
+
+	node = ec_node("deznuindez", EC_NO_ID);
+	testres |= EC_TEST_CHECK(node == NULL,
+			"should not be able to create node\n");
+
+	return testres;
+
+fail:
+	ec_node_free(node);
+	if (f != NULL)
+		fclose(f);
+
+	return -1;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_node_test = {
+	.name = "node",
+	.test = ec_node_testcase,
+};
+
+EC_TEST_REGISTER(ec_node_test);

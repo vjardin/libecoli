@@ -88,7 +88,6 @@ typedef void (*ec_node_free_priv_t)(struct ec_node *);
 struct ec_node_type {
 	TAILQ_ENTRY(ec_node_type) next;  /**< Next in list. */
 	const char *name;                /**< Node type name. */
-	ec_node_build_t build;           /**< (Re)build the node */
 	ec_node_parse_t parse;
 	ec_node_complete_t complete;
 	ec_node_desc_t desc;
@@ -116,7 +115,7 @@ int ec_node_type_register(struct ec_node_type *type);
  * @return
  *   The node type if found, or NULL on error.
  */
-struct ec_node_type *ec_node_type_lookup(const char *name);
+const struct ec_node_type *ec_node_type_lookup(const char *name);
 
 /**
  * Dump registered log types
@@ -150,6 +149,7 @@ int ec_node_add_child(struct ec_node *node, struct ec_node *child);
 int ec_node_del_child(struct ec_node *node, struct ec_node *child);
 
 /* XXX add more accessors */
+const struct ec_node_type *ec_node_type(const struct ec_node *node);
 struct ec_keyval *ec_node_attrs(const struct ec_node *node);
 const char *ec_node_id(const struct ec_node *node);
 const char *ec_node_desc(const struct ec_node *node);

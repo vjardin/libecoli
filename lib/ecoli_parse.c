@@ -36,7 +36,7 @@ static int __ec_node_parse_child(const struct ec_node *node,
 	struct ec_parse *child = NULL;
 	int ret;
 
-	if (node->type->parse == NULL)
+	if (ec_node_type(node)->parse == NULL)
 		return -ENOTSUP;
 
 	if (!is_root) {
@@ -48,7 +48,7 @@ static int __ec_node_parse_child(const struct ec_node *node,
 	} else {
 		child = state;
 	}
-	ret = node->type->parse(node, child, strvec);
+	ret = ec_node_type(node)->parse(node, child, strvec);
 	if (ret < 0 || ret == EC_PARSE_NOMATCH)
 		goto free;
 
@@ -243,7 +243,7 @@ static void __ec_parse_dump(FILE *out,
 	/* node can be null when parsing is incomplete */
 	if (parse->node != NULL) {
 		id = parse->node->id;
-		typename = parse->node->type->name;
+		typename = ec_node_type(parse->node)->name;
 	}
 
 	fprintf(out, "%*s" "type=%s id=%s vec=",

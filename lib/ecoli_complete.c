@@ -69,7 +69,7 @@ ec_node_complete_child(const struct ec_node *node,
 	struct ec_comp_group *cur_group;
 	int ret;
 
-	if (node->type->complete == NULL)
+	if (ec_node_type(node)->complete == NULL)
 		return -ENOTSUP;
 
 	/* save previous parse state, prepare child state */
@@ -85,7 +85,7 @@ ec_node_complete_child(const struct ec_node *node,
 	comp->cur_group = NULL;
 
 	/* fill the comp struct with items */
-	ret = node->type->complete(node, comp, strvec);
+	ret = ec_node_type(node)->complete(node, comp, strvec);
 
 	/* restore parent parse state */
 	if (cur_state != NULL) {
@@ -507,7 +507,7 @@ void ec_comp_dump(FILE *out, const struct ec_comp *comp)
 
 	TAILQ_FOREACH(grp, &comp->groups, next) {
 		fprintf(out, "node=%p, node_type=%s\n",
-			grp->node, grp->node->type->name);
+			grp->node, ec_node_type(grp->node)->name);
 		TAILQ_FOREACH(item, &grp->items, next) {
 			const char *typestr;
 
