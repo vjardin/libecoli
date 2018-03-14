@@ -14,8 +14,14 @@
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
+#include <ecoli_test.h>
 #include <ecoli_node.h>
+#include <ecoli_node_sh_lex.h>
+#include <ecoli_node_str.h>
+#include <ecoli_node_seq.h>
 #include <ecoli_parse.h>
+
+EC_LOG_TYPE_REGISTER(parse);
 
 TAILQ_HEAD(ec_parse_list, ec_parse);
 
@@ -366,20 +372,16 @@ struct ec_parse *ec_parse_iter_next(struct ec_parse *parse)
 struct ec_parse *ec_parse_find_first(struct ec_parse *parse,
 	const char *id)
 {
-	struct ec_parse *child, *ret;
+	struct ec_parse *iter;
 
 	if (parse == NULL)
 		return NULL;
 
-	if (parse->node != NULL &&
-			parse->node->id != NULL &&
-			!strcmp(parse->node->id, id))
-		return parse;
-
-	TAILQ_FOREACH(child, &parse->children, next) {
-		ret = ec_parse_find_first(child, id);
-		if (ret != NULL)
-			return ret;
+	for (iter = parse; iter != NULL; iter = ec_parse_iter_next(iter)) {
+		if (iter->node != NULL &&
+				iter->node->id != NULL &&
+				!strcmp(iter->node->id, id))
+			return iter;
 	}
 
 	return NULL;
@@ -421,3 +423,107 @@ size_t ec_parse_matches(const struct ec_parse *parse)
 
 	return 1;
 }
+
+/* LCOV_EXCL_START */
+static int ec_parse_testcase(void)
+{
+	struct ec_node *node = NULL;
+	struct ec_parse *p = NULL, *p2 = NULL;
+	const struct ec_parse *pc;
+	FILE *f = NULL;
+	char *buf = NULL;
+	size_t buflen = 0;
+	int testres = 0;
+	int ret;
+
+	node = ec_node_sh_lex(EC_NO_ID,
+			EC_NODE_SEQ(EC_NO_ID,
+				ec_node_str("id_x", "x"),
+				ec_node_str("id_y", "y")));
+	if (node == NULL)
+		goto fail;
+
+	p = ec_node_parse(node, "xcdscds");
+	testres |= EC_TEST_CHECK(
+		p != NULL && !ec_parse_matches(p),
+		"parse should not match\n");
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_parse_dump(f, p);
+	fclose(f);
+	f = NULL;
+
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "no match"), "bad dump\n");
+	free(buf);
+	ec_parse_free(p);
+
+	p = ec_node_parse(node, "x y");
+	testres |= EC_TEST_CHECK(
+		p != NULL && ec_parse_matches(p),
+		"parse should match\n");
+	testres |= EC_TEST_CHECK(
+		ec_parse_len(p) == 1, "bad parse len\n");
+
+	ret = ec_keyval_set(ec_parse_get_attrs(p), "key", "val", NULL);
+	testres |= EC_TEST_CHECK(ret == 0,
+		"cannot set parse attribute\n");
+
+	p2 = ec_parse_dup(p);
+	testres |= EC_TEST_CHECK(
+		p2 != NULL && ec_parse_matches(p2),
+		"parse should match\n");
+	ec_parse_free(p2);
+	p2 = NULL;
+
+	pc = ec_parse_find_first(p, "id_x");
+	testres |= EC_TEST_CHECK(pc != NULL, "cannot find id_x");
+	testres |= EC_TEST_CHECK(pc != NULL &&
+		ec_parse_get_parent(pc) != NULL &&
+		ec_parse_get_parent(ec_parse_get_parent(pc)) == p,
+		"invalid parent\n");
+
+	pc = ec_parse_find_first(p, "id_y");
+	testres |= EC_TEST_CHECK(pc != NULL, "cannot find id_y");
+	pc = ec_parse_find_first(p, "id_dezdezdez");
+	testres |= EC_TEST_CHECK(pc == NULL, "should not find bad id");
+
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_parse_dump(f, p);
+	fclose(f);
+	f = NULL;
+
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "type=sh_lex id=no-id") &&
+		strstr(buf, "type=seq id=no-id") &&
+		strstr(buf, "type=str id=id_x") &&
+		strstr(buf, "type=str id=id_x"),
+		"bad dump\n");
+	free(buf);
+
+	ec_parse_free(p);
+	ec_node_free(node);
+	return testres;
+
+fail:
+	ec_parse_free(p2);
+	ec_parse_free(p);
+	ec_node_free(node);
+	if (f != NULL)
+		fclose(f);
+
+	return -1;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_parse_test = {
+	.name = "parse",
+	.test = ec_parse_testcase,
+};
+
+EC_TEST_REGISTER(ec_parse_test);

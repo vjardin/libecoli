@@ -215,6 +215,10 @@ static int ec_strvec_testcase(void)
 {
 	struct ec_strvec *strvec = NULL;
 	struct ec_strvec *strvec2 = NULL;
+	FILE *f = NULL;
+	char *buf = NULL;
+	size_t buflen = 0;
+	int testres = 0;
 
 	strvec = ec_strvec();
 	if (strvec == NULL) {
@@ -318,16 +322,48 @@ static int ec_strvec_testcase(void)
 	}
 	ec_strvec_free(strvec2);
 
-	ec_strvec_dump(stdout, strvec);
-	ec_strvec_dump(stdout, NULL);
+	strvec2 = EC_STRVEC("0", "1");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec2);
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_strvec_dump(f, strvec);
+	fclose(f);
+	f = NULL;
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "strvec (len=2) [0, 1]"), "bad dump\n");
+	free(buf);
+	buf = NULL;
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_strvec_dump(f, NULL);
+	fclose(f);
+	f = NULL;
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "none"), "bad dump\n");
+	free(buf);
+	buf = NULL;
 
 	ec_strvec_free(strvec);
 
-	return 0;
+	return testres;
 
 fail:
+	if (f != NULL)
+		fclose(f);
 	ec_strvec_free(strvec);
 	ec_strvec_free(strvec2);
+	free(buf);
+
 	return -1;
 }
 /* LCOV_EXCL_STOP */

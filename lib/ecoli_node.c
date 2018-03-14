@@ -240,8 +240,6 @@ struct ec_keyval *ec_node_attrs(const struct ec_node *node)
 
 const char *ec_node_id(const struct ec_node *node)
 {
-	if (node->id == NULL)
-		return "None";
 	return node->id;
 }
 
@@ -306,16 +304,18 @@ static int ec_node_testcase(void)
 	int testres = 0;
 	int ret;
 
-	f = open_memstream(&buf, &buflen);
-	if (f == NULL)
-		goto fail;
-
 	node = EC_NODE_SEQ(EC_NO_ID,
 			ec_node_str("id_x", "x"),
 			ec_node_str("id_y", "y"));
 	if (node == NULL)
 		goto fail;
 
+	ec_node_clone(node);
+	ec_node_free(node);
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
 	ec_node_dump(f, node);
 	ec_node_type_dump(f);
 	ec_node_dump(f, NULL);
@@ -330,6 +330,12 @@ static int ec_node_testcase(void)
 			"type=str id=id_y"),
 		"bad dump\n");
 	free(buf);
+
+	testres |= EC_TEST_CHECK(
+		!strcmp(ec_node_type(node)->name, "seq") &&
+		!strcmp(ec_node_id(node), EC_NO_ID) &&
+		!strcmp(ec_node_desc(node), "<seq>"),
+		"bad child 0");
 
 	testres |= EC_TEST_CHECK(
 		ec_node_get_children_count(node) == 2,
@@ -351,7 +357,8 @@ static int ec_node_testcase(void)
 	child = ec_node_find(node, "id_x");
 	testres |= EC_TEST_CHECK(child != NULL &&
 		!strcmp(ec_node_type(child)->name, "str") &&
-		!strcmp(ec_node_id(child), "id_x"),
+		!strcmp(ec_node_id(child), "id_x") &&
+		!strcmp(ec_node_desc(child), "x"),
 		"bad child id_x");
 	child = ec_node_find(node, "id_dezdex");
 	testres |= EC_TEST_CHECK(child == NULL,
