@@ -20,7 +20,7 @@
 
 struct ec_node;
 
-enum ec_comp_type {
+enum ec_comp_type { /* XXX should be a define */
 	EC_COMP_UNKNOWN = 0x1,
 	EC_COMP_FULL = 0x2,
 	EC_COMP_PARTIAL = 0x4,

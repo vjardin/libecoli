@@ -458,6 +458,7 @@ static int ec_parse_testcase(void)
 	testres |= EC_TEST_CHECK(
 		strstr(buf, "no match"), "bad dump\n");
 	free(buf);
+	buf = NULL;
 	ec_parse_free(p);
 
 	p = ec_node_parse(node, "x y");
@@ -505,6 +506,7 @@ static int ec_parse_testcase(void)
 		strstr(buf, "type=str id=id_x"),
 		"bad dump\n");
 	free(buf);
+	buf = NULL;
 
 	ec_parse_free(p);
 	ec_node_free(node);
@@ -516,6 +518,7 @@ fail:
 	ec_node_free(node);
 	if (f != NULL)
 		fclose(f);
+	free(buf);
 
 	return -1;
 }

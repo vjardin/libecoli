@@ -13,14 +13,19 @@
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
+#include <ecoli_test.h>
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
+#include <ecoli_node_sh_lex.h>
+#include <ecoli_node_str.h>
+#include <ecoli_node_or.h>
 #include <ecoli_complete.h>
+
+EC_LOG_TYPE_REGISTER(comp);
 
 struct ec_comp_item {
 	TAILQ_ENTRY(ec_comp_item) next;
 	enum ec_comp_type type;
-	const struct ec_node *node;
 	struct ec_comp_group *grp;
 	char *start;      /* the initial token */
 	char *full;       /* the full token after completion */
@@ -181,8 +186,8 @@ fail:
 }
 
 static struct ec_comp_item *
-ec_comp_item(const struct ec_node *node, enum ec_comp_type type,
-		const char *start, const char *full)
+ec_comp_item(enum ec_comp_type type,
+	const char *start, const char *full)
 {
 	struct ec_comp_item *item = NULL;
 	struct ec_keyval *attrs = NULL;
@@ -226,7 +231,6 @@ ec_comp_item(const struct ec_node *node, enum ec_comp_type type,
 			goto fail;
 	}
 
-	item->node = node;
 	item->type = type;
 	item->start = start_cp;
 	item->full = full_cp;
@@ -324,10 +328,10 @@ fail:
 }
 
 static int
-ec_comp_item_add(struct ec_comp *comp,
+ec_comp_item_add(struct ec_comp *comp, const struct ec_node *node,
 		struct ec_comp_item *item)
 {
-	if (comp == NULL || item == NULL || item->node == NULL)
+	if (comp == NULL || item == NULL)
 		return -EINVAL;
 
 	switch (item->type) {
@@ -347,7 +351,7 @@ ec_comp_item_add(struct ec_comp *comp,
 	if (comp->cur_group == NULL) {
 		struct ec_comp_group *grp;
 
-		grp = ec_comp_group(item->node, comp->cur_state);
+		grp = ec_comp_group(node, comp->cur_state);
 		if (grp == NULL)
 			return -ENOMEM;
 		TAILQ_INSERT_TAIL(&comp->groups, grp, next);
@@ -385,16 +389,16 @@ ec_comp_item_get_type(const struct ec_comp_item *item)
 	return item->type;
 }
 
-const struct ec_node *
-ec_comp_item_get_node(const struct ec_comp_item *item)
-{
-	return item->node;
-}
-
 const struct ec_comp_group *
 ec_comp_item_get_grp(const struct ec_comp_item *item)
 {
 	return item->grp;
+}
+
+const struct ec_node *
+ec_comp_item_get_node(const struct ec_comp_item *item)
+{
+	return ec_comp_item_get_grp(item)->node;
 }
 
 static void
@@ -420,11 +424,11 @@ int ec_comp_add_item(struct ec_comp *comp,
 	struct ec_comp_item *item = NULL;
 	int ret;
 
-	item = ec_comp_item(node, type, start, full);
+	item = ec_comp_item(type, start, full);
 	if (item == NULL)
 		return -1;
 
-	ret = ec_comp_item_add(comp, item);
+	ret = ec_comp_item_add(comp, node, item);
 	if (ret < 0)
 		goto fail;
 
@@ -634,3 +638,108 @@ void ec_comp_iter_free(struct ec_comp_iter *iter)
 {
 	ec_free(iter);
 }
+
+/* LCOV_EXCL_START */
+static int ec_comp_testcase(void)
+{
+	struct ec_node *node = NULL;
+	struct ec_comp *c = NULL;
+	struct ec_comp_iter *iter = NULL;
+	struct ec_comp_item *item;
+	FILE *f = NULL;
+	char *buf = NULL;
+	size_t buflen = 0;
+	int testres = 0;
+
+	node = ec_node_sh_lex(EC_NO_ID,
+			EC_NODE_OR(EC_NO_ID,
+				ec_node_str("id_x", "xx"),
+				ec_node_str("id_y", "yy")));
+	if (node == NULL)
+		goto fail;
+
+	c = ec_node_complete(node, "xcdscds");
+	testres |= EC_TEST_CHECK(
+		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 0,
+		"complete count should is not 0\n");
+	ec_comp_free(c);
+
+	c = ec_node_complete(node, "x");
+	testres |= EC_TEST_CHECK(
+		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 1,
+		"complete count should is not 1\n");
+	ec_comp_free(c);
+
+	c = ec_node_complete(node, "");
+	testres |= EC_TEST_CHECK(
+		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 2,
+		"complete count should is not 2\n");
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_comp_dump(f, c);
+	fclose(f);
+	f = NULL;
+
+	/* testres |= EC_TEST_CHECK( */
+	/* 	strstr(buf, "no match"), "bad dump\n"); */
+	free(buf);
+	buf = NULL;
+
+	iter = ec_comp_iter(c, EC_COMP_ALL);
+	item = ec_comp_iter_next(iter);
+	if (item == NULL)
+		goto fail;
+
+	testres |= EC_TEST_CHECK(
+		!strcmp(ec_comp_item_get_display(item), "xx"),
+		"bad item display\n");
+	testres |= EC_TEST_CHECK(
+		ec_comp_item_get_type(item) == EC_COMP_FULL,
+		"bad item type\n");
+	testres |= EC_TEST_CHECK(
+		!strcmp(ec_node_id(ec_comp_item_get_node(item)), "id_x"),
+		"bad item node\n");
+
+	item = ec_comp_iter_next(iter);
+	if (item == NULL)
+		goto fail;
+
+	testres |= EC_TEST_CHECK(
+		!strcmp(ec_comp_item_get_display(item), "yy"),
+		"bad item display\n");
+	testres |= EC_TEST_CHECK(
+		ec_comp_item_get_type(item) == EC_COMP_FULL,
+		"bad item type\n");
+	testres |= EC_TEST_CHECK(
+		!strcmp(ec_node_id(ec_comp_item_get_node(item)), "id_y"),
+		"bad item node\n");
+
+	item = ec_comp_iter_next(iter);
+	testres |= EC_TEST_CHECK(item == NULL, "should be the last item\n");
+
+	ec_comp_iter_free(iter);
+	ec_comp_free(c);
+	ec_node_free(node);
+
+	return testres;
+
+fail:
+	ec_comp_iter_free(iter);
+	ec_comp_free(c);
+	ec_node_free(node);
+	if (f != NULL)
+		fclose(f);
+	free(buf);
+
+	return -1;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_comp_test = {
+	.name = "comp",
+	.test = ec_comp_testcase,
+};
+
+EC_TEST_REGISTER(ec_comp_test);

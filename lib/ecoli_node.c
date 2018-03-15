@@ -330,6 +330,7 @@ static int ec_node_testcase(void)
 			"type=str id=id_y"),
 		"bad dump\n");
 	free(buf);
+	buf = NULL;
 
 	testres |= EC_TEST_CHECK(
 		!strcmp(ec_node_type(node)->name, "seq") &&
@@ -390,6 +391,7 @@ fail:
 	ec_node_free(node);
 	if (f != NULL)
 		fclose(f);
+	free(buf);
 
 	return -1;
 }
