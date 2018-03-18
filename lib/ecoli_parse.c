@@ -42,38 +42,46 @@ static int __ec_node_parse_child(const struct ec_node *node,
 	struct ec_parse *child = NULL;
 	int ret;
 
-	if (ec_node_type(node)->parse == NULL)
-		return -ENOTSUP;
+	if (ec_node_type(node)->parse == NULL) {
+		errno = ENOTSUP;
+		return -1;
+	}
 
 	if (!is_root) {
 		child = ec_parse(node);
 		if (child == NULL)
-			return -ENOMEM;
+			return -1;
 
 		ec_parse_link_child(state, child);
 	} else {
 		child = state;
 	}
 	ret = ec_node_type(node)->parse(node, child, strvec);
-	if (ret < 0 || ret == EC_PARSE_NOMATCH)
-		goto free;
+	if (ret < 0)
+		goto fail;
+
+	if (ret == EC_PARSE_NOMATCH) {
+		if (!is_root) {
+			ec_parse_unlink_child(state, child);
+			ec_parse_free(child);
+		}
+		return ret;
+	}
 
 	match_strvec = ec_strvec_ndup(strvec, 0, ret);
-	if (match_strvec == NULL) {
-		ret = -ENOMEM;
-		goto free;
-	}
+	if (match_strvec == NULL)
+		goto fail;
 
 	child->strvec = match_strvec;
 
 	return ret;
 
-free:
+fail:
 	if (!is_root) {
 		ec_parse_unlink_child(state, child);
 		ec_parse_free(child);
 	}
-	return ret;
+	return -1;
 }
 
 int ec_node_parse_child(const struct ec_node *node, struct ec_parse *state,
@@ -244,7 +252,7 @@ static void __ec_parse_dump(FILE *out,
 {
 	struct ec_parse *child;
 	const struct ec_strvec *vec;
-	const char *id, *typename = "none";
+	const char *id = "none", *typename = "none";
 
 	/* node can be null when parsing is incomplete */
 	if (parse->node != NULL) {

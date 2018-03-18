@@ -51,14 +51,20 @@ static int parse_llint(struct ec_node_int_uint *node, const char *str,
 			(errno != 0 && *val == 0))
 		return -1;
 
-	if (node->check_min && *val < node->min)
+	if (node->check_min && *val < node->min) {
+		errno = ERANGE;
 		return -1;
+	}
 
-	if (node->check_max && *val > node->max)
+	if (node->check_max && *val > node->max) {
+		errno = ERANGE;
 		return -1;
+	}
 
-	if (*endptr != 0)
+	if (*endptr != 0) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	return 0;
 }

@@ -8,7 +8,7 @@ include $(ECOLI)/mk/ecoli-pre.mk
 O ?= build/
 
 # XXX -O0
-CFLAGS  = -g -O0 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
+CFLAGS  = -g -O3 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
 CFLAGS += -I.
 
 # XXX coverage

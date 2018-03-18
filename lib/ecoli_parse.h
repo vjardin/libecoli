@@ -92,9 +92,9 @@ struct ec_parse *ec_node_parse_strvec(const struct ec_node *node,
  *   possible descendants.
  *
  * return:
+ * the number of matched strings in strvec on success
  * EC_PARSE_NOMATCH (positive) if it does not match
- * any other negative value (-errno) for other errors
- * the number of matched strings in strvec
+ * -1 on error, and errno is set
  */
 int ec_node_parse_child(const struct ec_node *node,
 			struct ec_parse *state,

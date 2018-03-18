@@ -42,10 +42,8 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 	for (count = 0; node->max == 0 || count < node->max; count++) {
 		childvec = ec_strvec_ndup(strvec, off,
 			ec_strvec_len(strvec) - off);
-		if (childvec == NULL) {
-			ret = -ENOMEM;
+		if (childvec == NULL)
 			goto fail;
-		}
 
 		ret = ec_node_parse_child(node->child, state, childvec);
 		if (ret < 0)
@@ -77,7 +75,7 @@ static int ec_node_many_parse(const struct ec_node *gen_node,
 
 fail:
 	ec_strvec_free(childvec);
-	return ret;
+	return -1;
 }
 
 static int

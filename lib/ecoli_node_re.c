@@ -75,17 +75,20 @@ int ec_node_re_set_regexp(struct ec_node *gen_node, const char *str)
 	regex_t re;
 	int ret;
 
-	if (str == NULL)
-		return -EINVAL;
+	EC_CHECK_ARG(str != NULL, -1, EINVAL);
 
-	ret = -ENOMEM;
 	str_copy = ec_strdup(str);
 	if (str_copy == NULL)
 		goto fail;
 
-	ret = -EINVAL;
-	if (regcomp(&re, str_copy, REG_EXTENDED) != 0)
+	ret = regcomp(&re, str_copy, REG_EXTENDED);
+	if (ret != 0) {
+		if (ret == REG_ESPACE)
+			errno = ENOMEM;
+		else
+			errno = EINVAL;
 		goto fail;
+	}
 
 	if (node->re_str != NULL) {
 		ec_free(node->re_str);
@@ -98,7 +101,7 @@ int ec_node_re_set_regexp(struct ec_node *gen_node, const char *str)
 
 fail:
 	ec_free(str_copy);
-	return ret;
+	return -1;
 }
 
 struct ec_node *ec_node_re(const char *id, const char *re_str)

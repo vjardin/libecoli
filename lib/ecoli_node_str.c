@@ -101,19 +101,24 @@ EC_NODE_TYPE_REGISTER(ec_node_str_type);
 int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 {
 	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	char *s = NULL;
 	int ret;
 
 	ret = ec_node_check_type(gen_node, &ec_node_str_type);
 	if (ret < 0)
 		return ret;
 
-	if (str == NULL)
-		return -EINVAL;
-	ec_free(node->string);
-	node->string = ec_strdup(str);
-	if (node->string == NULL)
-		return -ENOMEM;
+	if (str == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
+	s = ec_strdup(str);
+	if (s == NULL)
+		return -1;
+
+	ec_free(node->string);
+	node->string = s;
 	node->len = strlen(node->string);
 
 	return 0;

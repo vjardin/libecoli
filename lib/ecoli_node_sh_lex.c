@@ -93,7 +93,7 @@ static char *unquote_str(const char *str, size_t n, int allow_missing_quote,
 			*missing_quote = str[0];
 		if (allow_missing_quote == 0) {
 			ec_free(dst);
-			errno = EINVAL;
+			errno = EBADMSG;
 			return NULL;
 		}
 	}
@@ -229,13 +229,10 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 		str = ec_strvec_val(strvec, 0);
 		new_vec = tokenize(str, 0, 0, NULL);
 	}
-	if (new_vec == NULL) {
-		if (errno == EINVAL)
-			ret = EC_PARSE_NOMATCH;
-		else
-			ret = -ENOMEM;
+	if (new_vec == NULL && errno == EBADMSG) /* quotes not closed */
+		return EC_PARSE_NOMATCH;
+	if (new_vec == NULL)
 		goto fail;
-	}
 
 	ret = ec_node_parse_child(node->child, state, new_vec);
 	if (ret < 0)
@@ -257,7 +254,7 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 
  fail:
 	ec_strvec_free(new_vec);
-	return ret;
+	return -1;
 }
 
 static int

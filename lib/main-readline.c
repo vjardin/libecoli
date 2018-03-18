@@ -136,10 +136,10 @@ static char *get_node_help(const struct ec_comp_item *item)
 
 static int show_help(int ignore, int invoking_key)
 {
-	struct ec_comp_iter *iter;
+	struct ec_comp_iter *iter = NULL;
 	const struct ec_comp_group *grp, *prev_grp = NULL;
 	const struct ec_comp_item *item;
-	struct ec_comp *c;
+	struct ec_comp *c = NULL;
 	struct ec_parse *p;
 	char *line = NULL;
 	unsigned int count;

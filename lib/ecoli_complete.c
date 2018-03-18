@@ -74,14 +74,16 @@ ec_node_complete_child(const struct ec_node *node,
 	struct ec_comp_group *cur_group;
 	int ret;
 
-	if (ec_node_type(node)->complete == NULL)
-		return -ENOTSUP;
+	if (ec_node_type(node)->complete == NULL) {
+		errno = ENOTSUP;
+		return -1;
+	}
 
 	/* save previous parse state, prepare child state */
 	cur_state = comp->cur_state;
 	child_state = ec_parse(node);
 	if (child_state == NULL)
-		return -ENOMEM;
+		return -1;
 
 	if (cur_state != NULL)
 		ec_parse_link_child(cur_state, child_state);
@@ -102,7 +104,7 @@ ec_node_complete_child(const struct ec_node *node,
 	comp->cur_group = cur_group;
 
 	if (ret < 0)
-		return ret;
+		return -1;
 
 	return 0;
 }
@@ -255,11 +257,12 @@ int ec_comp_item_set_display(struct ec_comp_item *item,
 				const char *display)
 {
 	char *display_copy = NULL;
-	int ret = 0;
 
 	if (item == NULL || display == NULL ||
-			item->type == EC_COMP_UNKNOWN)
-		return -EINVAL;
+			item->type == EC_COMP_UNKNOWN) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	display_copy = ec_strdup(display);
 	if (display_copy == NULL)
@@ -272,7 +275,7 @@ int ec_comp_item_set_display(struct ec_comp_item *item,
 
 fail:
 	ec_free(display_copy);
-	return ret;
+	return -1;
 }
 
 int
@@ -280,13 +283,13 @@ ec_comp_item_set_completion(struct ec_comp_item *item,
 				const char *completion)
 {
 	char *completion_copy = NULL;
-	int ret = 0;
 
 	if (item == NULL || completion == NULL ||
-			item->type == EC_COMP_UNKNOWN)
-		return -EINVAL;
+			item->type == EC_COMP_UNKNOWN) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	ret = -ENOMEM;
 	completion_copy = ec_strdup(completion);
 	if (completion_copy == NULL)
 		goto fail;
@@ -298,7 +301,7 @@ ec_comp_item_set_completion(struct ec_comp_item *item,
 
 fail:
 	ec_free(completion_copy);
-	return ret;
+	return -1;
 }
 
 int
@@ -306,13 +309,13 @@ ec_comp_item_set_str(struct ec_comp_item *item,
 			const char *str)
 {
 	char *str_copy = NULL;
-	int ret = 0;
 
 	if (item == NULL || str == NULL ||
-			item->type == EC_COMP_UNKNOWN)
-		return -EINVAL;
+			item->type == EC_COMP_UNKNOWN) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	ret = -ENOMEM;
 	str_copy = ec_strdup(str);
 	if (str_copy == NULL)
 		goto fail;
@@ -324,15 +327,17 @@ ec_comp_item_set_str(struct ec_comp_item *item,
 
 fail:
 	ec_free(str_copy);
-	return ret;
+	return -1;
 }
 
 static int
 ec_comp_item_add(struct ec_comp *comp, const struct ec_node *node,
 		struct ec_comp_item *item)
 {
-	if (comp == NULL || item == NULL)
-		return -EINVAL;
+	if (comp == NULL || item == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	switch (item->type) {
 	case EC_COMP_UNKNOWN:
@@ -345,7 +350,8 @@ ec_comp_item_add(struct ec_comp *comp, const struct ec_node *node,
 		comp->count_partial++;
 		break;
 	default:
-		return -EINVAL;
+		errno = EINVAL;
+		return -1;
 	}
 
 	if (comp->cur_group == NULL) {
@@ -353,7 +359,7 @@ ec_comp_item_add(struct ec_comp *comp, const struct ec_node *node,
 
 		grp = ec_comp_group(node, comp->cur_state);
 		if (grp == NULL)
-			return -ENOMEM;
+			return -1;
 		TAILQ_INSERT_TAIL(&comp->groups, grp, next);
 		comp->cur_group = grp;
 	}

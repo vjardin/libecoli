@@ -5,8 +5,8 @@
 /**
  * Assert API
  *
- * Helpers to check at runtime if a condition is true, and abort
- * (exit) otherwise.
+ * Helpers to check at runtime if a condition is true, or otherwise
+ * either abort (exit program) or return an error.
  */
 
 #ifndef ECOLI_ASSERT_
@@ -31,5 +31,25 @@
 /* internal */
 void __ec_assert_print(bool expr, const char *expr_str,
 		const char *format, ...);
+
+/**
+ * Check a condition or return.
+ *
+ * If the condition is true, do nothing. If it is false, set
+ * errno and return the specified value.
+ *
+ * @param cond
+ *   The condition to test.
+ * @param ret
+ *   The value to return.
+ * @param err
+ *   The errno to set.
+ */
+#define EC_CHECK_ARG(cond, ret, err) do {				\
+		if (!(cond)) {						\
+			errno = err;					\
+			return ret;					\
+		}							\
+	} while(0)
 
 #endif

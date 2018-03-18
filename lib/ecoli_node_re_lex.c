@@ -112,10 +112,8 @@ ec_node_re_lex_parse(const struct ec_node *gen_node,
 		str = ec_strvec_val(strvec, 0);
 		new_vec = tokenize(node->table, node->len, str);
 	}
-	if (new_vec == NULL) {
-		ret = -ENOMEM;
+	if (new_vec == NULL)
 		goto fail;
-	}
 
 	ret = ec_node_parse_child(node->child, state, new_vec);
 	if (ret < 0)
@@ -137,7 +135,7 @@ ec_node_re_lex_parse(const struct ec_node *gen_node,
 
  fail:
 	ec_strvec_free(new_vec);
-	return ret;
+	return -1;
 }
 
 static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
@@ -171,12 +169,10 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 	int ret;
 	char *pat_dup = NULL;
 
-	ret = -ENOMEM;
 	pat_dup = ec_strdup(pattern);
 	if (pat_dup == NULL)
 		goto fail;
 
-	ret = -ENOMEM;
 	table = ec_realloc(node->table, sizeof(*table) * (node->len + 1));
 	if (table == NULL)
 		goto fail;
@@ -187,9 +183,9 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 			"Regular expression <%s> compilation failed: %d\n",
 			pattern, ret);
 		if (ret == REG_ESPACE)
-			ret = -ENOMEM;
+			errno = ENOMEM;
 		else
-			ret = -EINVAL;
+			errno = EINVAL;
 
 		goto fail;
 	}
@@ -203,7 +199,7 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 
 fail:
 	ec_free(pat_dup);
-	return ret;
+	return -1;
 }
 
 struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)

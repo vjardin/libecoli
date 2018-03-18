@@ -45,10 +45,8 @@ ec_node_seq_parse(const struct ec_node *gen_node,
 	for (i = 0; i < node->len; i++) {
 		childvec = ec_strvec_ndup(strvec, len,
 			ec_strvec_len(strvec) - len);
-		if (childvec == NULL) {
-			ret = -ENOMEM;
+		if (childvec == NULL)
 			goto fail;
-		}
 
 		ret = ec_node_parse_child(node->table[i], state, childvec);
 		if (ret < 0)
@@ -69,7 +67,7 @@ ec_node_seq_parse(const struct ec_node *gen_node,
 
 fail:
 	ec_strvec_free(childvec);
-	return ret;
+	return -1;
 }
 
 static int

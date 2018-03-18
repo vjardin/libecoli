@@ -36,16 +36,18 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(var);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	node = ec_parse_get_node(var);
 	if (ec_node_int_getval(node, ec_strvec_val(vec, 0), &val) < 0)
-		return -EINVAL;
+		return -1;
 
 	eval = ec_malloc(sizeof(*eval));
 	if (eval == NULL)
-		return -ENOMEM;
+		return -1;
 
 	eval->val = val;
 	EC_LOG(EC_LOG_DEBUG, "eval var %d\n", eval->val);
@@ -65,13 +67,18 @@ ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(operator);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (!strcmp(ec_strvec_val(vec, 0), "!"))
+	if (!strcmp(ec_strvec_val(vec, 0), "!")) {
 		eval->val = !eval->val;
-	else
-		return -EINVAL;
+	} else {
+		errno = EINVAL;
+		return -1;
+	}
+
 
 	EC_LOG(EC_LOG_DEBUG, "eval pre_op %d\n", eval->val);
 	*result = eval;
@@ -90,13 +97,17 @@ ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(operator);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (!strcmp(ec_strvec_val(vec, 0), "^"))
+	if (!strcmp(ec_strvec_val(vec, 0), "^")) {
 		eval->val = eval->val * eval->val;
-	else
-		return -EINVAL;
+	} else {
+		errno = EINVAL;
+		return -1;
+	}
 
 	EC_LOG(EC_LOG_DEBUG, "eval post_op %d\n", eval->val);
 	*result = eval;
@@ -117,15 +128,19 @@ ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(operator);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	if (!strcmp(ec_strvec_val(vec, 0), "+"))
+	if (!strcmp(ec_strvec_val(vec, 0), "+")) {
 		eval1->val = eval1->val + eval2->val;
-	else if (!strcmp(ec_strvec_val(vec, 0), "*"))
+	} else if (!strcmp(ec_strvec_val(vec, 0), "*")) {
 		eval1->val = eval1->val * eval2->val;
-	else
-		return -EINVAL;
+	} else {
+		errno = EINVAL;
+		return -1;
+	}
 
 	EC_LOG(EC_LOG_DEBUG, "eval bin_op %d\n", eval1->val);
 	ec_free(eval2);

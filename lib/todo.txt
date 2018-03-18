@@ -40,6 +40,8 @@ X save node path in completion to fix help string
 - anything better than weakref?
 - add ec_node_defaults.[ch] providing usual implementations of node methods
 X use vec for strvec
+- ELOOP in case of loop
+- remove weakref?
 
 dependencies
 ============

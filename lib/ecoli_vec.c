@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <ecoli_assert.h>
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
@@ -69,11 +70,11 @@ int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr)
 	if (vec->len + 1 > vec->size) {
 		new_vec = ec_realloc(vec->vec, vec->elt_size * (vec->len + 1));
 		if (new_vec == NULL)
-			return -ENOMEM;
+			return -1;
 		vec->size = vec->len + 1;
+		vec->vec = new_vec;
 	}
 
-	vec->vec = new_vec;
 	memcpy(get_obj(vec, vec->len), ptr, vec->elt_size);
 	vec->len++;
 
@@ -82,40 +83,35 @@ int ec_vec_add_by_ref(struct ec_vec *vec, void *ptr)
 
 int ec_vec_add_ptr(struct ec_vec *vec, void *elt)
 {
-	if (vec->elt_size != sizeof(elt))
-		return -EINVAL;
+	EC_CHECK_ARG(vec->elt_size == sizeof(elt), -1, EINVAL);
 
 	return ec_vec_add_by_ref(vec, &elt);
 }
 
 int ec_vec_add_u8(struct ec_vec *vec, uint8_t elt)
 {
-	if (vec->elt_size != sizeof(elt))
-		return -EINVAL;
+	EC_CHECK_ARG(vec->elt_size == sizeof(elt), -1, EINVAL);
 
 	return ec_vec_add_by_ref(vec, &elt);
 }
 
 int ec_vec_add_u16(struct ec_vec *vec, uint16_t elt)
 {
-	if (vec->elt_size != sizeof(elt))
-		return -EINVAL;
+	EC_CHECK_ARG(vec->elt_size == sizeof(elt), -1, EINVAL);
 
 	return ec_vec_add_by_ref(vec, &elt);
 }
 
 int ec_vec_add_u32(struct ec_vec *vec, uint32_t elt)
 {
-	if (vec->elt_size != sizeof(elt))
-		return -EINVAL;
+	EC_CHECK_ARG(vec->elt_size == sizeof(elt), -1, EINVAL);
 
 	return ec_vec_add_by_ref(vec, &elt);
 }
 
 int ec_vec_add_u64(struct ec_vec *vec, uint64_t elt)
 {
-	if (vec->elt_size != sizeof(elt))
-		return -EINVAL;
+	EC_CHECK_ARG(vec->elt_size == sizeof(elt), -1, EINVAL);
 
 	return ec_vec_add_by_ref(vec, &elt);
 }

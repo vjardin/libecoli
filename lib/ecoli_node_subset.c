@@ -54,10 +54,8 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 	memset(&best_result, 0, sizeof(best_result));
 
 	child_table = ec_calloc(table_len - 1, sizeof(*child_table));
-	if (child_table == NULL) {
-		ret = -ENOMEM;
+	if (child_table == NULL)
 		goto fail;
-	}
 
 	for (i = 0; i < table_len; i++) {
 		/* try to parse elt i */
@@ -80,10 +78,8 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 		len = ret;
 		childvec = ec_strvec_ndup(strvec, len,
 					ec_strvec_len(strvec) - len);
-		if (childvec == NULL) {
-			ret = -ENOMEM;
+		if (childvec == NULL)
 			goto fail;
-		}
 
 		memset(&result, 0, sizeof(result));
 		ret = __ec_node_subset_parse(&result, child_table,
@@ -122,7 +118,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 	ec_parse_free(best_parse);
 	ec_strvec_free(childvec);
 	ec_free(child_table);
-	return ret;
+	return -1;
 }
 
 static int

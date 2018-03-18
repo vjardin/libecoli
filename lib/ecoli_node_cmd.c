@@ -56,8 +56,10 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(var);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 	str = ec_strvec_val(vec, 0);
 
 	for (i = 0; i < node->len; i++) {
@@ -69,7 +71,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 		/* if id matches, use a node provided by the user... */
 		eval = ec_node_clone(node->table[i]);
 		if (eval == NULL)
-			return -ENOMEM;
+			return -1;
 		break;
 	}
 
@@ -77,7 +79,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 	if (eval == NULL) {
 		eval = ec_node_str(EC_NO_ID, str);
 		if (eval == NULL)
-			return -ENOMEM;
+			return -1;
 	}
 
 	*result = eval;
@@ -94,7 +96,8 @@ ec_node_cmd_eval_pre_op(void **result, void *userctx, void *operand,
 	(void)operand;
 	(void)operator;
 
-	return -EINVAL;
+	errno = EINVAL;
+	return -1;
 }
 
 static int
@@ -109,18 +112,21 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(operator);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (!strcmp(ec_strvec_val(vec, 0), "*")) {
 		out = ec_node_many(EC_NO_ID,
 				ec_node_clone(in), 0, 0);
 		if (out == NULL)
-			return -EINVAL;
+			return -1;
 		ec_node_free(in);
 		*result = out;
 	} else {
-		return -EINVAL;
+		errno = EINVAL;
+		return -1;
 	}
 
 	return 0;
@@ -140,20 +146,22 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(operator);
-	if (ec_strvec_len(vec) > 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) > 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (ec_strvec_len(vec) == 0) {
 		if (!strcmp(in1->type->name, "seq")) {
 			if (ec_node_seq_add(in1, ec_node_clone(in2)) < 0)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in2);
 			*result = in1;
 		} else {
 			out = EC_NODE_SEQ(EC_NO_ID, ec_node_clone(in1),
 					ec_node_clone(in2));
 			if (out == NULL)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in1);
 			ec_node_free(in2);
 			*result = out;
@@ -161,19 +169,19 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	} else if (!strcmp(ec_strvec_val(vec, 0), "|")) {
 		if (!strcmp(in2->type->name, "or")) {
 			if (ec_node_or_add(in2, ec_node_clone(in1)) < 0)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in1);
 			*result = in2;
 		} else if (!strcmp(in1->type->name, "or")) {
 			if (ec_node_or_add(in1, ec_node_clone(in2)) < 0)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in2);
 			*result = in1;
 		} else {
 			out = EC_NODE_OR(EC_NO_ID, ec_node_clone(in1),
 					ec_node_clone(in2));
 			if (out == NULL)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in1);
 			ec_node_free(in2);
 			*result = out;
@@ -181,25 +189,26 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	} else if (!strcmp(ec_strvec_val(vec, 0), ",")) {
 		if (!strcmp(in2->type->name, "subset")) {
 			if (ec_node_subset_add(in2, ec_node_clone(in1)) < 0)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in1);
 			*result = in2;
 		} else if (!strcmp(in1->type->name, "subset")) {
 			if (ec_node_subset_add(in1, ec_node_clone(in2)) < 0)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in2);
 			*result = in1;
 		} else {
 			out = EC_NODE_SUBSET(EC_NO_ID, ec_node_clone(in1),
 					ec_node_clone(in2));
 			if (out == NULL)
-				return -EINVAL;
+				return -1;
 			ec_node_free(in1);
 			ec_node_free(in2);
 			*result = out;
 		}
 	} else {
-		return -EINVAL;
+		errno = EINVAL;
+		return -1;
 	}
 
 	return 0;
@@ -220,18 +229,21 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 
 	/* get parsed string vector, it should contain only one str */
 	vec = ec_parse_strvec(open_paren);
-	if (ec_strvec_len(vec) != 1)
-		return -EINVAL;
+	if (ec_strvec_len(vec) != 1) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (!strcmp(ec_strvec_val(vec, 0), "[")) {
 		out = ec_node_option(EC_NO_ID, ec_node_clone(in));
 		if (out == NULL)
-			return -EINVAL;
+			return -1;
 		ec_node_free(in);
 	} else if (!strcmp(ec_strvec_val(vec, 0), "(")) {
 		out = in;
 	} else {
-		return -EINVAL;
+		errno = EINVAL;
+		return -1;
 	}
 
 	*result = out;
@@ -270,11 +282,11 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 	node->cmd = NULL;
 
 	/* build the expression parser */
-	ret = -ENOMEM;
 	expr = ec_node("expr", "expr");
 	if (expr == NULL)
 		goto fail;
-	ret = ec_node_expr_set_val_node(expr, ec_node_re(EC_NO_ID, "[a-zA-Z0-9]+"));
+	ret = ec_node_expr_set_val_node(expr, ec_node_re(EC_NO_ID,
+					"[a-zA-Z0-9]+"));
 	if (ret < 0)
 		goto fail;
 	ret = ec_node_expr_add_bin_op(expr, ec_node_str(EC_NO_ID, ","));
@@ -302,7 +314,6 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 		goto fail;
 
 	/* prepend a lexer to the expression node */
-	ret = -ENOMEM;
 	lex = ec_node_re_lex(EC_NO_ID, ec_node_clone(expr));
 	if (lex == NULL)
 		goto fail;
@@ -324,16 +335,18 @@ static int ec_node_cmd_build(struct ec_node_cmd *node)
 		goto fail;
 
 	/* parse the command expression */
-	ret = -ENOMEM;
 	p = ec_node_parse(lex, node->cmd_str);
 	if (p == NULL)
 		goto fail;
 
-	ret = -EINVAL;
-	if (!ec_parse_matches(p))
+	if (!ec_parse_matches(p)) {
+		errno = EINVAL;
 		goto fail;
-	if (!ec_parse_has_child(p))
+	}
+	if (!ec_parse_has_child(p)) {
+		errno = EINVAL;
 		goto fail;
+	}
 
 	ret = ec_node_expr_eval(&result, expr, ec_parse_get_first_child(p),
 				&test_ops, node);
@@ -354,7 +367,8 @@ fail:
 	ec_node_free(expr);
 	ec_node_free(lex);
 	ec_node_free(cmd);
-	return ret;
+
+	return -1;
 }
 
 static int
@@ -363,8 +377,6 @@ ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parse *state,
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
-	if (node->cmd == NULL)
-		return -ENOENT;
 	return ec_node_parse_child(node->cmd, state, strvec);
 }
 
@@ -375,8 +387,6 @@ ec_node_cmd_complete(const struct ec_node *gen_node,
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
-	if (node->cmd == NULL)
-		return -ENOENT;
 	return ec_node_complete_child(node->cmd, comp, strvec);
 }
 

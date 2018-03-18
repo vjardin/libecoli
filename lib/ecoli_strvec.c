@@ -42,18 +42,18 @@ int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 	new_vec = ec_realloc(strvec->vec,
 		sizeof(*strvec->vec) * (strvec->len + 1));
 	if (new_vec == NULL)
-		return -ENOMEM;
+		return -1;
 
 	strvec->vec = new_vec;
 
 	elt = ec_malloc(sizeof(*elt));
 	if (elt == NULL)
-		return -ENOMEM;
+		return -1;
 
 	elt->str = ec_strdup(s);
 	if (elt->str == NULL) {
 		ec_free(elt);
-		return -ENOMEM;
+		return -1;
 	}
 	elt->refcnt = 1;
 
@@ -69,6 +69,9 @@ struct ec_strvec *ec_strvec_from_array(const char * const *strarr,
 	size_t i;
 
 	strvec = ec_strvec();
+	if (strvec == NULL)
+		goto fail;
+
 	for (i = 0; i < n; i++) {
 		if (ec_strvec_add(strvec, strarr[i]) < 0)
 			goto fail;
@@ -341,6 +344,16 @@ static int ec_strvec_testcase(void)
 		strstr(buf, "strvec (len=2) [0, 1]"), "bad dump\n");
 	free(buf);
 	buf = NULL;
+
+	ec_strvec_del_last(strvec);
+	strvec2 = EC_STRVEC("0");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec2);
 
 	f = open_memstream(&buf, &buflen);
 	if (f == NULL)

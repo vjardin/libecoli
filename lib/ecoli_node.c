@@ -35,15 +35,18 @@ ec_node_type_lookup(const char *name)
 			return type;
 	}
 
+	errno = ENOENT;
 	return NULL;
 }
 
 int ec_node_type_register(struct ec_node_type *type)
 {
-	if (ec_node_type_lookup(type->name) != NULL)
-		return -EEXIST;
-	if (type->size < sizeof(struct ec_node))
-		return -EINVAL;
+	EC_CHECK_ARG(type->size >= sizeof(struct ec_node), -1, EINVAL);
+
+	if (ec_node_type_lookup(type->name) != NULL) {
+		errno = EEXIST;
+		return -1;
+	}
 
 	TAILQ_INSERT_TAIL(&node_type_list, type, next);
 
@@ -182,6 +185,7 @@ int ec_node_add_child(struct ec_node *node, struct ec_node *child)
 
 fail:
 	ec_free(children);
+	assert(errno != 0);
 	return -1;
 }
 
@@ -289,6 +293,7 @@ int ec_node_check_type(const struct ec_node *node,
 		errno = EINVAL;
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -393,6 +398,7 @@ fail:
 		fclose(f);
 	free(buf);
 
+	assert(errno != 0);
 	return -1;
 }
 /* LCOV_EXCL_STOP */
