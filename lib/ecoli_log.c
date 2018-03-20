@@ -30,7 +30,7 @@ static enum ec_log_level global_level = EC_LOG_WARNING;
 
 int ec_log_level_set(enum ec_log_level level)
 {
-	if (level < 0 || level > EC_LOG_DEBUG)
+	if (level > EC_LOG_DEBUG)
 		return -1;
 	global_level = level;
 
