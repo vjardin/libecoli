@@ -123,15 +123,56 @@ struct ec_node *ec_node(const char *typename, const char *id)
 	return __ec_node(type, id);
 }
 
+static void traverse_tree1(const struct ec_node *node)
+{
+	const struct ec_node *child;
+	size_t i, n;
+
+	if (node->free.state == 1) {
+		node->free.refcnt++;
+		return;
+	}
+	node->free.refcnt = 1;
+	node->free.state = 1; // traversed
+	n = node->n_children;
+	for (i = 0; i < n; i++) {
+		child = node->children[i];
+		traverse_tree1(child);
+	}
+}
+
 void ec_node_free(struct ec_node *node)
 {
+	struct ec_node *child;
+	bool free_it = false;
+	size_t i, n;
+
 	if (node == NULL)
 		return;
 
 	assert(node->refcnt > 0);
 
-	if (--node->refcnt > 0)
+	// calc free refcnt
+	if (node->free.state == 0)
+		traverse_tree1(node);
+
+	node->refcnt--;
+	if (node->free.state == 2)
 		return;
+
+	node->free.state = 2; // beeing freed
+	if (node->refcnt < node->free.refcnt) {
+		for (i = 0; i < n; i++) {
+			child = node->children[i];
+			ec_node_free(child);
+		}
+	}
+
+	if (node->refcnt > 0) {
+		node->free.refcnt = 0;
+		node->free.state = 0;
+		return;
+	}
 
 	if (node->type != NULL && node->type->free_priv != NULL)
 		node->type->free_priv(node);
@@ -239,8 +280,9 @@ static void __ec_node_dump(FILE *out,
 	id = ec_node_id(node);
 	typename = node->type->name;
 
-	fprintf(out, "%*s" "type=%s id=%s %p\n",
-		(int)indent * 4, "", typename, id, node);
+	fprintf(out, "%*s" "type=%s id=%s %p free=(%d,%d)\n",
+		(int)indent * 4, "", typename, id, node,
+		node->free.state, node->free.refcnt);
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
 		child = ec_node_get_child(node, i);
