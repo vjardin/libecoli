@@ -18,6 +18,7 @@
 typedef void (*ec_keyval_elt_free_t)(void *);
 
 struct ec_keyval;
+struct ec_keyval_iter;
 
 /**
  * Create a hash table.
@@ -124,5 +125,80 @@ struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval);
  *   The hash table.
  */
 void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval);
+
+/**
+ * Iterate the elements in the hash table.
+ *
+ * The typical usage is as below:
+ *
+ *	// dump elements
+ *	for (iter = ec_keyval_iter(keyval);
+ *	     ec_keyval_iter_valid(iter);
+ *	     ec_keyval_iter_next(iter)) {
+ *		printf("  %s: %p\n",
+ *			ec_keyval_iter_get_key(iter),
+ *			ec_keyval_iter_get_val(iter));
+ *	}
+ *	ec_keyval_iter_free(iter);
+ *
+ * @param keyval
+ *   The hash table.
+ * @return
+ *   An iterator, or NULL on error (errno is set).
+ */
+struct ec_keyval_iter *
+ec_keyval_iter(const struct ec_keyval *keyval);
+
+/**
+ * Make the iterator point to the next element in the hash table.
+ *
+ * @param iter
+ *   The hash table iterator.
+ */
+void ec_keyval_iter_next(struct ec_keyval_iter *iter);
+
+/**
+ * Free the iterator.
+ *
+ * @param iter
+ *   The hash table iterator.
+ */
+void ec_keyval_iter_free(struct ec_keyval_iter *iter);
+
+/**
+ * Check if the iterator points to a valid element.
+ *
+ * @param iter
+ *   The hash table iterator.
+ * @return
+ *   true if the element is valid, else false.
+ */
+bool
+ec_keyval_iter_valid(const struct ec_keyval_iter *iter);
+
+/**
+ * Get the key of the current element.
+ *
+ * @param iter
+ *   The hash table iterator.
+ * @return
+ *   The current element key, or NULL if the iterator points to an
+ *   invalid element.
+ */
+const char *
+ec_keyval_iter_get_key(const struct ec_keyval_iter *iter);
+
+/**
+ * Get the value of the current element.
+ *
+ * @param iter
+ *   The hash table iterator.
+ * @return
+ *   The current element value, or NULL if the iterator points to an
+ *   invalid element.
+ */
+void *
+ec_keyval_iter_get_val(const struct ec_keyval_iter *iter);
+
 
 #endif

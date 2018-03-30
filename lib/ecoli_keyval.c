@@ -46,6 +46,12 @@ struct ec_keyval {
 	struct ec_keyval_elt_ref_list *table;
 };
 
+struct ec_keyval_iter {
+	const struct ec_keyval *keyval;
+	size_t cur_idx;
+	const struct ec_keyval_elt_ref *cur_ref;
+};
+
 struct ec_keyval *ec_keyval(void)
 {
 	struct ec_keyval *keyval;
@@ -260,10 +266,91 @@ size_t ec_keyval_len(const struct ec_keyval *keyval)
 	return keyval->len;
 }
 
+void
+ec_keyval_iter_free(struct ec_keyval_iter *iter)
+{
+	ec_free(iter);
+}
+
+struct ec_keyval_iter *
+ec_keyval_iter(const struct ec_keyval *keyval)
+{
+	struct ec_keyval_iter *iter = NULL;
+
+	iter = ec_calloc(1, sizeof(*iter));
+	if (iter == NULL)
+		return NULL;
+
+	iter->keyval = keyval;
+	iter->cur_idx = 0;
+	iter->cur_ref = NULL;
+
+	ec_keyval_iter_next(iter);
+
+	return iter;
+}
+
+void
+ec_keyval_iter_next(struct ec_keyval_iter *iter)
+{
+	const struct ec_keyval_elt_ref *ref;
+	size_t i;
+
+	i = iter->cur_idx;
+	if (i == iter->keyval->table_size)
+		return; /* no more element */
+
+	if (iter->cur_ref != NULL) {
+		ref = LIST_NEXT(iter->cur_ref, next);
+		if (ref != NULL) {
+			iter->cur_ref = ref;
+			return;
+		}
+		i++;
+	}
+
+	for (; i < iter->keyval->table_size; i++) {
+		LIST_FOREACH(ref, &iter->keyval->table[i], next) {
+			iter->cur_idx = i;
+			iter->cur_ref = LIST_FIRST(&iter->keyval->table[i]);
+			return;
+		}
+	}
+
+	iter->cur_idx = iter->keyval->table_size;
+	iter->cur_ref = NULL;
+}
+
+bool
+ec_keyval_iter_valid(const struct ec_keyval_iter *iter)
+{
+	if (iter == NULL || iter->cur_ref == NULL)
+		return false;
+
+	return true;
+}
+
+const char *
+ec_keyval_iter_get_key(const struct ec_keyval_iter *iter)
+{
+	if (iter == NULL || iter->cur_ref == NULL)
+		return NULL;
+
+	return iter->cur_ref->elt->key;
+}
+
+void *
+ec_keyval_iter_get_val(const struct ec_keyval_iter *iter)
+{
+	if (iter == NULL || iter->cur_ref == NULL)
+		return NULL;
+
+	return iter->cur_ref->elt->val;
+}
+
 void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 {
-	struct ec_keyval_elt_ref *ref;
-	size_t i;
+	struct ec_keyval_iter *iter;
 
 	if (keyval == NULL) {
 		fprintf(out, "empty keyval\n");
@@ -271,12 +358,14 @@ void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 	}
 
 	fprintf(out, "keyval:\n");
-	for (i = 0; i < keyval->table_size; i++) {
-		LIST_FOREACH(ref, &keyval->table[i], next) {
-			fprintf(out, "  %s: %p\n",
-				ref->elt->key, ref->elt->val);
-		}
+	for (iter = ec_keyval_iter(keyval);
+	     ec_keyval_iter_valid(iter);
+	     ec_keyval_iter_next(iter)) {
+		fprintf(out, "  %s: %p\n",
+			ec_keyval_iter_get_key(iter),
+			ec_keyval_iter_get_val(iter));
 	}
+	ec_keyval_iter_free(iter);
 }
 
 struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval)
@@ -340,15 +429,28 @@ EC_INIT_REGISTER(ec_keyval_init);
 static int ec_keyval_testcase(void)
 {
 	struct ec_keyval *keyval, *dup;
+	struct ec_keyval_iter *iter;
 	char *val;
-	size_t i;
+	size_t i, count;
 	int ret, testres = 0;
+	FILE *f = NULL;
+	char *buf = NULL;
+	size_t buflen = 0;
 
 	keyval = ec_keyval();
 	if (keyval == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create keyval\n");
 		return -1;
 	}
+
+	count = 0;
+	for (iter = ec_keyval_iter(keyval);
+	     ec_keyval_iter_valid(iter);
+	     ec_keyval_iter_next(iter)) {
+		count++;
+	}
+	ec_keyval_iter_free(iter);
+	testres |= EC_TEST_CHECK(count == 0, "invalid count in iterator");
 
 	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 0, "bad keyval len");
 	ret = ec_keyval_set(keyval, "key1", "val1", NULL);
@@ -383,13 +485,32 @@ static int ec_keyval_testcase(void)
 	testres |= EC_TEST_CHECK(ec_keyval_has_key(keyval, "key1"),
 		"key1 should be in keyval");
 
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_keyval_dump(f, NULL);
+	fclose(f);
+	f = NULL;
+	free(buf);
+	buf = NULL;
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
+	ec_keyval_dump(f, keyval);
+	fclose(f);
+	f = NULL;
+	free(buf);
+	buf = NULL;
+
 	ret = ec_keyval_del(keyval, "key1");
-	testres |= EC_TEST_CHECK(ret == 0, "cannot del key");
+	testres |= EC_TEST_CHECK(ret == 0, "cannot del key1");
 	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 1,
 		"invalid keyval len");
-
-	ec_keyval_dump(stdout, NULL);
-	ec_keyval_dump(stdout, keyval);
+	ret = ec_keyval_del(keyval, "key2");
+	testres |= EC_TEST_CHECK(ret == 0, "cannot del key2");
+	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 0,
+		"invalid keyval len");
 
 	for (i = 0; i < 100; i++) {
 		char key[8];
@@ -412,6 +533,15 @@ static int ec_keyval_testcase(void)
 		dup = NULL;
 	}
 
+	count = 0;
+	for (iter = ec_keyval_iter(keyval);
+	     ec_keyval_iter_valid(iter);
+	     ec_keyval_iter_next(iter)) {
+		count++;
+	}
+	ec_keyval_iter_free(iter);
+	testres |= EC_TEST_CHECK(count == 100, "invalid count in iterator");
+
 	/* einval */
 	ret = ec_keyval_set(keyval, NULL, "val1", NULL);
 	testres |= EC_TEST_CHECK(ret == -1, "should not be able to set key");
@@ -421,6 +551,13 @@ static int ec_keyval_testcase(void)
 	ec_keyval_free(keyval);
 
 	return testres;
+
+fail:
+	ec_keyval_free(keyval);
+	if (f)
+		fclose(f);
+	free(buf);
+	return -1;
 }
 /* LCOV_EXCL_STOP */
 
