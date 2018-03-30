@@ -684,12 +684,26 @@ static int ec_comp_testcase(void)
 	f = open_memstream(&buf, &buflen);
 	if (f == NULL)
 		goto fail;
+	ec_comp_dump(f, NULL);
+	fclose(f);
+	f = NULL;
+
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "no completion"), "bad dump\n");
+	free(buf);
+	buf = NULL;
+
+	f = open_memstream(&buf, &buflen);
+	if (f == NULL)
+		goto fail;
 	ec_comp_dump(f, c);
 	fclose(f);
 	f = NULL;
 
-	/* testres |= EC_TEST_CHECK( */
-	/* 	strstr(buf, "no match"), "bad dump\n"); */
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "comp=<xx>"), "bad dump\n");
+	testres |= EC_TEST_CHECK(
+		strstr(buf, "comp=<yy>"), "bad dump\n");
 	free(buf);
 	buf = NULL;
 
