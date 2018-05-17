@@ -404,6 +404,8 @@ static int ec_keyval_init_func(void)
 	int fd;
 	ssize_t ret;
 
+	return 0;//XXX for test reproduceability
+
 	fd = open("/dev/urandom", 0);
 	if (fd == -1) {
 		fprintf(stderr, "failed to open /dev/urandom\n");
