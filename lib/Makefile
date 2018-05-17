@@ -12,7 +12,7 @@ CFLAGS  = -g -O3 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
 CFLAGS += -I.
 
 # XXX coverage
-CFLAGS += --coverage -fprofile-arcs -ftest-coverage
+CFLAGS += --coverage
 LDFLAGS += --coverage
 #  rm -rf build; rm -rf result; make && ./build/test
 #  lcov -d build -c -t build/test -o test.info && genhtml -o result test.info
