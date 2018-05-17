@@ -50,59 +50,154 @@ struct ec_config_schema {
 TAILQ_HEAD(ec_config_list, ec_config);
 
 /**
- * Structure storing data.
+ * Structure storing the configuration data.
  */
 struct ec_config {
 	/** type of value stored in the union */
 	enum ec_config_type type;
 
 	union {
-		bool boolean;
-		int64_t i64;
-		uint64_t u64;
-		char *string;
-		struct ec_node *node;
-		struct ec_keyval *dict;
-		struct ec_config_list list;
+		bool boolean;   /** Boolean value */
+		int64_t i64;    /** Signed integer value */
+		uint64_t u64;   /** Unsigned integer value */
+		char *string;   /** String value */
+		struct ec_node *node;       /** Node value */
+		struct ec_keyval *dict;     /** Hash table value */
+		struct ec_config_list list; /** List value */
 	};
 
 	/**
-	 * Valid if type is list.
+	 * Next in list, only valid if type is list.
 	 */
 	TAILQ_ENTRY(ec_config) next;
 
-	/** Associated schema. Can be set if type is dict. */
+	/** Associated schema. Only valid if type is dict. */
 	const struct ec_config_schema *schema;
 	size_t schema_len;           /**< Schema length. */
 };
 
 /* schema */
 
+/**
+ * Validate a configuration schema array.
+ *
+ * @param schema
+ *   Pointer to the first element of the schema array.
+ * @param schema_len
+ *   Length of the schema array.
+ * @return
+ *   0 if the schema is valid, or -1 on error (errno is set).
+ */
 int ec_config_schema_validate(const struct ec_config_schema *schema,
 			size_t schema_len);
 
+/**
+ * Dump a configuration schema array.
+ *
+ * @param out
+ *   Output stream on which the dump will be sent.
+ * @param schema
+ *   Pointer to the first element of the schema array.
+ * @param schema_len
+ *   Length of the schema array.
+ */
 void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
 			size_t schema_len);
 
 
 /* config */
 
+/**
+ * Create a boolean configuration value.
+ *
+ * @param boolean
+ *   The boolean value to be set.
+ * @return
+ *   The configuration object, or NULL on error (errno is set).
+ */
 struct ec_config *ec_config_bool(bool boolean);
+
+/**
+ * Create a signed integer configuration value.
+ *
+ * @param i64
+ *   The signed integer value to be set.
+ * @return
+ *   The configuration object, or NULL on error (errno is set).
+ */
 struct ec_config *ec_config_i64(int64_t i64);
+
+/**
+ * Create an unsigned configuration value.
+ *
+ * @param u64
+ *   The unsigned integer value to be set.
+ * @return
+ *   The configuration object, or NULL on error (errno is set).
+ */
 struct ec_config *ec_config_u64(uint64_t u64);
-/* duplicate string */
+
+/**
+ * Create a string configuration value.
+ *
+ * @param string
+ *   The string value to be set. The string is copied into the
+ *   configuration object.
+ * @return
+ *   The configuration object, or NULL on error (errno is set).
+ */
 struct ec_config *ec_config_string(const char *string);
-/* "consume" the node */
+
+/**
+ * Create a node configuration value.
+ *
+ * @param node
+ *   The node pointer to be set. The node is "consumed" by
+ *   the function and should not be used by the caller, even
+ *   on error. The caller can use ec_node_clone() to keep a
+ *   reference on the node.
+ * @return
+ *   The configuration object, or NULL on error (errno is set).
+ */
 struct ec_config *ec_config_node(struct ec_node *node);
-/* "consume" the dict */
-struct ec_config *ec_config_dict(void);
+
+/**
+ * Create a hash table configuration value.
+ *
+ * @param schema
+ *   Optional pointer to the first element of the schema array. Set
+ *   it to NULL if no schema should be attached.
+ * @param schema_len
+ *   Length of the schema array. Set to 0 if no schema.
+ * @return
+ *   The configuration object containing an empty hash table, or NULL on
+ *   error (errno is set).
+ */
+struct ec_config *ec_config_dict(const struct ec_config_schema *schema,
+				size_t schema_len);
+
+/**
+ * Create a list configuration value.
+ *
+ * @return
+ *   The configuration object containing an empty list, or NULL on
+ *   error (errno is set).
+ */
 struct ec_config *ec_config_list(void);
 
+/**
+ * Add a config object into a list.
+ *
+ * @param list
+ *   The list configuration in which the value will be added.
+ * @param value
+ *   The value configuration to add in the list. The value object
+ *   will be freed when freeing the list object. On error, the
+ *   value object is freed.
+ * @return
+ *   0 on success, else -1 (errno is set).
+ */
 int ec_config_add(struct ec_config *list, struct ec_config *value);
-
-int ec_config_set_schema(struct ec_config *dict,
-			const struct ec_config_schema *schema,
-			size_t schema_len);
 
 void ec_config_free(struct ec_config *config);
 
@@ -121,23 +216,76 @@ int ec_config_cmp(const struct ec_config *config1,
 /**
  * Get configuration value.
  */
-const struct ec_config *ec_config_get(const struct ec_config *config,
+struct ec_config *ec_config_get(struct ec_config *config,
 				const char *key);
 
-/* */
+/**
+ * Get the first element of a list.
+ *
+ * Example of use:
+ * for (config = ec_config_list_iter(list);
+ *	config != NULL;
+ *	config = ec_config_list_next(list, config)) {
+ *		...
+ * }
+ *
+ * @param list
+ *   The list configuration to iterate.
+ * @return
+ *   The first configuration element, or NULL on error (errno is set).
+ */
+struct ec_config *ec_config_list_first(struct ec_config *list);
 
-const struct ec_config_schema *
-ec_config_schema_lookup(const struct ec_config_schema *schema,
-			size_t schema_len, const char *key,
-			enum ec_config_type type);
+/**
+ * Get next element in list.
+ *
+ * @param list
+ *   The list configuration beeing iterated.
+ * @param config
+ *   The current configuration element.
+ * @return
+ *   The next configuration element, or NULL if there is no more element.
+ */
+struct ec_config *
+ec_config_list_next(struct ec_config *list, struct ec_config *config);
 
-void ec_config_free(struct ec_config *value);
+/**
+ * Remove an element from a list.
+ *
+ * The element is freed and should not be accessed.
+ *
+ * @param list
+ *   The list configuration.
+ * @param config
+ *   The element to remove from the list.
+ */
+void ec_config_del(struct ec_config *list, struct ec_config *config);
 
+/**
+ * Free a configuration.
+ *
+ * @param config
+ *   The element to free.
+ */
+void ec_config_free(struct ec_config *config);
+
+/**
+ * Compare two configurations.
+ *
+ * @return
+ *   0 if the configurations are equal, else -1.
+ */
 int ec_config_cmp(const struct ec_config *value1,
 		const struct ec_config *value2);
 
-char *ec_config_str(const struct ec_config *value);
-
+/**
+ * Dump a configuration.
+ *
+ * @param out
+ *   Output stream on which the dump will be sent.
+ * @param config
+ *   The configuration to dump.
+ */
 void ec_config_dump(FILE *out, const struct ec_config *config);
 
 #endif

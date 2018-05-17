@@ -64,7 +64,8 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 		for (i = 0; i < schema_len; i++) {
 			if (schema[i].key == NULL) {
 				errno = EINVAL;
-				EC_LOG(EC_LOG_ERR, "dict schema key should not be NULL\n");
+				EC_LOG(EC_LOG_ERR,
+					"dict schema key should not be NULL\n");
 				return -1;
 			}
 		}
@@ -160,8 +161,9 @@ __ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
 	size_t i;
 
 	for (i = 0; i < schema_len; i++) {
-		fprintf(out, "%*s" "%s%s(%s): %s\n",
+		fprintf(out, "%*s" "%s%s%stype=%s desc='%s'\n",
 			(int)indent * 4, "",
+			schema[i].key ? "key=": "",
 			schema[i].key ? : "",
 			schema[i].key ? " ": "",
 			ec_config_type_str(schema[i].type),
@@ -285,8 +287,31 @@ fail:
 	return NULL;
 }
 
+static int
+ec_config_set_schema(struct ec_config *dict,
+		const struct ec_config_schema *schema,
+		size_t schema_len)
+{
+	if (dict->type != EC_CONFIG_TYPE_DICT) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (ec_config_schema_validate(schema, schema_len) < 0)
+		goto fail;
+
+	dict->schema = schema;
+	dict->schema_len = schema_len;
+
+	return 0;
+
+fail:
+	return -1;
+}
+
 struct ec_config *
-ec_config_dict(void)
+ec_config_dict(const struct ec_config_schema *schema,
+	size_t schema_len)
 {
 	struct ec_config *value = NULL;
 	struct ec_keyval *dict = NULL;
@@ -301,6 +326,9 @@ ec_config_dict(void)
 
 	value->type = EC_CONFIG_TYPE_DICT;
 	value->dict = dict;
+
+	if (ec_config_set_schema(value, schema, schema_len) < 0)
+		goto fail;
 
 	return value;
 
@@ -325,29 +353,7 @@ ec_config_list(void)
 	return value;
 }
 
-int
-ec_config_set_schema(struct ec_config *dict,
-		const struct ec_config_schema *schema,
-		size_t schema_len)
-{
-	if (dict->type != EC_CONFIG_TYPE_DICT) {
-		errno = EINVAL;
-		goto fail;
-	}
-
-	if (ec_config_schema_validate(schema, schema_len) < 0)
-		goto fail;
-
-	dict->schema = schema;
-	dict->schema_len = schema_len;
-
-	return 0;
-
-fail:
-	return -1;
-}
-
-const struct ec_config_schema *
+static const struct ec_config_schema *
 ec_config_schema_lookup(const struct ec_config_schema *schema,
 			size_t schema_len, const char *key,
 			enum ec_config_type type)
@@ -568,14 +574,31 @@ fail:
 	return -1;
 }
 
-
-const struct ec_config *
-ec_config_get(const struct ec_config *config, const char *key)
+struct ec_config *
+ec_config_get(struct ec_config *config, const char *key)
 {
 	if (config == NULL)
 		return NULL;
 
 	return ec_keyval_get(config->dict, key);
+}
+
+struct ec_config *
+ec_config_list_first(struct ec_config *list)
+{
+	if (list  == NULL || list->type != EC_CONFIG_TYPE_LIST) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	return TAILQ_FIRST(&list->list);
+}
+
+struct ec_config *
+ec_config_list_next(struct ec_config *list, struct ec_config *config)
+{
+	(void)list;
+	return TAILQ_NEXT(config, next);
 }
 
 /* value is consumed */
@@ -620,6 +643,11 @@ fail:
 	return -1;
 }
 
+void ec_config_del(struct ec_config *list, struct ec_config *config)
+{
+	TAILQ_REMOVE(&list->list, config, next);
+	ec_config_free(config);
+}
 
 static int
 ec_config_list_dump(FILE *out, const struct ec_config_list *list,
@@ -729,69 +757,69 @@ ec_config_dump(FILE *out, const struct ec_config *config)
 }
 
 /* LCOV_EXCL_START */
-static const struct ec_config_schema intlist_elt[] = {
+static const struct ec_config_schema sch_intlist_elt[] = {
 	{
 		.desc = "This is a description for int",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
 };
 
-static const struct ec_config_schema dict[] = {
+static const struct ec_config_schema sch_dict[] = {
 	{
-		.key = "int",
+		.key = "my_int",
 		.desc = "This is a description for int",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
 	{
-		.key = "int2",
+		.key = "my_int2",
 		.desc = "This is a description for int2",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
 };
 
-static const struct ec_config_schema dictlist_elt[] = {
+static const struct ec_config_schema sch_dictlist_elt[] = {
 	{
 		.desc = "This is a description for dict",
 		.type = EC_CONFIG_TYPE_DICT,
-		.subschema = dict,
-		.subschema_len = EC_COUNT_OF(dict),
+		.subschema = sch_dict,
+		.subschema_len = EC_COUNT_OF(sch_dict),
 	},
 };
 
-static const struct ec_config_schema baseconfig[] = {
+static const struct ec_config_schema sch_baseconfig[] = {
 	{
-		.key = "bool",
+		.key = "my_bool",
 		.desc = "This is a description for bool",
 		.type = EC_CONFIG_TYPE_BOOL,
 	},
 	{
-		.key = "int",
+		.key = "my_int",
 		.desc = "This is a description for int",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
 	{
-		.key = "string",
+		.key = "my_string",
 		.desc = "This is a description for string",
 		.type = EC_CONFIG_TYPE_STRING,
 	},
 	{
-		.key = "node",
+		.key = "my_node",
 		.desc = "This is a description for node",
 		.type = EC_CONFIG_TYPE_NODE,
 	},
 	{
-		.key = "intlist",
+		.key = "my_intlist",
 		.desc = "This is a description for list",
 		.type = EC_CONFIG_TYPE_LIST,
-		.subschema = intlist_elt,
-		.subschema_len = EC_COUNT_OF(intlist_elt),
+		.subschema = sch_intlist_elt,
+		.subschema_len = EC_COUNT_OF(sch_intlist_elt),
 	},
 	{
-		.key = "dictlist",
+		.key = "my_dictlist",
 		.desc = "This is a description for list",
 		.type = EC_CONFIG_TYPE_LIST,
-		.subschema = dictlist_elt,
-		.subschema_len = EC_COUNT_OF(dictlist_elt),
+		.subschema = sch_dictlist_elt,
+		.subschema_len = EC_COUNT_OF(sch_dictlist_elt),
 	},
 };
 
@@ -801,7 +829,7 @@ static int ec_config_testcase(void)
 	struct ec_keyval *dict = NULL;
 	const struct ec_config *value = NULL;
 	struct ec_config *config = NULL, *list = NULL, *subconfig = NULL;
-	//const struct ec_config *pvalue;
+	struct ec_config *list_, *config_;
 	int testres = 0;
 	int ret;
 
@@ -809,33 +837,31 @@ static int ec_config_testcase(void)
 	if (node == NULL)
 		goto fail;
 
-	if (ec_config_schema_validate(baseconfig,
-					EC_COUNT_OF(baseconfig)) < 0) {
+	if (ec_config_schema_validate(sch_baseconfig,
+					EC_COUNT_OF(sch_baseconfig)) < 0) {
 		EC_LOG(EC_LOG_ERR, "invalid config schema\n");
 		goto fail;
 	}
 
-	ec_config_schema_dump(stdout, baseconfig, EC_COUNT_OF(baseconfig));
+	ec_config_schema_dump(stdout, sch_baseconfig,
+			EC_COUNT_OF(sch_baseconfig));
 
-	config = ec_config_dict();
+	config = ec_config_dict(sch_baseconfig, EC_COUNT_OF(sch_baseconfig));
 	if (config == NULL)
 		goto fail;
-	if (ec_config_set_schema(config, baseconfig,
-					EC_COUNT_OF(baseconfig)) < 0)
-		goto fail;
 
-	ret = ec_config_set(config, "bool", ec_config_bool(true));
+	ret = ec_config_set(config, "my_bool", ec_config_bool(true));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set boolean");
-	value = ec_config_get(config, "bool");
+	value = ec_config_get(config, "my_bool");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_BOOL &&
 		value->boolean == true,
 		"unexpected boolean value");
 
-	ret = ec_config_set(config, "int", ec_config_i64(1234));
+	ret = ec_config_set(config, "my_int", ec_config_i64(1234));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(config, "int");
+	value = ec_config_get(config, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -846,9 +872,9 @@ static int ec_config_testcase(void)
 		ec_config_validate(config) == 0,
 		"cannot validate config\n");
 
-	ret = ec_config_set(config, "string", ec_config_string("toto"));
+	ret = ec_config_set(config, "my_string", ec_config_string("toto"));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set string");
-	value = ec_config_get(config, "string");
+	value = ec_config_get(config, "my_string");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_STRING &&
@@ -859,59 +885,67 @@ static int ec_config_testcase(void)
 	if (list == NULL)
 		goto fail;
 
-	subconfig = ec_config_dict();
+	subconfig = ec_config_dict(sch_dict, EC_COUNT_OF(sch_dict));
 	if (subconfig == NULL)
 		goto fail;
 
-	ret = ec_config_set(subconfig, "int", ec_config_i64(1));
+	ret = ec_config_set(subconfig, "my_int", ec_config_i64(1));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "int");
+	value = ec_config_get(subconfig, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
 		value->i64 == 1,
 		"unexpected int value");
 
-	ret = ec_config_set(subconfig, "int2", ec_config_i64(2));
+	ret = ec_config_set(subconfig, "my_int2", ec_config_i64(2));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "int2");
+	value = ec_config_get(subconfig, "my_int2");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
 		value->i64 == 2,
 		"unexpected int value");
 
+	testres |= EC_TEST_CHECK(
+		ec_config_validate(subconfig) == 0,
+		"cannot validate subconfig\n");
+
 	ret = ec_config_add(list, subconfig);
 	subconfig = NULL; /* freed */
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add in list");
 
-	subconfig = ec_config_dict();
+	subconfig = ec_config_dict(sch_dict, EC_COUNT_OF(sch_dict));
 	if (subconfig == NULL)
 		goto fail;
 
-	ret = ec_config_set(subconfig, "int", ec_config_i64(3));
+	ret = ec_config_set(subconfig, "my_int", ec_config_i64(3));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "int");
+	value = ec_config_get(subconfig, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
 		value->i64 == 3,
 		"unexpected int value");
 
-	ret = ec_config_set(subconfig, "int2", ec_config_i64(4));
+	ret = ec_config_set(subconfig, "my_int2", ec_config_i64(4));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "int2");
+	value = ec_config_get(subconfig, "my_int2");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
 		value->i64 == 4,
 		"unexpected int value");
 
+	testres |= EC_TEST_CHECK(
+		ec_config_validate(subconfig) == 0,
+		"cannot validate subconfig\n");
+
 	ret = ec_config_add(list, subconfig);
 	subconfig = NULL; /* freed */
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add in list");
 
-	ret = ec_config_set(config, "dictlist", list);
+	ret = ec_config_set(config, "my_dictlist", list);
 	list = NULL;
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set list");
 
@@ -919,28 +953,20 @@ static int ec_config_testcase(void)
 		ec_config_validate(config) == 0,
 		"cannot validate config\n");
 
-#if 0
-	/* api */
-	config = ec_config(schema);
-	value = ec_config_bool(true);
-	ec_config_set(config, "key", value);
-	value = ec_config_get(config, "key");
-	/* check value->type and value->bool */
+	list_ = ec_config_get(config, "my_dictlist");
+	printf("list = %p\n", list_);
+	for (config_ = ec_config_list_first(list_); config_ != NULL;
+	     config_ = ec_config_list_next(list_, config_)) {
+		ec_config_dump(stdout, config_);
+	}
 
-	value = ec_config_string("xxx");
-	ec_config_set(config, "key", value);
-	value = ec_config_get(config, "key");
-	/* check value->type and value->string */
+	ec_config_dump(stdout, config);
 
-	list = ec_config_list();
-	value = ec_config_string("xxx");
-	ec_config_add(list, value);
-	value = ec_config_string("yyy");
-	ec_config_add(list, value);
-	value = ec_config_remove(list, 0);
-	ec_config_set(config, "key", list);
-
-#endif
+	/* remove the first element */
+	ec_config_del(list_, ec_config_list_first(list_));
+	testres |= EC_TEST_CHECK(
+		ec_config_validate(config) == 0,
+		"cannot validate config\n");
 
 #if 0
 	value.type = EC_CONFIG_TYPE_NODE;
