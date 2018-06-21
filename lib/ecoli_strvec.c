@@ -401,9 +401,9 @@ static int ec_strvec_testcase(void)
 	}
 	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
 		"strvec and strvec2 should be equal\n");
-	ec_strvec_free(strvec2);
-	strvec = NULL;
 	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
 	strvec2 = NULL;
 
 	return testres;
