@@ -15,11 +15,6 @@
 struct ec_node *ec_node_int(const char *id, int64_t min,
 			int64_t max, unsigned int base);
 
-int ec_node_int_disable_limits(struct ec_node *node);
-int ec_node_int_set_limits(struct ec_node *node, int64_t min,
-			int64_t max);
-int ec_node_int_set_base(struct ec_node *node, unsigned int base);
-
 int ec_node_int_getval(const struct ec_node *node, const char *str,
 			int64_t *result);
 
@@ -27,10 +22,6 @@ int ec_node_int_getval(const struct ec_node *node, const char *str,
 
 struct ec_node *ec_node_uint(const char *id, uint64_t min,
 			uint64_t max, unsigned int base);
-int ec_node_uint_disable_limits(struct ec_node *node);
-int ec_node_uint_set_limits(struct ec_node *node, uint64_t min,
-			uint64_t max);
-int ec_node_uint_set_base(struct ec_node *node, unsigned int base);
 
 int ec_node_uint_getval(const struct ec_node *node, const char *str,
 			uint64_t *result);
