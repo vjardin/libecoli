@@ -153,6 +153,8 @@ struct debug_alloc_ftr {
 	unsigned int cookie;
 } __attribute__((packed));
 
+static int malloc_seq;
+
 static void *debug_malloc(size_t size, const char *file, unsigned int line)
 {
 	struct debug_alloc_hdr *hdr;
@@ -160,7 +162,6 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	size_t new_size = size + sizeof(*hdr) + sizeof(*ftr);
 	void *ret;
 	int r = random();
-	static int seq;
 
 	if (alloc_fail_proba != 0 && (r % 100) < alloc_fail_proba)
 		hdr = NULL;
@@ -183,7 +184,7 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	}
 
 	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: malloc(%zd) -> %p seq=%d\n",
-		file, line, size, ret, seq++);
+		file, line, size, ret, malloc_seq++);
 
 	if (ret)
 		alloc_success++;
@@ -296,8 +297,8 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 		ftr->cookie = 0x87654321;
 	}
 
-	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p\n",
-		file, line, ptr, size, ret);
+	EC_LOG(EC_LOG_DEBUG, "%s:%d: info: realloc(%p, %zd) -> %p seq=%d\n",
+		file, line, ptr, size, ret, malloc_seq++);
 
 	if (ret)
 		alloc_success++;
