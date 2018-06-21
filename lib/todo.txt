@@ -404,7 +404,12 @@ expr = sum
 break on malloc:
 
 b debug_malloc
+# or: b debug_realloc
+condition <breakoint num> malloc_seq >= <value>
+
+alternative
+
+watch malloc_seq
+condition <watchpoint num> malloc_seq == <value + 1>
 run <args...>
-watch seq
-condition <breakpoint num> seq == <value>
 c
