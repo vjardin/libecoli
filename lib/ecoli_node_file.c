@@ -161,13 +161,17 @@ ec_node_file_complete(const struct ec_node *gen_node,
 
 	bname_len = strlen(bname);
 	while (1) {
+		int save_errno = errno;
+
 		errno = 0;
 		de = node->readdir(dir);
 		if (de == NULL) {
-			if (errno == 0)
+			if (errno == 0) {
+				errno = save_errno;
 				goto out;
-			else
+			} else {
 				goto fail;
+			}
 		}
 
 		if (!ec_str_startswith(de->d_name, bname))

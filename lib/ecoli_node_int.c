@@ -43,6 +43,7 @@ static int parse_llint(struct ec_node_int_uint *node, const char *str,
 	int64_t *val)
 {
 	char *endptr;
+	int save_errno = errno;
 
 	errno = 0;
 	*val = strtoll(str, &endptr, node->base);
@@ -66,6 +67,7 @@ static int parse_llint(struct ec_node_int_uint *node, const char *str,
 		return -1;
 	}
 
+	errno = save_errno;
 	return 0;
 }
 
@@ -73,6 +75,7 @@ static int parse_ullint(struct ec_node_int_uint *node, const char *str,
 			uint64_t *val)
 {
 	char *endptr;
+	int save_errno = errno;
 
 	/* since a negative input is silently converted to a positive
 	 * one by strtoull(), first check that it is positive */
@@ -95,6 +98,7 @@ static int parse_ullint(struct ec_node_int_uint *node, const char *str,
 	if (*endptr != 0)
 		return -1;
 
+	errno = save_errno;
 	return 0;
 }
 

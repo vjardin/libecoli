@@ -58,8 +58,6 @@ int ec_log_default_cb(int type, enum ec_log_level level, void *opaque,
 
 int ec_log_fct_register(ec_log_t usr_log, void *opaque)
 {
-	errno = 0;
-
 	if (usr_log == NULL) {
 		ec_log_fct = ec_log_default_cb;
 		ec_log_opaque = NULL;

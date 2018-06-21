@@ -80,10 +80,8 @@ ec_keyval_lookup(const struct ec_keyval *keyval, const char *key)
 
 	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
 	LIST_FOREACH(ref, &keyval->table[h & mask], next) {
-		if (strcmp(ref->elt->key, key) == 0) {
-			errno = 0;
+		if (strcmp(ref->elt->key, key) == 0)
 			return ref;
-		}
 	}
 
 	errno = ENOENT;
