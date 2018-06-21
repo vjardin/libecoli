@@ -2,6 +2,7 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+#define _GNU_SOURCE /* qsort_r */
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,6 +194,24 @@ int ec_strvec_cmp(const struct ec_strvec *strvec1,
 	return 0;
 }
 
+static int
+cmp_vec_elt(const void *p1, const void *p2, void *arg)
+{
+	int (*str_cmp)(const char *s1, const char *s2) = arg;
+	const struct ec_strvec_elt * const *e1 = p1, * const *e2 = p2;
+
+	return str_cmp((*e1)->str, (*e2)->str);
+}
+
+void ec_strvec_sort(struct ec_strvec *strvec,
+	int (*str_cmp)(const char *s1, const char *s2))
+{
+	if (str_cmp == NULL)
+		str_cmp = strcmp;
+	qsort_r(strvec->vec, ec_strvec_len(strvec),
+		sizeof(*strvec->vec), cmp_vec_elt, str_cmp);
+}
+
 void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec)
 {
 	size_t i;
@@ -366,6 +385,22 @@ static int ec_strvec_testcase(void)
 	free(buf);
 	buf = NULL;
 
+	ec_strvec_free(strvec);
+
+	strvec = EC_STRVEC("e", "a", "f", "d", "b", "c");
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	ec_strvec_sort(strvec, NULL);
+	strvec2 = EC_STRVEC("a", "b", "c", "d", "e", "f");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec2);
 	ec_strvec_free(strvec);
 
 	return testres;

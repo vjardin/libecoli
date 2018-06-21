@@ -14,6 +14,7 @@
 #include <ecoli_strvec.h>
 #include <ecoli_keyval.h>
 #include <ecoli_log.h>
+#include <ecoli_config.h>
 #include <ecoli_test.h>
 #include <ecoli_node.h>
 
@@ -138,6 +139,7 @@ void ec_node_free(struct ec_node *node)
 	ec_free(node->id);
 	ec_free(node->desc);
 	ec_keyval_free(node->attrs);
+	ec_config_free(node->config);
 	ec_free(node);
 }
 
@@ -186,6 +188,30 @@ int ec_node_add_child(struct ec_node *node, struct ec_node *child)
 fail:
 	ec_free(children);
 	assert(errno != 0);
+	return -1;
+}
+
+int
+ec_node_set_config(struct ec_node *node, struct ec_config *config)
+{
+	if (node->type->schema == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+	if (ec_config_validate(config, node->type->schema,
+				node->type->schema_len) < 0)
+		goto fail;
+	if (node->type->set_config != NULL) {
+		if (node->type->set_config(node, config) < 0)
+			goto fail;
+	}
+
+	ec_config_free(node->config);
+	node->config = config;
+
+	return 0;
+
+fail:
 	return -1;
 }
 

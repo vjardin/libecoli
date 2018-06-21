@@ -151,6 +151,17 @@ int ec_strvec_cmp(const struct ec_strvec *strvec1,
 		const struct ec_strvec *strvec2);
 
 /**
+ * Sort the string vector.
+ *
+ * @param strvec
+ *   The pointer to the first string vector.
+ * @param str_cmp
+ *   The sort function to use. If NULL, use strcmp.
+ */
+void ec_strvec_sort(struct ec_strvec *strvec,
+		int (*str_cmp)(const char *s1, const char *s2));
+
+/**
  * Dump a string vector.
  *
  * @param out

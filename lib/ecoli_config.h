@@ -5,8 +5,14 @@
 #ifndef ECOLI_CONFIG_
 #define ECOLI_CONFIG_
 
+#include <sys/queue.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifndef EC_COUNT_OF //XXX
+#define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
+		((size_t)(!(sizeof(x) % sizeof(0[x])))))
+#endif
 
 struct ec_config;
 struct ec_keyval;
@@ -70,10 +76,6 @@ struct ec_config {
 	 * Next in list, only valid if type is list.
 	 */
 	TAILQ_ENTRY(ec_config) next;
-
-	/** Associated schema. Only valid if type is dict. */
-	const struct ec_config_schema *schema;
-	size_t schema_len;           /**< Schema length. */
 };
 
 /* schema */
@@ -164,17 +166,11 @@ struct ec_config *ec_config_node(struct ec_node *node);
 /**
  * Create a hash table configuration value.
  *
- * @param schema
- *   Optional pointer to the first element of the schema array. Set
- *   it to NULL if no schema should be attached.
- * @param schema_len
- *   Length of the schema array. Set to 0 if no schema.
  * @return
- *   The configuration object containing an empty hash table, or NULL on
+ *   A configuration object containing an empty hash table, or NULL on
  *   error (errno is set).
  */
-struct ec_config *ec_config_dict(const struct ec_config_schema *schema,
-				size_t schema_len);
+struct ec_config *ec_config_dict(void);
 
 /**
  * Create a list configuration value.
@@ -193,19 +189,71 @@ struct ec_config *ec_config_list(void);
  * @param value
  *   The value configuration to add in the list. The value object
  *   will be freed when freeing the list object. On error, the
- *   value object is freed.
+ *   value object is also freed.
  * @return
  *   0 on success, else -1 (errno is set).
  */
-int ec_config_add(struct ec_config *list, struct ec_config *value);
+int ec_config_list_add(struct ec_config *list, struct ec_config *value);
 
-void ec_config_free(struct ec_config *config);
+/**
+ * Remove an element from a list.
+ *
+ * The element is freed and should not be accessed.
+ *
+ * @param list
+ *   The list configuration.
+ * @param config
+ *   The element to remove from the list.
+ * @return
+ *   0 on success, -1 on error (errno is set).
+ */
+int ec_config_list_del(struct ec_config *list, struct ec_config *config);
 
-int ec_config_validate(const struct ec_config *dict);
+/**
+ * Validate a configuration.
+ *
+ * @param dict
+ *   A hash table configuration to validate.
+ * @param schema
+ *   Pointer to the first element of the schema array.
+ * @param schema_len
+ *   Length of the schema array.
+ * @return
+ *   0 on success, -1 on error (errno is set).
+ */
+int ec_config_validate(const struct ec_config *dict,
+		const struct ec_config_schema *schema,
+		size_t schema_len);
 
-/* value is consumed */
-int ec_config_set(struct ec_config *dict, const char *key,
+/**
+ * Set a value in a hash table configuration
+ *
+ * @param dict
+ *   A hash table configuration to validate.
+ * @param key
+ *   The key to update.
+ * @param value
+ *   The value to set. The value object will be freed when freeing the
+ *   dict object. On error, the value object is also freed.
+ * @return
+ *   0 on success, -1 on error (errno is set).
+ */
+int ec_config_dict_set(struct ec_config *dict, const char *key,
 		struct ec_config *value);
+
+/**
+ * Remove an element from a hash table configuration.
+ *
+ * The element is freed and should not be accessed.
+ *
+ * @param dict
+ *   A hash table configuration to validate.
+ * @param key
+ *   The key of the configuration to delete.
+ * @return
+ *   0 on success, -1 on error (errno is set).
+ */
+int ec_config_dict_del(struct ec_config *config, const char *key);
 
 /**
  * Compare two configurations.
@@ -216,7 +264,7 @@ int ec_config_cmp(const struct ec_config *config1,
 /**
  * Get configuration value.
  */
-struct ec_config *ec_config_get(struct ec_config *config,
+struct ec_config *ec_config_get(const struct ec_config *config,
 				const char *key);
 
 /**
@@ -248,18 +296,6 @@ struct ec_config *ec_config_list_first(struct ec_config *list);
  */
 struct ec_config *
 ec_config_list_next(struct ec_config *list, struct ec_config *config);
-
-/**
- * Remove an element from a list.
- *
- * The element is freed and should not be accessed.
- *
- * @param list
- *   The list configuration.
- * @param config
- *   The element to remove from the list.
- */
-void ec_config_del(struct ec_config *list, struct ec_config *config);
 
 /**
  * Free a configuration.

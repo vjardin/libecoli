@@ -12,6 +12,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_config.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
@@ -33,6 +34,11 @@ ec_node_str_parse(const struct ec_node *gen_node,
 	const char *str;
 
 	(void)state;
+
+	if (node->string == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
@@ -87,8 +93,47 @@ static void ec_node_str_free_priv(struct ec_node *gen_node)
 	ec_free(node->string);
 }
 
+static const struct ec_config_schema ec_node_str_schema[] = {
+	{
+		.key = "string",
+		.desc = "The string to match.",
+		.type = EC_CONFIG_TYPE_STRING,
+	},
+};
+
+static int ec_node_str_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	const struct ec_config *value = NULL;
+	char *s = NULL;
+
+	value = ec_config_get(config, "string");
+	if (value == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	s = ec_strdup(value->string);
+	if (s == NULL)
+		goto fail;
+
+	ec_free(node->string);
+	node->string = s;
+	node->len = strlen(node->string);
+
+	return 0;
+
+fail:
+	ec_free(s);
+	return -1;
+}
+
 static struct ec_node_type ec_node_str_type = {
 	.name = "str",
+	.schema = ec_node_str_schema,
+	.schema_len = EC_COUNT_OF(ec_node_str_schema),
+	.set_config = ec_node_str_set_config,
 	.parse = ec_node_str_parse,
 	.complete = ec_node_str_complete,
 	.desc = ec_node_str_desc,
@@ -100,28 +145,31 @@ EC_NODE_TYPE_REGISTER(ec_node_str_type);
 
 int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
-	char *s = NULL;
-	int ret;
+	struct ec_config *config = NULL;
 
-	ret = ec_node_check_type(gen_node, &ec_node_str_type);
-	if (ret < 0)
-		return ret;
+	if (ec_node_check_type(gen_node, &ec_node_str_type) < 0)
+		goto fail;
 
 	if (str == NULL) {
 		errno = EINVAL;
-		return -1;
+		goto fail;
 	}
 
-	s = ec_strdup(str);
-	if (s == NULL)
-		return -1;
+	config = ec_config_dict();
+	if (config == NULL)
+		goto fail;
 
-	ec_free(node->string);
-	node->string = s;
-	node->len = strlen(node->string);
+	if (ec_config_dict_set(config, "string", ec_config_string(str)) < 0)
+		goto fail;
+
+	if (ec_node_set_config(gen_node, config) < 0)
+		goto fail;
 
 	return 0;
+
+fail:
+	ec_config_free(config);
+	return -1;
 }
 
 struct ec_node *ec_node_str(const char *id, const char *str)

@@ -55,6 +55,8 @@ struct ec_parse;
 struct ec_comp;
 struct ec_strvec;
 struct ec_keyval;
+struct ec_config;
+struct ec_config_schema;
 
 #define EC_NODE_TYPE_REGISTER(t)					\
 	static void ec_node_init_##t(void);				\
@@ -69,9 +71,8 @@ struct ec_keyval;
 
 TAILQ_HEAD(ec_node_type_list, ec_node_type);
 
-/* return 0 on success, else -errno. */
-typedef int (*ec_node_build_t)(struct ec_node *node);
-
+typedef int (*ec_node_set_config_t)(struct ec_node *node,
+				const struct ec_config *config);
 typedef int (*ec_node_parse_t)(const struct ec_node *node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec);
@@ -88,6 +89,10 @@ typedef void (*ec_node_free_priv_t)(struct ec_node *);
 struct ec_node_type {
 	TAILQ_ENTRY(ec_node_type) next;  /**< Next in list. */
 	const char *name;                /**< Node type name. */
+	/** Generic configuration schema. */
+	const struct ec_config_schema *schema;
+	size_t schema_len;               /**< Number of elts in schema array. */
+	ec_node_set_config_t set_config; /* validate/ack a config change */
 	ec_node_parse_t parse;
 	ec_node_complete_t complete;
 	ec_node_desc_t desc;
@@ -124,6 +129,7 @@ void ec_node_type_dump(FILE *out);
 
 struct ec_node {
 	const struct ec_node_type *type;
+	struct ec_config *config;    /**< Generic configuration. */
 	char *id;
 	char *desc;
 	struct ec_keyval *attrs;
@@ -141,6 +147,11 @@ struct ec_node *ec_node(const char *typename, const char *id);
 
 struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_node_free(struct ec_node *node);
+
+/* set configuration of a node
+ * after a call to this function, the config is owned by the node and
+ * must not be used by the caller */
+int ec_node_set_config(struct ec_node *node, struct ec_config *config);
 
 size_t ec_node_get_children_count(const struct ec_node *node);
 struct ec_node *

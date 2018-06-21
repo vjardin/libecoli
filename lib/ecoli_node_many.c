@@ -179,6 +179,7 @@ struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	if (child == NULL)
 		return NULL;
 
+	// XXX ec_node_add_child()
 	node = (struct ec_node_many *)__ec_node(&ec_node_many_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
