@@ -264,7 +264,7 @@ int ec_config_cmp(const struct ec_config *config1,
 /**
  * Get configuration value.
  */
-struct ec_config *ec_config_get(const struct ec_config *config,
+struct ec_config *ec_config_dict_get(const struct ec_config *config,
 				const char *key);
 
 /**
@@ -313,6 +313,17 @@ void ec_config_free(struct ec_config *config);
  */
 int ec_config_cmp(const struct ec_config *value1,
 		const struct ec_config *value2);
+
+/**
+ * Duplicate a configuration.
+ *
+ * @param config
+ *   The configuration to duplicate.
+ * @return
+ *   The duplicated configuration, or NULL on error (errno is set).
+ */
+struct ec_config *
+ec_config_dup(const struct ec_config *config);
 
 /**
  * Dump a configuration.

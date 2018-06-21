@@ -423,6 +423,11 @@ int
 ec_config_cmp(const struct ec_config *value1,
 		const struct ec_config *value2)
 {
+	if (value1 == NULL || value2 == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	if (value1->type != value2->type)
 		return -1;
 
@@ -541,10 +546,17 @@ fail:
 }
 
 struct ec_config *
-ec_config_get(const struct ec_config *config, const char *key)
+ec_config_dict_get(const struct ec_config *config, const char *key)
 {
-	if (config == NULL)
+	if (config == NULL) {
+		errno = EINVAL;
 		return NULL;
+	}
+
+	if (config->type != EC_CONFIG_TYPE_DICT) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	return ec_keyval_get(config->dict, key);
 }
@@ -633,6 +645,92 @@ int ec_config_list_del(struct ec_config *list, struct ec_config *config)
 	TAILQ_REMOVE(&list->list, config, next);
 	ec_config_free(config);
 	return 0;
+}
+
+static struct ec_config *
+ec_config_list_dup(const struct ec_config_list *list)
+{
+	struct ec_config *dup = NULL, *v, *value;
+
+	dup = ec_config_list();
+	if (dup == NULL)
+		goto fail;
+
+	TAILQ_FOREACH(v, list, next) {
+		value = ec_config_dup(v);
+		if (value == NULL)
+			goto fail;
+		if (ec_config_list_add(dup, value) < 0)
+			goto fail;
+	}
+
+	return dup;
+
+fail:
+	ec_config_free(dup);
+	return NULL;
+}
+
+static struct ec_config *
+ec_config_dict_dup(const struct ec_keyval *dict)
+{
+	struct ec_config *dup = NULL, *value;
+	struct ec_keyval_iter *iter;
+	const char *key;
+
+	dup = ec_config_dict();
+	if (dup == NULL)
+		goto fail;
+
+	for (iter = ec_keyval_iter(dict);
+	     ec_keyval_iter_valid(iter);
+	     ec_keyval_iter_next(iter)) {
+		key = ec_keyval_iter_get_key(iter);
+		value = ec_config_dup(ec_keyval_iter_get_val(iter));
+		if (value == NULL)
+			goto fail;
+		if (ec_config_dict_set(dup, key, value) < 0)
+			goto fail;
+	}
+	ec_keyval_iter_free(iter);
+
+	return dup;
+
+fail:
+	ec_config_free(dup);
+	ec_keyval_iter_free(iter);
+	return NULL;
+}
+
+struct ec_config *
+ec_config_dup(const struct ec_config *config)
+{
+	if (config == NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	switch (config->type) {
+	case EC_CONFIG_TYPE_BOOL:
+		return ec_config_bool(config->boolean);
+	case EC_CONFIG_TYPE_INT64:
+		return ec_config_i64(config->i64);
+	case EC_CONFIG_TYPE_UINT64:
+		return ec_config_u64(config->u64);
+	case EC_CONFIG_TYPE_STRING:
+		return ec_config_string(config->string);
+	case EC_CONFIG_TYPE_NODE:
+		return ec_config_node(ec_node_clone(config->node));
+	case EC_CONFIG_TYPE_LIST:
+		return ec_config_list_dup(&config->list);
+	case EC_CONFIG_TYPE_DICT:
+		return ec_config_dict_dup(config->dict);
+	default:
+		errno = EINVAL;
+		break;
+	}
+
+	return NULL;
 }
 
 static int
@@ -814,7 +912,8 @@ static int ec_config_testcase(void)
 	struct ec_node *node = NULL;
 	struct ec_keyval *dict = NULL;
 	const struct ec_config *value = NULL;
-	struct ec_config *config = NULL, *list = NULL, *subconfig = NULL;
+	struct ec_config *config = NULL, *config2 = NULL;
+	struct ec_config *list = NULL, *subconfig = NULL;
 	struct ec_config *list_, *config_;
 	int testres = 0;
 	int ret;
@@ -838,7 +937,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(config, "my_bool", ec_config_bool(true));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set boolean");
-	value = ec_config_get(config, "my_bool");
+	value = ec_config_dict_get(config, "my_bool");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_BOOL &&
@@ -847,7 +946,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(config, "my_int", ec_config_i64(1234));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(config, "my_int");
+	value = ec_config_dict_get(config, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -861,7 +960,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(config, "my_string", ec_config_string("toto"));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set string");
-	value = ec_config_get(config, "my_string");
+	value = ec_config_dict_get(config, "my_string");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_STRING &&
@@ -878,7 +977,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(subconfig, "my_int", ec_config_i64(1));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "my_int");
+	value = ec_config_dict_get(subconfig, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -887,7 +986,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(subconfig, "my_int2", ec_config_i64(2));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "my_int2");
+	value = ec_config_dict_get(subconfig, "my_int2");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -909,7 +1008,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(subconfig, "my_int", ec_config_i64(3));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "my_int");
+	value = ec_config_dict_get(subconfig, "my_int");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -918,7 +1017,7 @@ static int ec_config_testcase(void)
 
 	ret = ec_config_dict_set(subconfig, "my_int2", ec_config_i64(4));
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set int");
-	value = ec_config_get(subconfig, "my_int2");
+	value = ec_config_dict_get(subconfig, "my_int2");
 	testres |= EC_TEST_CHECK(
 		value != NULL &&
 		value->type == EC_CONFIG_TYPE_INT64 &&
@@ -943,14 +1042,21 @@ static int ec_config_testcase(void)
 				EC_COUNT_OF(sch_baseconfig)) == 0,
 		"cannot validate config\n");
 
-	list_ = ec_config_get(config, "my_dictlist");
-	printf("list = %p\n", list_);
+	list_ = ec_config_dict_get(config, "my_dictlist");
 	for (config_ = ec_config_list_first(list_); config_ != NULL;
 	     config_ = ec_config_list_next(list_, config_)) {
 		ec_config_dump(stdout, config_);
 	}
 
 	ec_config_dump(stdout, config);
+
+	config2 = ec_config_dup(config);
+	testres |= EC_TEST_CHECK(config2 != NULL, "cannot duplicate config");
+	testres |= EC_TEST_CHECK(
+		ec_config_cmp(config, config2) == 0,
+		"fail to compare config");
+	ec_config_free(config2);
+	config2 = NULL;
 
 	/* remove the first element */
 	ec_config_list_del(list_, ec_config_list_first(list_));
@@ -973,6 +1079,7 @@ fail:
 	ec_config_free(list);
 	ec_config_free(subconfig);
 	ec_config_free(config);
+	ec_config_free(config2);
 	ec_keyval_free(dict);
 	ec_node_free(node);
 
