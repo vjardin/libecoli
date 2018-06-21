@@ -675,7 +675,7 @@ static struct ec_config *
 ec_config_dict_dup(const struct ec_keyval *dict)
 {
 	struct ec_config *dup = NULL, *value;
-	struct ec_keyval_iter *iter;
+	struct ec_keyval_iter *iter = NULL;
 	const char *key;
 
 	dup = ec_config_dict();
