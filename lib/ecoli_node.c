@@ -212,6 +212,7 @@ ec_node_set_config(struct ec_node *node, struct ec_config *config)
 	return 0;
 
 fail:
+	ec_config_free(config);
 	return -1;
 }
 
