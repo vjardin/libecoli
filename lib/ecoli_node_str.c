@@ -108,7 +108,7 @@ static int ec_node_str_set_config(struct ec_node *gen_node,
 	const struct ec_config *value = NULL;
 	char *s = NULL;
 
-	value = ec_config_get(config, "string");
+	value = ec_config_dict_get(config, "string");
 	if (value == NULL) {
 		errno = EINVAL;
 		goto fail;
@@ -146,6 +146,7 @@ EC_NODE_TYPE_REGISTER(ec_node_str_type);
 int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 {
 	struct ec_config *config = NULL;
+	int ret;
 
 	if (ec_node_check_type(gen_node, &ec_node_str_type) < 0)
 		goto fail;
@@ -159,10 +160,13 @@ int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 	if (config == NULL)
 		goto fail;
 
-	if (ec_config_dict_set(config, "string", ec_config_string(str)) < 0)
+	ret = ec_config_dict_set(config, "string", ec_config_string(str));
+	if (ret < 0)
 		goto fail;
 
-	if (ec_node_set_config(gen_node, config) < 0)
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL;
+	if (ret < 0)
 		goto fail;
 
 	return 0;
