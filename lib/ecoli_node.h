@@ -149,9 +149,13 @@ struct ec_node *ec_node_clone(struct ec_node *node);
 void ec_node_free(struct ec_node *node);
 
 /* set configuration of a node
- * after a call to this function, the config is owned by the node and
- * must not be used by the caller */
+ * after a call to this function, the config is
+ * owned by the node and must not be used by the caller
+ * on error, the config is freed. */
 int ec_node_set_config(struct ec_node *node, struct ec_config *config);
+
+/* get the current node configuration. Return NULL if no configuration. */
+const struct ec_config *ec_node_get_config(struct ec_node *node);
 
 size_t ec_node_get_children_count(const struct ec_node *node);
 struct ec_node *
