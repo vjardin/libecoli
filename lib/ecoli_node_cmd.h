@@ -11,9 +11,4 @@
 
 struct ec_node *__ec_node_cmd(const char *id, const char *cmd_str, ...);
 
-struct ec_node *ec_node_cmd(const char *id, const char *cmd_str);
-
-/* child is consumed */
-int ec_node_cmd_add_child(struct ec_node *node, struct ec_node *child);
-
 #endif
