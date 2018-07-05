@@ -241,12 +241,32 @@ static void ec_node_subset_free_priv(struct ec_node *gen_node)
 	ec_free(node->table);
 }
 
+static size_t
+ec_node_subset_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	return node->len;
+}
+
+static struct ec_node *
+ec_node_subset_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+
+	if (i >= node->len)
+		return NULL;
+
+	return node->table[i];
+}
+
 static struct ec_node_type ec_node_subset_type = {
 	.name = "subset",
 	.parse = ec_node_subset_parse,
 	.complete = ec_node_subset_complete,
 	.size = sizeof(struct ec_node_subset),
 	.free_priv = ec_node_subset_free_priv,
+	.get_children_count = ec_node_subset_get_children_count,
+	.get_child = ec_node_subset_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_subset_type);
@@ -273,10 +293,6 @@ int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
 	}
 
 	node->table = table;
-
-	if (ec_node_add_child(gen_node, child) < 0)
-		goto fail;
-
 	table[node->len] = child;
 	node->len++;
 

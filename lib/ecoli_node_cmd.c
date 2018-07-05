@@ -492,13 +492,6 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 	if (cmd == NULL)
 		goto fail;
 
-	gen_node->n_children = 0; /* XXX */
-	TAILQ_FOREACH(child, &children->list, next) {
-		/* XXX if it fails... too late */
-		if (ec_node_add_child(gen_node, child->node) < 0)
-			goto fail;
-	}
-
 	ec_node_free(node->cmd);
 	node->cmd = cmd;
 	ec_free(node->cmd_str);
@@ -516,6 +509,24 @@ fail:
 	return -1;
 }
 
+static size_t
+ec_node_cmd_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	return node->len;
+}
+
+static struct ec_node *
+ec_node_cmd_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+
+	if (i >= node->len)
+		return NULL;
+
+	return node->table[i];
+}
+
 static struct ec_node_type ec_node_cmd_type = {
 	.name = "cmd",
 	.schema = ec_node_cmd_schema,
@@ -525,6 +536,8 @@ static struct ec_node_type ec_node_cmd_type = {
 	.complete = ec_node_cmd_complete,
 	.size = sizeof(struct ec_node_cmd),
 	.free_priv = ec_node_cmd_free_priv,
+	.get_children_count = ec_node_cmd_get_children_count,
+	.get_child = ec_node_cmd_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_cmd_type);

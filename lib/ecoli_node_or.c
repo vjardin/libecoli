@@ -75,12 +75,32 @@ static void ec_node_or_free_priv(struct ec_node *gen_node)
 	ec_free(node->table);
 }
 
+static size_t
+ec_node_or_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	return node->len;
+}
+
+static struct ec_node *
+ec_node_or_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+
+	if (i >= node->len)
+		return NULL;
+
+	return node->table[i];
+}
+
 static struct ec_node_type ec_node_or_type = {
 	.name = "or",
 	.parse = ec_node_or_parse,
 	.complete = ec_node_or_complete,
 	.size = sizeof(struct ec_node_or),
 	.free_priv = ec_node_or_free_priv,
+	.get_children_count = ec_node_or_get_children_count,
+	.get_child = ec_node_or_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_or_type);
@@ -107,10 +127,6 @@ int ec_node_or_add(struct ec_node *gen_node, struct ec_node *child)
 		goto fail;
 
 	node->table = table;
-
-	if (ec_node_add_child(gen_node, child) < 0)
-		goto fail;
-
 	table[node->len] = child;
 	node->len++;
 

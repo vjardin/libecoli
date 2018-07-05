@@ -82,6 +82,9 @@ typedef int (*ec_node_complete_t)(const struct ec_node *node,
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
 typedef int (*ec_node_init_priv_t)(struct ec_node *);
 typedef void (*ec_node_free_priv_t)(struct ec_node *);
+typedef size_t (*ec_node_get_children_count_t)(const struct ec_node *);
+typedef struct ec_node * (*ec_node_get_child_t)(const struct ec_node *,
+						size_t i);
 
 /**
  * A structure describing a node type.
@@ -99,6 +102,8 @@ struct ec_node_type {
 	size_t size;
 	ec_node_init_priv_t init_priv;
 	ec_node_free_priv_t free_priv;
+	ec_node_get_children_count_t get_children_count;
+	ec_node_get_child_t get_child;
 };
 
 /**
@@ -134,8 +139,6 @@ struct ec_node {
 	char *desc;
 	struct ec_keyval *attrs;
 	unsigned int refcnt;
-	struct ec_node **children;   /* array of children */
-	size_t n_children;           /* number of children in the array */
 };
 
 /* create a new node when the type is known, typically called from the node

@@ -61,12 +61,35 @@ static void ec_node_option_free_priv(struct ec_node *gen_node)
 	ec_node_free(node->child);
 }
 
+static size_t
+ec_node_option_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_option *node = (struct ec_node_option *)gen_node;
+
+	if (node->child)
+		return 1;
+	return 0;
+}
+
+static struct ec_node *
+ec_node_option_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_option *node = (struct ec_node_option *)gen_node;
+
+	if (i >= 1)
+		return NULL;
+
+	return node->child;
+}
+
 static struct ec_node_type ec_node_option_type = {
 	.name = "option",
 	.parse = ec_node_option_parse,
 	.complete = ec_node_option_complete,
 	.size = sizeof(struct ec_node_option),
 	.free_priv = ec_node_option_free_priv,
+	.get_children_count = ec_node_option_get_children_count,
+	.get_child = ec_node_option_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_option_type);
@@ -81,9 +104,6 @@ int ec_node_option_set(struct ec_node *gen_node, struct ec_node *child)
 	}
 
 	if (ec_node_check_type(gen_node, &ec_node_option_type) < 0)
-		goto fail;
-
-	if (ec_node_add_child(gen_node, child) < 0)
 		goto fail;
 
 	node->child = child;

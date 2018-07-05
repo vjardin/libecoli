@@ -161,12 +161,35 @@ static void ec_node_many_free_priv(struct ec_node *gen_node)
 	ec_node_free(node->child);
 }
 
+static size_t
+ec_node_many_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_many *node = (struct ec_node_many *)gen_node;
+
+	if (node->child)
+		return 1;
+	return 0;
+}
+
+static struct ec_node *
+ec_node_many_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_many *node = (struct ec_node_many *)gen_node;
+
+	if (i >= 1)
+		return NULL;
+
+	return node->child;
+}
+
 static struct ec_node_type ec_node_many_type = {
 	.name = "many",
 	.parse = ec_node_many_parse,
 	.complete = ec_node_many_complete,
 	.size = sizeof(struct ec_node_many),
 	.free_priv = ec_node_many_free_priv,
+	.get_children_count = ec_node_many_get_children_count,
+	.get_child = ec_node_many_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_many_type);
@@ -179,7 +202,6 @@ struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	if (child == NULL)
 		return NULL;
 
-	// XXX ec_node_add_child()
 	node = (struct ec_node_many *)__ec_node(&ec_node_many_type, id);
 	if (node == NULL) {
 		ec_node_free(child);

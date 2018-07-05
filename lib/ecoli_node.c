@@ -135,7 +135,6 @@ void ec_node_free(struct ec_node *node)
 
 	if (node->type != NULL && node->type->free_priv != NULL)
 		node->type->free_priv(node);
-	ec_free(node->children);
 	ec_free(node->id);
 	ec_free(node->desc);
 	ec_keyval_free(node->attrs);
@@ -152,43 +151,17 @@ struct ec_node *ec_node_clone(struct ec_node *node)
 
 size_t ec_node_get_children_count(const struct ec_node *node)
 {
-	return node->n_children;
+	if (node->type->get_children_count == NULL)
+		return 0;
+	return node->type->get_children_count(node);
 }
 
 struct ec_node *
 ec_node_get_child(const struct ec_node *node, size_t i)
 {
-	if (i >= ec_node_get_children_count(node))
+	if (node->type->get_child == NULL)
 		return NULL;
-	return node->children[i];
-}
-
-int ec_node_add_child(struct ec_node *node, struct ec_node *child)
-{
-	struct ec_node **children = NULL;
-	size_t n;
-
-	if (node == NULL || child == NULL) {
-		errno = EINVAL;
-		goto fail;
-	}
-
-	n = node->n_children;
-	children = ec_realloc(node->children,
-			(n + 1) * sizeof(child));
-	if (children == NULL)
-		goto fail;
-
-	children[n] = child;
-	node->children = children;
-	node->n_children = n + 1;
-
-	return 0;
-
-fail:
-	ec_free(children);
-	assert(errno != 0);
-	return -1;
+	return node->type->get_child(node, i);
 }
 
 int
@@ -221,29 +194,6 @@ const struct ec_config *ec_node_get_config(struct ec_node *node)
 	return node->config;
 }
 
-#if 0 /* later */
-int ec_node_del_child(struct ec_node *node, struct ec_node *child)
-{
-	size_t i, n;
-
-	if (node == NULL || child == NULL)
-		goto fail;
-
-	n = node->n_children;
-	for (i = 0; i < n; i++) {
-		if (node->children[i] != child)
-			continue;
-		memcpy(&node->children[i], &node->children[i+1],
-			(n - i - 1) * sizeof(child));
-		return 0;
-	}
-
-fail:
-	errno = EINVAL;
-	return -1;
-}
-#endif
-
 struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 {
 	struct ec_node *child, *ret;
@@ -253,9 +203,9 @@ struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 	if (id != NULL && node_id != NULL && !strcmp(node_id, id))
 		return node;
 
-	n = node->n_children;
+	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = node->children[i];
+		child = ec_node_get_child(node, i);
 		ret = ec_node_find(child, id);
 		if (ret != NULL)
 			return ret;
@@ -291,9 +241,9 @@ static void __ec_node_dump(FILE *out,
 
 	fprintf(out, "%*s" "type=%s id=%s %p\n",
 		(int)indent * 4, "", typename, id, node);
-	n = node->n_children;
+	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = node->children[i];
+		child = ec_node_get_child(node, i);
 		__ec_node_dump(out, child, indent + 1);
 	}
 }

@@ -164,12 +164,32 @@ static void ec_node_seq_free_priv(struct ec_node *gen_node)
 	ec_free(node->table);
 }
 
+static size_t
+ec_node_seq_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
+	return node->len;
+}
+
+static struct ec_node *
+ec_node_seq_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
+
+	if (i >= node->len)
+		return NULL;
+
+	return node->table[i];
+}
+
 static struct ec_node_type ec_node_seq_type = {
 	.name = "seq",
 	.parse = ec_node_seq_parse,
 	.complete = ec_node_seq_complete,
 	.size = sizeof(struct ec_node_seq),
 	.free_priv = ec_node_seq_free_priv,
+	.get_children_count = ec_node_seq_get_children_count,
+	.get_child = ec_node_seq_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_seq_type);
@@ -194,10 +214,6 @@ int ec_node_seq_add(struct ec_node *gen_node, struct ec_node *child)
 		goto fail;
 
 	node->table = table;
-
-	if (ec_node_add_child(gen_node, child) < 0)
-		goto fail;
-
 	table[node->len] = child;
 	node->len++;
 
