@@ -20,6 +20,8 @@
 
 #include <ecoli_node_str.h>
 #include <ecoli_node_seq.h>
+#include <ecoli_node_or.h>
+#include <ecoli_node_int.h>
 
 EC_LOG_TYPE_REGISTER(node);
 
@@ -123,28 +125,65 @@ struct ec_node *ec_node(const char *typename, const char *id)
 	return __ec_node(type, id);
 }
 
-static void traverse_tree1(const struct ec_node *node)
+static void count_references(struct ec_node *node)
 {
-	const struct ec_node *child;
+	struct ec_node *child;
 	size_t i, n;
 
-	if (node->free.state == 1) {
+	if (node->free.state == EC_NODE_FREE_STATE_TRAVERSED) {
 		node->free.refcnt++;
 		return;
 	}
 	node->free.refcnt = 1;
-	node->free.state = 1; // traversed
-	n = node->n_children;
+	node->free.state = EC_NODE_FREE_STATE_TRAVERSED;
+	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = node->children[i];
-		traverse_tree1(child);
+		child = ec_node_get_child(node, i);
+		count_references(child);
 	}
 }
 
+static void mark_freeable(struct ec_node *node, enum ec_node_free_state mark)
+{
+	struct ec_node *child;
+	size_t i, n;
+
+	if (mark == node->free.state)
+		return;
+
+	if (node->refcnt != node->free.refcnt)
+		mark = EC_NODE_FREE_STATE_NOT_FREEABLE;
+	node->free.state = mark;
+
+	n = ec_node_get_children_count(node);
+	for (i = 0; i < n; i++) {
+		child = ec_node_get_child(node, i);
+		mark_freeable(child, mark);
+	}
+}
+
+static void reset_mark(struct ec_node *node)
+{
+	struct ec_node *child;
+	size_t i, n;
+
+	if (node->free.state == EC_NODE_FREE_STATE_NONE)
+		return;
+
+	node->free.state = EC_NODE_FREE_STATE_NONE;
+	node->free.refcnt = 0;
+
+	n = ec_node_get_children_count(node);
+	for (i = 0; i < n; i++) {
+		child = ec_node_get_child(node, i);
+		reset_mark(child);
+	}
+}
+
+/* free a node, taking care of loops in the node graph */
 void ec_node_free(struct ec_node *node)
 {
 	struct ec_node *child;
-	bool free_it = false;
 	size_t i, n;
 
 	if (node == NULL)
@@ -152,27 +191,42 @@ void ec_node_free(struct ec_node *node)
 
 	assert(node->refcnt > 0);
 
-	// calc free refcnt
-	if (node->free.state == 0)
-		traverse_tree1(node);
+	if (node->free.state == EC_NODE_FREE_STATE_NONE &&
+			node->refcnt != 1) {
 
-	node->refcnt--;
-	if (node->free.state == 2)
+		/* Traverse the node tree starting from this node, and for each
+		 * node, count the number of reachable references. Then, all
+		 * nodes whose reachable references == total reference are
+		 * marked as freeable, and other are marked as unfreeable. Any
+		 * node reachable from an unfreeable node is also marked as
+		 * unfreeable. */
+		if (node->free.state == EC_NODE_FREE_STATE_NONE) {
+			count_references(node);
+			mark_freeable(node, EC_NODE_FREE_STATE_FREEABLE);
+		}
+	}
+
+	if (node->free.state == EC_NODE_FREE_STATE_NOT_FREEABLE) {
+		node->refcnt--;
+		reset_mark(node);
 		return;
+	}
 
-	node->free.state = 2; // beeing freed
-	if (node->refcnt < node->free.refcnt) {
+	if (node->free.state != EC_NODE_FREE_STATE_FREEING) {
+		node->free.state = EC_NODE_FREE_STATE_FREEING;
+		n = ec_node_get_children_count(node);
 		for (i = 0; i < n; i++) {
-			child = node->children[i];
+			child = ec_node_get_child(node, i);
 			ec_node_free(child);
 		}
 	}
 
-	if (node->refcnt > 0) {
-		node->free.refcnt = 0;
-		node->free.state = 0;
+	node->refcnt--;
+	if (node->refcnt != 0)
 		return;
-	}
+
+	node->free.state = EC_NODE_FREE_STATE_NONE;
+	node->free.refcnt = 0;
 
 	if (node->type != NULL && node->type->free_priv != NULL)
 		node->type->free_priv(node);
@@ -271,27 +325,39 @@ const char *ec_node_id(const struct ec_node *node)
 }
 
 static void __ec_node_dump(FILE *out,
-	const struct ec_node *node, size_t indent)
+	const struct ec_node *node, size_t indent, struct ec_keyval *dict)
 {
 	const char *id, *typename;
 	struct ec_node *child;
+	char buf[32];
 	size_t i, n;
 
 	id = ec_node_id(node);
 	typename = node->type->name;
 
-	fprintf(out, "%*s" "type=%s id=%s %p free=(%d,%d)\n",
-		(int)indent * 4, "", typename, id, node,
+	snprintf(buf, sizeof(buf), "%p", node);
+	if (ec_keyval_has_key(dict, buf)) {
+		fprintf(out, "%*s" "type=%s id=%s %p... (loop)\n",
+			(int)indent * 4, "", typename, id, node);
+		return;
+	}
+
+	ec_keyval_set(dict, buf, NULL, NULL);
+	fprintf(out, "%*s" "type=%s id=%s %p refs=%u free=(%d,%d)\n",
+		(int)indent * 4, "", typename, id, node, node->refcnt,
 		node->free.state, node->free.refcnt);
+
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
 		child = ec_node_get_child(node, i);
-		__ec_node_dump(out, child, indent + 1);
+		__ec_node_dump(out, child, indent + 1, dict);
 	}
 }
 
 void ec_node_dump(FILE *out, const struct ec_node *node)
 {
+	struct ec_keyval *dict = NULL;
+
 	fprintf(out, "------------------- node dump:\n");
 
 	if (node == NULL) {
@@ -299,7 +365,18 @@ void ec_node_dump(FILE *out, const struct ec_node *node)
 		return;
 	}
 
-	__ec_node_dump(out, node, 0);
+	dict = ec_keyval();
+	if (dict == NULL)
+		goto fail;
+
+	__ec_node_dump(out, node, 0, dict);
+
+	ec_keyval_free(dict);
+	return;
+
+fail:
+	ec_keyval_free(dict);
+	EC_LOG(EC_LOG_ERR, "failed to dump node\n");
 }
 
 const char *ec_node_desc(const struct ec_node *node)
@@ -324,7 +401,8 @@ int ec_node_check_type(const struct ec_node *node,
 /* LCOV_EXCL_START */
 static int ec_node_testcase(void)
 {
-	struct ec_node *node = NULL;
+	struct ec_node *node = NULL, *expr = NULL;
+	struct ec_node *expr2 = NULL, *val = NULL, *op = NULL, *seq = NULL;
 	const struct ec_node *child;
 	const struct ec_node_type *type;
 	FILE *f = NULL;
@@ -414,9 +492,69 @@ static int ec_node_testcase(void)
 	testres |= EC_TEST_CHECK(node == NULL,
 			"should not be able to create node\n");
 
+	/* test loop */
+	expr = ec_node("or", EC_NO_ID);
+	val = ec_node_int(EC_NO_ID, 0, 10, 0);
+	op = ec_node_str(EC_NO_ID, "!");
+	seq = EC_NODE_SEQ(EC_NO_ID,
+			op,
+			ec_node_clone(expr));
+	op = NULL;
+	if (expr == NULL || val == NULL || seq == NULL)
+		goto fail;
+	if (ec_node_or_add(expr, ec_node_clone(seq)) < 0)
+		goto fail;
+	ec_node_free(seq);
+	seq = NULL;
+	if (ec_node_or_add(expr, ec_node_clone(val)) < 0)
+		goto fail;
+	ec_node_free(val);
+	val = NULL;
+
+	testres |= EC_TEST_CHECK_PARSE(expr, 1, "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, 3, "!", "!", "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, -1, "!", "!", "!");
+
+	ec_node_free(expr);
+	expr = NULL;
+
+	/* same loop test, but keep some refs (released later) */
+	expr = ec_node("or", EC_NO_ID);
+	ec_node_clone(expr);
+	expr2 = expr;
+	val = ec_node_int(EC_NO_ID, 0, 10, 0);
+	op = ec_node_str(EC_NO_ID, "!");
+	seq = EC_NODE_SEQ(EC_NO_ID,
+			op,
+			ec_node_clone(expr));
+	op = NULL;
+	if (expr == NULL || val == NULL || seq == NULL)
+		goto fail;
+	if (ec_node_or_add(expr, ec_node_clone(seq)) < 0)
+		goto fail;
+	ec_node_free(seq);
+	seq = NULL;
+	if (ec_node_or_add(expr, ec_node_clone(val)) < 0)
+		goto fail;
+
+	testres |= EC_TEST_CHECK_PARSE(expr, 1, "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, 3, "!", "!", "1");
+	testres |= EC_TEST_CHECK_PARSE(expr, -1, "!", "!", "!");
+
+	ec_node_free(expr2);
+	expr2 = NULL;
+	ec_node_free(val);
+	val = NULL;
+	ec_node_free(expr);
+	expr = NULL;
+
 	return testres;
 
 fail:
+	ec_node_free(expr);
+	ec_node_free(expr2);
+	ec_node_free(val);
+	ec_node_free(seq);
 	ec_node_free(node);
 	if (f != NULL)
 		fclose(f);

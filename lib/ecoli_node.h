@@ -132,6 +132,14 @@ const struct ec_node_type *ec_node_type_lookup(const char *name);
  */
 void ec_node_type_dump(FILE *out);
 
+enum ec_node_free_state {
+	EC_NODE_FREE_STATE_NONE,
+	EC_NODE_FREE_STATE_TRAVERSED,
+	EC_NODE_FREE_STATE_FREEABLE,
+	EC_NODE_FREE_STATE_NOT_FREEABLE,
+	EC_NODE_FREE_STATE_FREEING,
+};
+
 struct ec_node {
 	const struct ec_node_type *type;
 	struct ec_config *config;    /**< Generic configuration. */
@@ -139,6 +147,11 @@ struct ec_node {
 	char *desc;
 	struct ec_keyval *attrs;
 	unsigned int refcnt;
+	struct {
+		enum ec_node_free_state state; /**< State of loop detection */
+		unsigned int refcnt;    /**< Number of reachable references
+					 *   starting from node beeing freed */
+	} free; /**< Freeing state: used for loop detection */
 };
 
 /* create a new node when the type is known, typically called from the node
