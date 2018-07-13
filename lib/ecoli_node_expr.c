@@ -21,7 +21,6 @@
 #include <ecoli_node_seq.h>
 #include <ecoli_node_many.h>
 #include <ecoli_node_or.h>
-#include <ecoli_node_weakref.h>
 #include <ecoli_node_expr.h>
 
 EC_LOG_TYPE_REGISTER(node_expr);
@@ -104,8 +103,8 @@ static void ec_node_expr_free_priv(struct ec_node *gen_node)
 static int ec_node_expr_build(struct ec_node_expr *node)
 {
 	struct ec_node *term = NULL, *expr = NULL, *next = NULL,
-		*pre_op = NULL, *post_op = NULL,
-		*post = NULL, *weak = NULL;
+		*pre_op = NULL, *post_op = NULL, *ref = NULL,
+		*post = NULL;
 	unsigned int i;
 
 	ec_node_free(node->child);
@@ -136,10 +135,9 @@ static int ec_node_expr_build(struct ec_node_expr *node)
 	 * expr = sum
 	 */
 
-	/* create the object, we will initialize it later: this is
-	 * needed because we have a circular dependency */
-	weak = ec_node("weakref", "weak");
-	if (weak == NULL)
+	/* we use this as a ref, will be set later */
+	ref = ec_node("seq", "ref");
+	if (ref == NULL)
 		return -1;
 
 	/* prefix unary operators */
@@ -168,12 +166,12 @@ static int ec_node_expr_build(struct ec_node_expr *node)
 	if (ec_node_or_add(post,
 		EC_NODE_SEQ(EC_NO_ID,
 			ec_node_clone(pre_op),
-			ec_node_clone(weak))) < 0)
+			ec_node_clone(ref))) < 0)
 		goto fail;
 	for (i = 0; i < node->paren_len; i++) {
 		if (ec_node_or_add(post, EC_NODE_SEQ(EC_NO_ID,
 					ec_node_clone(node->open_ops[i]),
-					ec_node_clone(weak),
+					ec_node_clone(ref),
 					ec_node_clone(node->close_ops[i]))) < 0)
 			goto fail;
 	}
@@ -211,11 +209,10 @@ static int ec_node_expr_build(struct ec_node_expr *node)
 	ec_node_free(post);
 	post = NULL;
 
-	/* no need to clone here, the node is not consumed */
-	if (ec_node_weakref_set(weak, expr) < 0)
+	if (ec_node_seq_add(ref, ec_node_clone(expr)) < 0)
 		goto fail;
-	ec_node_free(weak);
-	weak = NULL;
+	ec_node_free(ref);
+	ref = NULL;
 
 	node->child = expr;
 
@@ -227,7 +224,7 @@ fail:
 	ec_node_free(pre_op);
 	ec_node_free(post_op);
 	ec_node_free(post);
-	ec_node_free(weak);
+	ec_node_free(ref);
 
 	return -1;
 }
