@@ -96,8 +96,6 @@ static void ec_node_expr_free_priv(struct ec_node *gen_node)
 	}
 	ec_free(node->open_ops);
 	ec_free(node->close_ops);
-
-	ec_node_free(node->child);
 }
 
 static int ec_node_expr_build(struct ec_node_expr *node)
@@ -229,12 +227,35 @@ fail:
 	return -1;
 }
 
+static size_t
+ec_node_expr_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
+
+	if (node->child)
+		return 1;
+	return 0;
+}
+
+static struct ec_node *
+ec_node_expr_get_child(const struct ec_node *gen_node, size_t i)
+{
+	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
+
+	if (i >= 1)
+		return NULL;
+
+	return node->child;
+}
+
 static struct ec_node_type ec_node_expr_type = {
 	.name = "expr",
 	.parse = ec_node_expr_parse,
 	.complete = ec_node_expr_complete,
 	.size = sizeof(struct ec_node_expr),
 	.free_priv = ec_node_expr_free_priv,
+	.get_children_count = ec_node_expr_get_children_count,
+	.get_child = ec_node_expr_get_child,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_expr_type);

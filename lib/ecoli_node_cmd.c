@@ -411,11 +411,13 @@ ec_node_cmd_complete(const struct ec_node *gen_node,
 static void ec_node_cmd_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	size_t i;
 
 	ec_free(node->cmd_str);
-	ec_node_free(node->cmd);
 	ec_node_free(node->expr);
 	ec_node_free(node->parser);
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
 	ec_free(node->table);
 }
 
@@ -454,7 +456,7 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 	struct ec_node *cmd = NULL;
 	struct ec_node **table = NULL;
 	char *cmd_str = NULL;
-	size_t n;
+	size_t n, i;
 
 	/* retrieve config locally */
 	expr = ec_config_dict_get(config, "expr");
@@ -483,7 +485,7 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 
 	n = 0;
 	TAILQ_FOREACH(child, &children->list, next) {
-		table[n] = child->node;
+		table[n] = ec_node_clone(child->node);
 		n++;
 	}
 
@@ -496,6 +498,8 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 	node->cmd = cmd;
 	ec_free(node->cmd_str);
 	node->cmd_str = cmd_str;
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
 	ec_free(node->table);
 	node->table = table;
 	node->len = n;
@@ -503,6 +507,10 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 	return 0;
 
 fail:
+	if (table != NULL) {
+		for (i = 0; i < n; i++)
+			ec_node_free(table[i]);
+	}
 	ec_free(table);
 	ec_free(cmd_str);
 	ec_node_free(cmd);
@@ -513,7 +521,10 @@ static size_t
 ec_node_cmd_get_children_count(const struct ec_node *gen_node)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
-	return node->len;
+
+	if (node->cmd == NULL)
+		return 0;
+	return 1;
 }
 
 static struct ec_node *
@@ -521,10 +532,10 @@ ec_node_cmd_get_child(const struct ec_node *gen_node, size_t i)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 
-	if (i >= node->len)
+	if (i > 0)
 		return NULL;
 
-	return node->table[i];
+	return node->cmd;
 }
 
 static struct ec_node_type ec_node_cmd_type = {
@@ -549,6 +560,7 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	struct ec_node_cmd *node = NULL;
 	struct ec_node *child;
 	va_list ap;
+	int ret;
 
 	va_start(ap, cmd);
 	child = va_arg(ap, struct ec_node *);
@@ -591,7 +603,9 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	}
 	children = NULL;
 
-	if (ec_node_set_config(gen_node, config) < 0)
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
 		goto fail;
 
 	va_end(ap);
@@ -603,6 +617,7 @@ fail_free_children:
 		ec_node_free(child);
 fail:
 	ec_node_free(gen_node); /* will also free added children */
+	ec_config_free(children);
 	ec_config_free(config);
 	va_end(ap);
 
@@ -620,9 +635,6 @@ static int ec_node_cmd_testcase(void)
 		ec_node_int("x", 0, 10, 10),
 		ec_node_int("y", 20, 30, 10)
 	);
-	ec_node_free(node);
-	return 0;
-
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;

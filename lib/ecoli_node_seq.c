@@ -157,10 +157,7 @@ ec_node_seq_complete(const struct ec_node *gen_node,
 static void ec_node_seq_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
-	unsigned int i;
 
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
 	ec_free(node->table);
 }
 
@@ -266,7 +263,7 @@ fail:
 /* LCOV_EXCL_START */
 static int ec_node_seq_testcase(void)
 {
-	struct ec_node *node;
+	struct ec_node *node = NULL;
 	int testres = 0;
 
 	node = EC_NODE_SEQ(EC_NO_ID,

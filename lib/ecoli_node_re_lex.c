@@ -149,7 +149,6 @@ static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
 	}
 
 	ec_free(node->table);
-	ec_node_free(node->child);
 }
 
 static size_t

@@ -54,13 +54,6 @@ ec_node_option_complete(const struct ec_node *gen_node,
 	return ec_node_complete_child(node->child, comp, strvec);
 }
 
-static void ec_node_option_free_priv(struct ec_node *gen_node)
-{
-	struct ec_node_option *node = (struct ec_node_option *)gen_node;
-
-	ec_node_free(node->child);
-}
-
 static size_t
 ec_node_option_get_children_count(const struct ec_node *gen_node)
 {
@@ -87,7 +80,6 @@ static struct ec_node_type ec_node_option_type = {
 	.parse = ec_node_option_parse,
 	.complete = ec_node_option_complete,
 	.size = sizeof(struct ec_node_option),
-	.free_priv = ec_node_option_free_priv,
 	.get_children_count = ec_node_option_get_children_count,
 	.get_child = ec_node_option_get_child,
 };
