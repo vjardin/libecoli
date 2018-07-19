@@ -88,6 +88,13 @@ ec_node_once_complete(const struct ec_node *gen_node,
 	return 0;
 }
 
+static void ec_node_once_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_once *node = (struct ec_node_once *)gen_node;
+
+	ec_node_free(node->child);
+}
+
 static size_t
 ec_node_once_get_children_count(const struct ec_node *gen_node)
 {
@@ -114,6 +121,7 @@ static struct ec_node_type ec_node_once_type = {
 	.parse = ec_node_once_parse,
 	.complete = ec_node_once_complete,
 	.size = sizeof(struct ec_node_once),
+	.free_priv = ec_node_once_free_priv,
 	.get_children_count = ec_node_once_get_children_count,
 	.get_child = ec_node_once_get_child,
 };

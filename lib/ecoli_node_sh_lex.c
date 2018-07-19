@@ -336,6 +336,13 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 	return -1;
 }
 
+static void ec_node_sh_lex_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+
+	ec_node_free(node->child);
+}
+
 static size_t
 ec_node_sh_lex_get_children_count(const struct ec_node *gen_node)
 {
@@ -362,6 +369,7 @@ static struct ec_node_type ec_node_sh_lex_type = {
 	.parse = ec_node_sh_lex_parse,
 	.complete = ec_node_sh_lex_complete,
 	.size = sizeof(struct ec_node_sh_lex),
+	.free_priv = ec_node_sh_lex_free_priv,
 	.get_children_count = ec_node_sh_lex_get_children_count,
 	.get_child = ec_node_sh_lex_get_child,
 };

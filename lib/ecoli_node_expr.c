@@ -78,7 +78,7 @@ static void ec_node_expr_free_priv(struct ec_node *gen_node)
 	struct ec_node_expr *node = (struct ec_node_expr *)gen_node;
 	unsigned int i;
 
-	EC_LOG(EC_LOG_DEBUG, "free %p %p %p\n", node, node->child, node->val_node);
+	ec_node_free(node->child);
 	ec_node_free(node->val_node);
 
 	for (i = 0; i < node->bin_ops_len; i++)

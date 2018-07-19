@@ -185,8 +185,7 @@ static void reset_mark(struct ec_node *node)
 /* free a node, taking care of loops in the node graph */
 void ec_node_free(struct ec_node *node)
 {
-	struct ec_node *child;
-	size_t i, n;
+	size_t n;
 
 	if (node == NULL)
 		return;
@@ -217,10 +216,10 @@ void ec_node_free(struct ec_node *node)
 	if (node->free.state != EC_NODE_FREE_STATE_FREEING) {
 		node->free.state = EC_NODE_FREE_STATE_FREEING;
 		n = ec_node_get_children_count(node);
-		for (i = 0; i < n; i++) {
-			child = ec_node_get_child(node, i);
-			ec_node_free(child);
-		}
+		/* children should be freed by free_priv() */
+		assert(n == 0 || node->type->free_priv != NULL);
+		if (node->type->free_priv != NULL)
+			node->type->free_priv(node);
 	}
 
 	node->refcnt--;
@@ -230,8 +229,6 @@ void ec_node_free(struct ec_node *node)
 	node->free.state = EC_NODE_FREE_STATE_NONE;
 	node->free.refcnt = 0;
 
-	if (node->type != NULL && node->type->free_priv != NULL)
-		node->type->free_priv(node);
 	ec_free(node->id);
 	ec_free(node->desc);
 	ec_keyval_free(node->attrs);

@@ -143,6 +143,7 @@ static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
 	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
 	unsigned int i;
 
+	ec_node_free(node->child);
 	for (i = 0; i < node->len; i++) {
 		ec_free(node->table[i].pattern);
 		regfree(&node->table[i].r);

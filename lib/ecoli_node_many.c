@@ -154,6 +154,13 @@ ec_node_many_complete(const struct ec_node *gen_node,
 				strvec);
 }
 
+static void ec_node_many_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_many *node = (struct ec_node_many *)gen_node;
+
+	ec_node_free(node->child);
+}
+
 static size_t
 ec_node_many_get_children_count(const struct ec_node *gen_node)
 {
@@ -180,6 +187,7 @@ static struct ec_node_type ec_node_many_type = {
 	.parse = ec_node_many_parse,
 	.complete = ec_node_many_complete,
 	.size = sizeof(struct ec_node_many),
+	.free_priv = ec_node_many_free_priv,
 	.get_children_count = ec_node_many_get_children_count,
 	.get_child = ec_node_many_get_child,
 };

@@ -413,11 +413,10 @@ static void ec_node_cmd_free_priv(struct ec_node *gen_node)
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
 	size_t i;
 
-	/* node->cmd is freed automatically, because it is returned
-	 * by ec_node_cmd_get_child() */
 	ec_free(node->cmd_str);
 	ec_node_free(node->expr);
 	ec_node_free(node->parser);
+	ec_node_free(node->cmd);
 	for (i = 0; i < node->len; i++)
 		ec_node_free(node->table[i]);
 	ec_free(node->table);

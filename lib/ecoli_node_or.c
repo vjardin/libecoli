@@ -68,7 +68,10 @@ ec_node_or_complete(const struct ec_node *gen_node,
 static void ec_node_or_free_priv(struct ec_node *gen_node)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	size_t i;
 
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
 	ec_free(node->table);
 }
 
