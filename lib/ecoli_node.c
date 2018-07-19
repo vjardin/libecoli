@@ -125,21 +125,22 @@ struct ec_node *ec_node(const char *typename, const char *id)
 	return __ec_node(type, id);
 }
 
-static void count_references(struct ec_node *node)
+static void count_references(struct ec_node *node, unsigned int refs)
 {
 	struct ec_node *child;
 	size_t i, n;
 
 	if (node->free.state == EC_NODE_FREE_STATE_TRAVERSED) {
-		node->free.refcnt++;
+		node->free.refcnt += refs;
 		return;
 	}
-	node->free.refcnt = 1;
+	node->free.refcnt = refs;
 	node->free.state = EC_NODE_FREE_STATE_TRAVERSED;
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
 		child = ec_node_get_child(node, i);
-		count_references(child);
+		refs = ec_node_get_child_refs(node, i);
+		count_references(child, refs);
 	}
 }
 
@@ -151,8 +152,9 @@ static void mark_freeable(struct ec_node *node, enum ec_node_free_state mark)
 	if (mark == node->free.state)
 		return;
 
-	if (node->refcnt != node->free.refcnt)
+	if (node->refcnt > node->free.refcnt)
 		mark = EC_NODE_FREE_STATE_NOT_FREEABLE;
+	assert(node->refcnt >= node->free.refcnt);
 	node->free.state = mark;
 
 	n = ec_node_get_children_count(node);
@@ -201,7 +203,7 @@ void ec_node_free(struct ec_node *node)
 		 * node reachable from an unfreeable node is also marked as
 		 * unfreeable. */
 		if (node->free.state == EC_NODE_FREE_STATE_NONE) {
-			count_references(node);
+			count_references(node, 1);
 			mark_freeable(node, EC_NODE_FREE_STATE_FREEABLE);
 		}
 	}
@@ -257,6 +259,14 @@ ec_node_get_child(const struct ec_node *node, size_t i)
 	if (node->type->get_child == NULL)
 		return NULL;
 	return node->type->get_child(node, i);
+}
+
+unsigned int
+ec_node_get_child_refs(const struct ec_node *node, size_t i)
+{
+	if (node->type->get_child_refs == NULL)
+		return 1;
+	return node->type->get_child_refs(node, i);
 }
 
 int
@@ -343,7 +353,7 @@ static void __ec_node_dump(FILE *out,
 	}
 
 	ec_keyval_set(dict, buf, NULL, NULL);
-	fprintf(out, "%*s" "type=%s id=%s %p refs=%u free=(%d,%d)\n",
+	fprintf(out, "%*s" "type=%s id=%s %p refs=%u free_state=%d free_refs=%d\n",
 		(int)indent * 4, "", typename, id, node, node->refcnt,
 		node->free.state, node->free.refcnt);
 

@@ -142,6 +142,7 @@ static struct debug_alloc_hdr_list debug_alloc_hdr_list =
 struct debug_alloc_hdr {
 	TAILQ_ENTRY(debug_alloc_hdr) next;
 	const char *file;
+	unsigned int seq;
 	unsigned int line;
 	size_t size;
 	void *stack[STACK_SZ];
@@ -171,6 +172,7 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 	if (hdr == NULL) {
 		ret = NULL;
 	} else {
+		hdr->seq = malloc_seq;
 		hdr->file = file;
 		hdr->line = line;
 		hdr->size = size;
@@ -286,6 +288,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 	}
 
 	if (hdr != NULL) {
+		hdr->seq = malloc_seq;
 		hdr->file = file;
 		hdr->line = line;
 		hdr->size = size;
@@ -318,8 +321,8 @@ static int debug_alloc_dump_leaks(void)
 
 	TAILQ_FOREACH(hdr, &debug_alloc_hdr_list, next) {
 		EC_LOG(EC_LOG_ERR,
-			"%s:%d: error: memory leak size=%zd ptr=%p\n",
-			hdr->file, hdr->line, hdr->size, hdr + 1);
+			"%s:%d: error: memory leak seq=%u size=%zd ptr=%p\n",
+			hdr->file, hdr->line, hdr->seq, hdr->size, hdr + 1);
 		buffer = backtrace_symbols(hdr->stack, hdr->stacklen);
 		if (buffer == NULL) {
 			for (i = 0; i < hdr->stacklen; i++)

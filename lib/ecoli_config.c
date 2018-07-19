@@ -621,7 +621,7 @@ int
 ec_config_list_add(struct ec_config *list,
 		struct ec_config *value)
 {
-	if (list == NULL || list->type != EC_CONFIG_TYPE_LIST) {
+	if (list == NULL || list->type != EC_CONFIG_TYPE_LIST || value == NULL) {
 		errno = EINVAL;
 		goto fail;
 	}

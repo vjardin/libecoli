@@ -15,6 +15,7 @@
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
+#include <ecoli_config.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
@@ -161,6 +162,68 @@ static void ec_node_seq_free_priv(struct ec_node *gen_node)
 	ec_free(node->table);
 }
 
+static const struct ec_config_schema ec_node_seq_subschema[] = {
+	{
+		.desc = "A child node which is part of the sequence.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+};
+
+static const struct ec_config_schema ec_node_seq_schema[] = {
+	{
+		.key = "children",
+		.desc = "The list of children nodes, to be parsed in sequence.",
+		.type = EC_CONFIG_TYPE_LIST,
+		.subschema = ec_node_seq_subschema,
+		.subschema_len = EC_COUNT_OF(ec_node_seq_subschema),
+	},
+};
+
+static int ec_node_seq_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
+	const struct ec_config *children = NULL, *child;
+	struct ec_node **table = NULL;
+	size_t n, i;
+
+	children = ec_config_dict_get(config, "children");
+	if (children == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	n = 0;
+	TAILQ_FOREACH(child, &children->list, next)
+		n++;
+
+	table = ec_malloc(n * sizeof(*table));
+	if (table == NULL)
+		goto fail;
+
+	n = 0;
+	TAILQ_FOREACH(child, &children->list, next) {
+		table[n] = ec_node_clone(child->node);
+		n++;
+	}
+
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
+	ec_free(node->table);
+	node->table = table;
+	node->len = n;
+
+	return 0;
+
+fail:
+	if (table != NULL) {
+		for (i = 0; i < n; i++)
+			ec_node_free(table[i]);
+	}
+	ec_free(table);
+	return -1;
+}
+
 static size_t
 ec_node_seq_get_children_count(const struct ec_node *gen_node)
 {
@@ -179,14 +242,29 @@ ec_node_seq_get_child(const struct ec_node *gen_node, size_t i)
 	return node->table[i];
 }
 
+static unsigned int
+ec_node_seq_get_child_refs(const struct ec_node *gen_node, size_t i)
+{
+	(void)gen_node;
+	(void)i;
+
+	/* each child node is referenced twice: once in the config and
+	 * once in the node->table[] */
+	return 2;
+}
+
 static struct ec_node_type ec_node_seq_type = {
 	.name = "seq",
+	.schema = ec_node_seq_schema,
+	.schema_len = EC_COUNT_OF(ec_node_seq_schema),
+	.set_config = ec_node_seq_set_config,
 	.parse = ec_node_seq_parse,
 	.complete = ec_node_seq_complete,
 	.size = sizeof(struct ec_node_seq),
 	.free_priv = ec_node_seq_free_priv,
 	.get_children_count = ec_node_seq_get_children_count,
 	.get_child = ec_node_seq_get_child,
+	.get_child_refs = ec_node_seq_get_child_refs,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_seq_type);
@@ -194,69 +272,110 @@ EC_NODE_TYPE_REGISTER(ec_node_seq_type);
 int ec_node_seq_add(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
-	struct ec_node **table;
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL, *children;
+	int ret;
 
 	assert(node != NULL);
 
-	if (child == NULL) {
-		errno = EINVAL;
-		goto fail;
-	}
+	/* XXX factorize this code in a helper */
 
 	if (ec_node_check_type(gen_node, &ec_node_seq_type) < 0)
 		goto fail;
 
-	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
-	if (table == NULL)
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
 		goto fail;
 
-	node->table = table;
-	table[node->len] = child;
-	node->len++;
+	children = ec_config_dict_get(config, "children");
+	if (children == NULL) {
+		children = ec_config_list();
+		if (children == NULL)
+			goto fail;
+
+		if (ec_config_dict_set(config, "children", children) < 0)
+			goto fail; /* children list is freed on error */
+	}
+
+	if (ec_config_list_add(children, ec_config_node(child)) < 0) {
+		child = NULL;
+		goto fail;
+	}
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
 
 	return 0;
 
 fail:
+	ec_config_free(config);
 	ec_node_free(child);
 	return -1;
 }
 
 struct ec_node *__ec_node_seq(const char *id, ...)
 {
+	struct ec_config *config = NULL, *children = NULL;
 	struct ec_node *gen_node = NULL;
-	struct ec_node_seq *node = NULL;
 	struct ec_node *child;
 	va_list ap;
-	int fail = 0;
+	int ret;
 
 	va_start(ap, id);
+	child = va_arg(ap, struct ec_node *);
 
 	gen_node = __ec_node(&ec_node_seq_type, id);
-	node = (struct ec_node_seq *)gen_node;
-	if (node == NULL)
-		fail = 1;;
+	if (gen_node == NULL)
+		goto fail_free_children;
 
-	for (child = va_arg(ap, struct ec_node *);
-	     child != EC_NODE_ENDLIST;
-	     child = va_arg(ap, struct ec_node *)) {
+	config = ec_config_dict();
+	if (config == NULL)
+		goto fail_free_children;
 
-		/* on error, don't quit the loop to avoid leaks */
-		if (fail == 1 || child == NULL ||
-				ec_node_seq_add(&node->gen, child) < 0) {
-			fail = 1;
-			ec_node_free(child);
+	children = ec_config_list();
+	if (children == NULL)
+		goto fail_free_children;
+
+	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *)) {
+		if (child == NULL)
+			goto fail_free_children;
+
+		if (ec_config_list_add(children, ec_config_node(child)) < 0) {
+			child = NULL;
+			goto fail_free_children;
 		}
 	}
 
-	if (fail == 1)
+	if (ec_config_dict_set(config, "children", children) < 0) {
+		children = NULL; /* freed */
+		goto fail;
+	}
+	children = NULL;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
 		goto fail;
 
 	va_end(ap);
+
 	return gen_node;
 
+fail_free_children:
+	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
+		ec_node_free(child);
 fail:
-	ec_node_free(gen_node); /* will also free children */
+	ec_node_free(gen_node); /* will also free added children */
+	ec_config_free(children);
+	ec_config_free(config);
 	va_end(ap);
+
 	return NULL;
 }
 
@@ -281,6 +400,10 @@ static int ec_node_seq_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo", "barx");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "bar", "foo");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "", "foo");
+
+	testres |= (ec_node_seq_add(node, ec_node_str(EC_NO_ID, "grr")) < 0);
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "foo", "bar", "grr");
+
 	ec_node_free(node);
 
 	/* test completion */
