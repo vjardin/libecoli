@@ -82,15 +82,18 @@ ec_node_or_get_children_count(const struct ec_node *gen_node)
 	return node->len;
 }
 
-static struct ec_node *
-ec_node_or_get_child(const struct ec_node *gen_node, size_t i)
+static int
+ec_node_or_get_child(const struct ec_node *gen_node, size_t i,
+		struct ec_node **child, unsigned int *refs)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
 
 	if (i >= node->len)
-		return NULL;
+		return -1;
 
-	return node->table[i];
+	*child = node->table[i];
+	*refs = 1;
+	return 0;
 }
 
 static struct ec_node_type ec_node_or_type = {

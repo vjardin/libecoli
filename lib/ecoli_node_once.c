@@ -105,15 +105,18 @@ ec_node_once_get_children_count(const struct ec_node *gen_node)
 	return 0;
 }
 
-static struct ec_node *
-ec_node_once_get_child(const struct ec_node *gen_node, size_t i)
+static int
+ec_node_once_get_child(const struct ec_node *gen_node, size_t i,
+		struct ec_node **child, unsigned int *refs)
 {
 	struct ec_node_once *node = (struct ec_node_once *)gen_node;
 
 	if (i >= 1)
-		return NULL;
+		return -1;
 
-	return node->child;
+	*child = node->child;
+	*refs = 1;
+	return 0;
 }
 
 static struct ec_node_type ec_node_once_type = {

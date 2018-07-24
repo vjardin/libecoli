@@ -234,26 +234,20 @@ ec_node_seq_get_children_count(const struct ec_node *gen_node)
 	return node->len;
 }
 
-static struct ec_node *
-ec_node_seq_get_child(const struct ec_node *gen_node, size_t i)
+static int
+ec_node_seq_get_child(const struct ec_node *gen_node, size_t i,
+		struct ec_node **child, unsigned int *refs)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
 
 	if (i >= node->len)
-		return NULL;
+		return -1;
 
-	return node->table[i];
-}
-
-static unsigned int
-ec_node_seq_get_child_refs(const struct ec_node *gen_node, size_t i)
-{
-	(void)gen_node;
-	(void)i;
-
+	*child = node->table[i];
 	/* each child node is referenced twice: once in the config and
 	 * once in the node->table[] */
-	return 2;
+	*refs = 2;
+	return 0;
 }
 
 static struct ec_node_type ec_node_seq_type = {
@@ -267,7 +261,6 @@ static struct ec_node_type ec_node_seq_type = {
 	.free_priv = ec_node_seq_free_priv,
 	.get_children_count = ec_node_seq_get_children_count,
 	.get_child = ec_node_seq_get_child,
-	.get_child_refs = ec_node_seq_get_child_refs,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_seq_type);

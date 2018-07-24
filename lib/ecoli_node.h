@@ -83,10 +83,8 @@ typedef const char * (*ec_node_desc_t)(const struct ec_node *);
 typedef int (*ec_node_init_priv_t)(struct ec_node *);
 typedef void (*ec_node_free_priv_t)(struct ec_node *);
 typedef size_t (*ec_node_get_children_count_t)(const struct ec_node *);
-typedef struct ec_node * (*ec_node_get_child_t)(const struct ec_node *,
-						size_t i);
-typedef unsigned int (*ec_node_get_child_refs_t)(const struct ec_node *,
-						size_t i);
+typedef int (*ec_node_get_child_t)(const struct ec_node *,
+	size_t i, struct ec_node **child, unsigned int *refs);
 
 /**
  * A structure describing a node type.
@@ -106,7 +104,6 @@ struct ec_node_type {
 	ec_node_free_priv_t free_priv;
 	ec_node_get_children_count_t get_children_count;
 	ec_node_get_child_t get_child;
-	ec_node_get_child_refs_t get_child_refs;
 };
 
 /**
@@ -177,10 +174,9 @@ int ec_node_set_config(struct ec_node *node, struct ec_config *config);
 const struct ec_config *ec_node_get_config(struct ec_node *node);
 
 size_t ec_node_get_children_count(const struct ec_node *node);
-struct ec_node *
-ec_node_get_child(const struct ec_node *node, size_t i);
-unsigned int
-ec_node_get_child_refs(const struct ec_node *node, size_t i);
+int
+ec_node_get_child(const struct ec_node *node, size_t i,
+	struct ec_node **child, unsigned int *refs);
 
 /* XXX add more accessors */
 const struct ec_node_type *ec_node_type(const struct ec_node *node);

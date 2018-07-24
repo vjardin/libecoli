@@ -129,6 +129,7 @@ static void count_references(struct ec_node *node, unsigned int refs)
 {
 	struct ec_node *child;
 	size_t i, n;
+	int ret;
 
 	if (node->free.state == EC_NODE_FREE_STATE_TRAVERSED) {
 		node->free.refcnt += refs;
@@ -138,8 +139,8 @@ static void count_references(struct ec_node *node, unsigned int refs)
 	node->free.state = EC_NODE_FREE_STATE_TRAVERSED;
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = ec_node_get_child(node, i);
-		refs = ec_node_get_child_refs(node, i);
+		ret = ec_node_get_child(node, i, &child, &refs);
+		assert(ret == 0);
 		count_references(child, refs);
 	}
 }
@@ -147,7 +148,9 @@ static void count_references(struct ec_node *node, unsigned int refs)
 static void mark_freeable(struct ec_node *node, enum ec_node_free_state mark)
 {
 	struct ec_node *child;
+	unsigned int refs;
 	size_t i, n;
+	int ret;
 
 	if (mark == node->free.state)
 		return;
@@ -159,7 +162,8 @@ static void mark_freeable(struct ec_node *node, enum ec_node_free_state mark)
 
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = ec_node_get_child(node, i);
+		ret = ec_node_get_child(node, i, &child, &refs);
+		assert(ret == 0);
 		mark_freeable(child, mark);
 	}
 }
@@ -167,7 +171,9 @@ static void mark_freeable(struct ec_node *node, enum ec_node_free_state mark)
 static void reset_mark(struct ec_node *node)
 {
 	struct ec_node *child;
+	unsigned int refs;
 	size_t i, n;
+	int ret;
 
 	if (node->free.state == EC_NODE_FREE_STATE_NONE)
 		return;
@@ -177,7 +183,8 @@ static void reset_mark(struct ec_node *node)
 
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = ec_node_get_child(node, i);
+		ret = ec_node_get_child(node, i, &child, &refs);
+		assert(ret == 0);
 		reset_mark(child);
 	}
 }
@@ -250,20 +257,15 @@ size_t ec_node_get_children_count(const struct ec_node *node)
 	return node->type->get_children_count(node);
 }
 
-struct ec_node *
-ec_node_get_child(const struct ec_node *node, size_t i)
+int
+ec_node_get_child(const struct ec_node *node, size_t i,
+	struct ec_node **child, unsigned int *refs)
 {
+	*child = NULL;
+	*refs = 0;
 	if (node->type->get_child == NULL)
-		return NULL;
-	return node->type->get_child(node, i);
-}
-
-unsigned int
-ec_node_get_child_refs(const struct ec_node *node, size_t i)
-{
-	if (node->type->get_child_refs == NULL)
-		return 1;
-	return node->type->get_child_refs(node, i);
+		return -1;
+	return node->type->get_child(node, i, child, refs);
 }
 
 int
@@ -298,19 +300,22 @@ const struct ec_config *ec_node_get_config(struct ec_node *node)
 
 struct ec_node *ec_node_find(struct ec_node *node, const char *id)
 {
-	struct ec_node *child, *ret;
+	struct ec_node *child, *retnode;
 	const char *node_id = ec_node_id(node);
+	unsigned int refs;
 	size_t i, n;
+	int ret;
 
 	if (id != NULL && node_id != NULL && !strcmp(node_id, id))
 		return node;
 
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = ec_node_get_child(node, i);
-		ret = ec_node_find(child, id);
-		if (ret != NULL)
-			return ret;
+		ret = ec_node_get_child(node, i, &child, &refs);
+		assert(ret == 0);
+		retnode = ec_node_find(child, id);
+		if (retnode != NULL)
+			return retnode;
 	}
 
 	return NULL;
@@ -336,8 +341,10 @@ static void __ec_node_dump(FILE *out,
 {
 	const char *id, *typename;
 	struct ec_node *child;
+	unsigned int refs;
 	char buf[32];
 	size_t i, n;
+	int ret;
 
 	id = ec_node_id(node);
 	typename = node->type->name;
@@ -356,7 +363,8 @@ static void __ec_node_dump(FILE *out,
 
 	n = ec_node_get_children_count(node);
 	for (i = 0; i < n; i++) {
-		child = ec_node_get_child(node, i);
+		ret = ec_node_get_child(node, i, &child, &refs);
+		assert(ret == 0);
 		__ec_node_dump(out, child, indent + 1, dict);
 	}
 }
@@ -410,8 +418,9 @@ static int ec_node_testcase(void)
 {
 	struct ec_node *node = NULL, *expr = NULL;
 	struct ec_node *expr2 = NULL, *val = NULL, *op = NULL, *seq = NULL;
-	const struct ec_node *child;
 	const struct ec_node_type *type;
+	struct ec_node *child;
+	unsigned int refs;
 	FILE *f = NULL;
 	char *buf = NULL;
 	size_t buflen = 0;
@@ -455,17 +464,21 @@ static int ec_node_testcase(void)
 	testres |= EC_TEST_CHECK(
 		ec_node_get_children_count(node) == 2,
 		"bad children count\n");
-	child = ec_node_get_child(node, 0);
-	testres |= EC_TEST_CHECK(child != NULL &&
+	ret = ec_node_get_child(node, 0, &child, &refs);
+	testres |= EC_TEST_CHECK(ret == 0 &&
+		child != NULL &&
 		!strcmp(ec_node_type(child)->name, "str") &&
 		!strcmp(ec_node_id(child), "id_x"),
 		"bad child 0");
-	child = ec_node_get_child(node, 1);
-	testres |= EC_TEST_CHECK(child != NULL &&
+	ret = ec_node_get_child(node, 1, &child, &refs);
+	testres |= EC_TEST_CHECK(ret == 0 &&
+		child != NULL &&
 		!strcmp(ec_node_type(child)->name, "str") &&
 		!strcmp(ec_node_id(child), "id_y"),
 		"bad child 1");
-	child = ec_node_get_child(node, 2);
+	ret = ec_node_get_child(node, 2, &child, &refs);
+	testres |= EC_TEST_CHECK(ret != 0,
+		"ret should be != 0");
 	testres |= EC_TEST_CHECK(child == NULL,
 		"child 2 should be NULL");
 
