@@ -184,6 +184,11 @@ ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
 	__ec_config_schema_dump(out, schema, schema_len, 0);
 }
 
+enum ec_config_type ec_config_get_type(const struct ec_config *config)
+{
+	return config->type;
+}
+
 struct ec_config *
 ec_config_bool(bool boolean)
 {

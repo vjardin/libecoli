@@ -8,6 +8,7 @@
 #include <sys/queue.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifndef EC_COUNT_OF //XXX
 #define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
@@ -108,6 +109,16 @@ void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
 
 
 /* config */
+
+/**
+ * Get the type of the configuration.
+ *
+ * @param config
+ *   The configuration.
+ * @return
+ *   The configuration type.
+ */
+enum ec_config_type ec_config_get_type(const struct ec_config *config);
 
 /**
  * Create a boolean configuration value.
