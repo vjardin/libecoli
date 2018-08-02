@@ -43,6 +43,7 @@ X use vec for strvec
 - ELOOP in case of loop
 - remove weakref?
 - sh_lex to provide offsets in attributes
+- accessors for all structs
 
 dependencies
 ============
