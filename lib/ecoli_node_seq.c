@@ -18,6 +18,7 @@
 #include <ecoli_config.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
+#include <ecoli_node_helper.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
 #include <ecoli_node_or.h>
@@ -186,43 +187,25 @@ static int ec_node_seq_set_config(struct ec_node *gen_node,
 				const struct ec_config *config)
 {
 	struct ec_node_seq *node = (struct ec_node_seq *)gen_node;
-	const struct ec_config *children = NULL, *child;
 	struct ec_node **table = NULL;
-	size_t n, i;
+	size_t i, len = 0;
 
-	children = ec_config_dict_get(config, "children");
-	if (children == NULL) {
-		errno = EINVAL;
-		goto fail;
-	}
-
-	n = 0;
-	TAILQ_FOREACH(child, &children->list, next)
-		n++;
-
-	table = ec_malloc(n * sizeof(*table));
+	table = ec_node_config_node_list_to_table(
+		ec_config_dict_get(config, "children"), &len);
 	if (table == NULL)
 		goto fail;
-
-	n = 0;
-	TAILQ_FOREACH(child, &children->list, next) {
-		table[n] = ec_node_clone(child->node);
-		n++;
-	}
 
 	for (i = 0; i < node->len; i++)
 		ec_node_free(node->table[i]);
 	ec_free(node->table);
 	node->table = table;
-	node->len = n;
+	node->len = len;
 
 	return 0;
 
 fail:
-	if (table != NULL) {
-		for (i = 0; i < n; i++)
-			ec_node_free(table[i]);
-	}
+	for (i = 0; i < len; i++)
+		ec_node_free(table[i]);
 	ec_free(table);
 	return -1;
 }
