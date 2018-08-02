@@ -19,6 +19,7 @@
 #include <ecoli_config.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
+#include <ecoli_node_helper.h>
 #include <ecoli_node_expr.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_or.h>
@@ -453,11 +454,11 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 				const struct ec_config *config)
 {
 	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
-	const struct ec_config *expr = NULL, *children = NULL, *child;
+	const struct ec_config *expr = NULL;
 	struct ec_node *cmd = NULL;
 	struct ec_node **table = NULL;
 	char *cmd_str = NULL;
-	size_t n, i;
+	size_t len = 0, i;
 
 	/* retrieve config locally */
 	expr = ec_config_dict_get(config, "expr");
@@ -466,35 +467,21 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 		goto fail;
 	}
 
-	children = ec_config_dict_get(config, "children");
-	if (children == NULL) {
-		errno = EINVAL;
+	table = ec_node_config_node_list_to_table(
+		ec_config_dict_get(config, "children"), &len);
+	if (table == NULL)
 		goto fail;
-	}
 
 	cmd_str = ec_strdup(expr->string);
 	if (cmd_str == NULL)
 		goto fail;
 
-	n = 0;
-	TAILQ_FOREACH(child, &children->list, next)
-		n++;
-
-	table = ec_malloc(n * sizeof(*table));
-	if (table == NULL)
-		goto fail;
-
-	n = 0;
-	TAILQ_FOREACH(child, &children->list, next) {
-		table[n] = ec_node_clone(child->node);
-		n++;
-	}
-
 	/* parse expression to build the cmd child node */
-	cmd = ec_node_cmd_build(node, cmd_str, table, n);
+	cmd = ec_node_cmd_build(node, cmd_str, table, len);
 	if (cmd == NULL)
 		goto fail;
 
+	/* ok, store the config */
 	ec_node_free(node->cmd);
 	node->cmd = cmd;
 	ec_free(node->cmd_str);
@@ -503,15 +490,13 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 		ec_node_free(node->table[i]);
 	ec_free(node->table);
 	node->table = table;
-	node->len = n;
+	node->len = len;
 
 	return 0;
 
 fail:
-	if (table != NULL) {
-		for (i = 0; i < n; i++)
-			ec_node_free(table[i]);
-	}
+	for (i = 0; i < len; i++)
+		ec_node_free(table[i]);
 	ec_free(table);
 	ec_free(cmd_str);
 	ec_node_free(cmd);
@@ -562,44 +547,35 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	struct ec_config *config = NULL, *children = NULL;
 	struct ec_node *gen_node = NULL;
 	struct ec_node_cmd *node = NULL;
-	struct ec_node *child;
 	va_list ap;
 	int ret;
 
+	/* this block must stay first, it frees the nodes on error */
 	va_start(ap, cmd);
-	child = va_arg(ap, struct ec_node *);
+	children = ec_node_config_node_list_from_vargs(ap);
+	va_end(ap);
+	if (children == NULL)
+		goto fail;
 
 	gen_node = __ec_node(&ec_node_cmd_type, id);
 	if (gen_node == NULL)
-		goto fail_free_children;
+		goto fail;
 	node = (struct ec_node_cmd *)gen_node;
 
 	node->expr = ec_node_cmd_build_expr();
 	if (node->expr == NULL)
-		goto fail_free_children;
+		goto fail;
 
 	node->parser = ec_node_cmd_build_parser(node->expr);
 	if (node->parser == NULL)
-		goto fail_free_children;
+		goto fail;
 
 	config = ec_config_dict();
 	if (config == NULL)
-		goto fail_free_children;
+		goto fail;
 
 	if (ec_config_dict_set(config, "expr", ec_config_string(cmd)) < 0)
-		goto fail_free_children;
-
-	children = ec_config_list();
-	if (children == NULL)
-		goto fail_free_children;
-
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *)) {
-		if (child == NULL)
-			goto fail_free_children;
-
-		if (ec_config_list_add(children, ec_config_node(child)) < 0)
-			goto fail_free_children;
-	}
+		goto fail;
 
 	if (ec_config_dict_set(config, "children", children) < 0) {
 		children = NULL; /* freed */
@@ -612,18 +588,12 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	if (ret < 0)
 		goto fail;
 
-	va_end(ap);
-
 	return gen_node;
 
-fail_free_children:
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
-		ec_node_free(child);
 fail:
 	ec_node_free(gen_node); /* will also free added children */
 	ec_config_free(children);
 	ec_config_free(config);
-	va_end(ap);
 
 	return NULL;
 }
