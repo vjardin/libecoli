@@ -159,7 +159,7 @@ struct ec_node *ec_node_once(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	gen_node = __ec_node(&ec_node_once_type, id);
+	gen_node = ec_node_from_type(&ec_node_once_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

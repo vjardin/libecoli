@@ -64,7 +64,7 @@ void ec_node_type_dump(FILE *out)
 		fprintf(out, "%s\n", type->name);
 }
 
-struct ec_node *__ec_node(const struct ec_node_type *type, const char *id)
+struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *id)
 {
 	struct ec_node *node = NULL;
 
@@ -122,7 +122,7 @@ struct ec_node *ec_node(const char *typename, const char *id)
 		return NULL;
 	}
 
-	return __ec_node(type, id);
+	return ec_node_from_type(type, id);
 }
 
 static void count_references(struct ec_node *node, unsigned int refs)

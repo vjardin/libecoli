@@ -125,7 +125,7 @@ struct ec_node *ec_node_option(const char *id, struct ec_node *child)
 	if (child == NULL)
 		goto fail;
 
-	gen_node = __ec_node(&ec_node_option_type, id);
+	gen_node = ec_node_from_type(&ec_node_option_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

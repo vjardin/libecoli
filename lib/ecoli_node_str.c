@@ -180,7 +180,7 @@ struct ec_node *ec_node_str(const char *id, const char *str)
 {
 	struct ec_node *gen_node = NULL;
 
-	gen_node = __ec_node(&ec_node_str_type, id);
+	gen_node = ec_node_from_type(&ec_node_str_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

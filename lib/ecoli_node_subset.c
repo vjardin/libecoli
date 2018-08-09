@@ -316,7 +316,7 @@ struct ec_node *__ec_node_subset(const char *id, ...)
 
 	va_start(ap, id);
 
-	gen_node = __ec_node(&ec_node_subset_type, id);
+	gen_node = ec_node_from_type(&ec_node_subset_type, id);
 	node = (struct ec_node_subset *)gen_node;
 	if (node == NULL)
 		fail = 1;;

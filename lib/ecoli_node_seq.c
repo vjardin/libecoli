@@ -309,7 +309,7 @@ struct ec_node *__ec_node_seq(const char *id, ...)
 	va_start(ap, id);
 	child = va_arg(ap, struct ec_node *);
 
-	gen_node = __ec_node(&ec_node_seq_type, id);
+	gen_node = ec_node_from_type(&ec_node_seq_type, id);
 	if (gen_node == NULL)
 		goto fail_free_children;
 

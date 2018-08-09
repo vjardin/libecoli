@@ -235,7 +235,7 @@ struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_re_lex *)__ec_node(&ec_node_re_lex_type, id);
+	node = (struct ec_node_re_lex *)ec_node_from_type(&ec_node_re_lex_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;

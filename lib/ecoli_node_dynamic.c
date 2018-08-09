@@ -113,7 +113,7 @@ ec_node_dynamic(const char *id, ec_node_dynamic_build_t build, void *opaque)
 		goto fail;
 	}
 
-	gen_node = __ec_node(&ec_node_dynamic_type, id);
+	gen_node = ec_node_from_type(&ec_node_dynamic_type, id);
 	if (gen_node == NULL)
 		goto fail;
 

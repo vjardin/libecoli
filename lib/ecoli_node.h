@@ -156,7 +156,7 @@ struct ec_node {
 
 /* create a new node when the type is known, typically called from the node
  * code */
-struct ec_node *__ec_node(const struct ec_node_type *type, const char *id);
+struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *id);
 
 /* create a new node */
 struct ec_node *ec_node(const char *typename, const char *id);

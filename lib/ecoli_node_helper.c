@@ -70,7 +70,7 @@ struct ec_config *
 ec_node_config_node_list_from_vargs(va_list ap)
 {
 	struct ec_config *list = NULL;
-	struct ec_node *node;
+	struct ec_node *node = va_arg(ap, struct ec_node *);
 
 	list = ec_config_list();
 	if (list == NULL)

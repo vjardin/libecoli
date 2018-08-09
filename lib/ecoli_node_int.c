@@ -218,7 +218,7 @@ struct ec_node *ec_node_int(const char *id, int64_t min,
 	struct ec_node *gen_node = NULL;
 	int ret;
 
-	gen_node = __ec_node(&ec_node_int_type, id);
+	gen_node = ec_node_from_type(&ec_node_int_type, id);
 	if (gen_node == NULL)
 		return NULL;
 
@@ -328,7 +328,7 @@ struct ec_node *ec_node_uint(const char *id, uint64_t min,
 	struct ec_node *gen_node = NULL;
 	int ret;
 
-	gen_node = __ec_node(&ec_node_uint_type, id);
+	gen_node = ec_node_from_type(&ec_node_uint_type, id);
 	if (gen_node == NULL)
 		return NULL;
 

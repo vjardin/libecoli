@@ -205,7 +205,7 @@ struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_many *)__ec_node(&ec_node_many_type, id);
+	node = (struct ec_node_many *)ec_node_from_type(&ec_node_many_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;

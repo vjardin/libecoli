@@ -557,7 +557,7 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	if (children == NULL)
 		goto fail;
 
-	gen_node = __ec_node(&ec_node_cmd_type, id);
+	gen_node = ec_node_from_type(&ec_node_cmd_type, id);
 	if (gen_node == NULL)
 		goto fail;
 	node = (struct ec_node_cmd *)gen_node;
