@@ -98,6 +98,23 @@ int ec_config_schema_validate(const struct ec_config_schema *schema);
  */
 void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema);
 
+/**
+ * Check if a key name is reserved in a config dict.
+ *
+ * Some key names are reserved and should not be used in configs.
+ *
+ * @param name
+ *   The name of the key to test.
+ * @return
+ *   True if the key name is reserved and must not be used, else false.
+ */
+bool ec_config_key_is_reserved(const char *name);
+
+/**
+ * Array of reserved key names.
+ */
+extern const char *ec_config_reserved_keys[];
+
 
 /* config */
 

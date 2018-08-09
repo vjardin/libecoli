@@ -18,12 +18,31 @@
 
 EC_LOG_TYPE_REGISTER(config);
 
+const char *ec_config_reserved_keys[] = {
+	"id",
+	"attrs",
+	"help",
+	"type",
+};
+
 static int
 __ec_config_dump(FILE *out, const char *key, const struct ec_config *config,
 	size_t indent);
 static int
 ec_config_dict_validate(const struct ec_keyval *dict,
 			const struct ec_config_schema *schema);
+
+bool
+ec_config_key_is_reserved(const char *name)
+{
+	size_t i;
+
+	for (i = 0; i < EC_COUNT_OF(ec_config_reserved_keys); i++) {
+		if (!strcmp(name, ec_config_reserved_keys[i]))
+			return true;
+	}
+	return false;
+}
 
 /* return ec_value type as a string */
 static const char *
@@ -82,6 +101,13 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 	}
 
 	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
+		if (schema[i].key != NULL &&
+				ec_config_key_is_reserved(schema[i].key)) {
+			errno = EINVAL;
+			EC_LOG(EC_LOG_ERR,
+				"key name <%s> is reserved\n", schema[i].key);
+			return -1;
+		}
 		/* check for duplicate name if more than one element */
 		for (j = i + 1; schema[j].type != EC_CONFIG_TYPE_NONE; j++) {
 			if (!strcmp(schema[i].key, schema[j].key)) {
@@ -934,6 +960,11 @@ static int ec_config_testcase(void)
 	struct ec_config *list_, *config_;
 	int testres = 0;
 	int ret;
+
+	testres |= EC_TEST_CHECK(ec_config_key_is_reserved("id"),
+		"'id' should be reserved");
+	testres |= EC_TEST_CHECK(!ec_config_key_is_reserved("foo"),
+		"'foo' should not be reserved");
 
 	node = ec_node("empty", EC_NO_ID);
 	if (node == NULL)
