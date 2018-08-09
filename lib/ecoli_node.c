@@ -111,6 +111,18 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
 	return NULL;
 }
 
+const struct ec_config_schema *
+ec_node_type_schema(const struct ec_node_type *type)
+{
+	return type->schema;
+}
+
+const char *
+ec_node_type_name(const struct ec_node_type *type)
+{
+	return type->name;
+}
+
 struct ec_node *ec_node(const char *typename, const char *id)
 {
 	const struct ec_node_type *type;

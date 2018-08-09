@@ -132,6 +132,18 @@ const struct ec_node_type *ec_node_type_lookup(const char *name);
  */
 void ec_node_type_dump(FILE *out);
 
+/**
+ * Get the config schema of a node type.
+ */
+const struct ec_config_schema *
+ec_node_type_schema(const struct ec_node_type *type);
+
+/**
+ * Get the name of a node type.
+ */
+const char *
+ec_node_type_name(const struct ec_node_type *type);
+
 enum ec_node_free_state {
 	EC_NODE_FREE_STATE_NONE,
 	EC_NODE_FREE_STATE_TRAVERSED,
