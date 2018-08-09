@@ -47,11 +47,6 @@ struct ec_config_schema {
 	/** If type is dict or list, the schema of the dict or list
 	 * elements. Else must be NULL. */
 	const struct ec_config_schema *subschema;
-
-	/** The subschema array len in case of dict (> 0) or list (set
-	 * to 1). Else must be 0. */
-	size_t subschema_len;
-
 };
 
 TAILQ_HEAD(ec_config_list, ec_config);
@@ -85,14 +80,12 @@ struct ec_config {
  * Validate a configuration schema array.
  *
  * @param schema
- *   Pointer to the first element of the schema array.
- * @param schema_len
- *   Length of the schema array.
+ *   Pointer to the first element of the schema array. The array
+ *   must be terminated by a sentinel entry (type == EC_CONFIG_TYPE_NONE).
  * @return
  *   0 if the schema is valid, or -1 on error (errno is set).
  */
-int ec_config_schema_validate(const struct ec_config_schema *schema,
-			size_t schema_len);
+int ec_config_schema_validate(const struct ec_config_schema *schema);
 
 /**
  * Dump a configuration schema array.
@@ -100,12 +93,10 @@ int ec_config_schema_validate(const struct ec_config_schema *schema,
  * @param out
  *   Output stream on which the dump will be sent.
  * @param schema
- *   Pointer to the first element of the schema array.
- * @param schema_len
- *   Length of the schema array.
+ *   Pointer to the first element of the schema array. The array
+ *   must be terminated by a sentinel entry (type == EC_CONFIG_TYPE_NONE).
  */
-void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
-			size_t schema_len);
+void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema);
 
 
 /* config */
@@ -226,15 +217,13 @@ int ec_config_list_del(struct ec_config *list, struct ec_config *config);
  * @param dict
  *   A hash table configuration to validate.
  * @param schema
- *   Pointer to the first element of the schema array.
- * @param schema_len
- *   Length of the schema array.
+ *   Pointer to the first element of the schema array. The array
+ *   must be terminated by a sentinel entry (type == EC_CONFIG_TYPE_NONE).
  * @return
  *   0 on success, -1 on error (errno is set).
  */
 int ec_config_validate(const struct ec_config *dict,
-		const struct ec_config_schema *schema,
-		size_t schema_len);
+		const struct ec_config_schema *schema);
 
 /**
  * Set a value in a hash table configuration

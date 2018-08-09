@@ -428,6 +428,9 @@ static const struct ec_config_schema ec_node_cmd_subschema[] = {
 		.desc = "A child node whose id is referenced in the expression.",
 		.type = EC_CONFIG_TYPE_NODE,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static const struct ec_config_schema ec_node_cmd_schema[] = {
@@ -446,7 +449,9 @@ static const struct ec_config_schema ec_node_cmd_schema[] = {
 		.desc = "The list of children nodes.",
 		.type = EC_CONFIG_TYPE_LIST,
 		.subschema = ec_node_cmd_subschema,
-		.subschema_len = EC_COUNT_OF(ec_node_cmd_subschema),
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
 	},
 };
 
@@ -530,7 +535,6 @@ ec_node_cmd_get_child(const struct ec_node *gen_node, size_t i,
 static struct ec_node_type ec_node_cmd_type = {
 	.name = "cmd",
 	.schema = ec_node_cmd_schema,
-	.schema_len = EC_COUNT_OF(ec_node_cmd_schema),
 	.set_config = ec_node_cmd_set_config,
 	.parse = ec_node_cmd_parse,
 	.complete = ec_node_cmd_complete,

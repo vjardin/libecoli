@@ -23,8 +23,7 @@ __ec_config_dump(FILE *out, const char *key, const struct ec_config *config,
 	size_t indent);
 static int
 ec_config_dict_validate(const struct ec_keyval *dict,
-			const struct ec_config_schema *schema,
-			size_t schema_len);
+			const struct ec_config_schema *schema);
 
 /* return ec_value type as a string */
 static const char *
@@ -42,9 +41,21 @@ ec_config_type_str(enum ec_config_type type)
 	}
 }
 
+static size_t
+ec_config_schema_len(const struct ec_config_schema *schema)
+{
+	size_t i;
+
+	if (schema == NULL)
+		return 0;
+	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++)
+		;
+	return i;
+}
+
 static int
 __ec_config_schema_validate(const struct ec_config_schema *schema,
-			size_t schema_len, enum ec_config_type type)
+			enum ec_config_type type)
 {
 	size_t i, j;
 	int ret;
@@ -56,7 +67,7 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 			return -1;
 		}
 	} else if (type == EC_CONFIG_TYPE_DICT) {
-		for (i = 0; i < schema_len; i++) {
+		for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
 			if (schema[i].key == NULL) {
 				errno = EINVAL;
 				EC_LOG(EC_LOG_ERR,
@@ -70,9 +81,9 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 		return -1;
 	}
 
-	for (i = 0; i < schema_len; i++) {
+	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
 		/* check for duplicate name if more than one element */
-		for (j = i + 1; j < schema_len; j++) {
+		for (j = i + 1; schema[j].type != EC_CONFIG_TYPE_NONE; j++) {
 			if (!strcmp(schema[i].key, schema[j].key)) {
 				errno = EEXIST;
 				EC_LOG(EC_LOG_ERR,
@@ -88,8 +99,8 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 		case EC_CONFIG_TYPE_UINT64:
 		case EC_CONFIG_TYPE_STRING:
 		case EC_CONFIG_TYPE_NODE:
-			if (schema[i].subschema != NULL ||
-					schema[i].subschema_len != 0) {
+			if (schema[i].subschema != NULL || ec_config_schema_len(
+					schema[i].subschema) != 0) {
 				errno = EINVAL;
 				EC_LOG(EC_LOG_ERR,
 					"key <%s> should not have subtype/subschema\n",
@@ -98,8 +109,8 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 			}
 			break;
 		case EC_CONFIG_TYPE_LIST:
-			if (schema[i].subschema == NULL ||
-					schema[i].subschema_len != 1) {
+			if (schema[i].subschema == NULL || ec_config_schema_len(
+					schema[i].subschema) != 1) {
 				errno = EINVAL;
 				EC_LOG(EC_LOG_ERR,
 					"key <%s> must have subschema of length 1\n",
@@ -108,8 +119,8 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 			}
 			break;
 		case EC_CONFIG_TYPE_DICT:
-			if (schema[i].subschema == NULL ||
-					schema[i].subschema_len == 0) {
+			if (schema[i].subschema == NULL || ec_config_schema_len(
+					schema[i].subschema) == 0) {
 				errno = EINVAL;
 				EC_LOG(EC_LOG_ERR,
 					"key <%s> must have subschema\n",
@@ -128,7 +139,6 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 			continue;
 
 		ret = __ec_config_schema_validate(schema[i].subschema,
-						schema[i].subschema_len,
 						schema[i].type);
 		if (ret < 0) {
 			EC_LOG(EC_LOG_ERR, "cannot parse subschema %s%s\n",
@@ -142,20 +152,18 @@ __ec_config_schema_validate(const struct ec_config_schema *schema,
 }
 
 int
-ec_config_schema_validate(const struct ec_config_schema *schema,
-			size_t schema_len)
+ec_config_schema_validate(const struct ec_config_schema *schema)
 {
-	return __ec_config_schema_validate(schema, schema_len,
-					EC_CONFIG_TYPE_DICT);
+	return __ec_config_schema_validate(schema, EC_CONFIG_TYPE_DICT);
 }
 
 static void
 __ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
-			size_t schema_len, size_t indent)
+			size_t indent)
 {
 	size_t i;
 
-	for (i = 0; i < schema_len; i++) {
+	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
 		fprintf(out, "%*s" "%s%s%stype=%s desc='%s'\n",
 			(int)indent * 4, "",
 			schema[i].key ? "key=": "",
@@ -166,22 +174,21 @@ __ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
 		if (schema[i].subschema == NULL)
 			continue;
 		__ec_config_schema_dump(out, schema[i].subschema,
-					schema[i].subschema_len, indent + 1);
+					indent + 1);
 	}
 }
 
 void
-ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema,
-		size_t schema_len)
+ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema)
 {
 	fprintf(out, "------------------- schema dump:\n");
 
-	if (schema == NULL || schema_len == 0) {
+	if (schema == NULL) {
 		fprintf(out, "no schema\n");
 		return;
 	}
 
-	__ec_config_schema_dump(out, schema, schema_len, 0);
+	__ec_config_schema_dump(out, schema, 0);
 }
 
 enum ec_config_type ec_config_get_type(const struct ec_config *config)
@@ -329,12 +336,11 @@ ec_config_list(void)
 
 static const struct ec_config_schema *
 ec_config_schema_lookup(const struct ec_config_schema *schema,
-			size_t schema_len, const char *key,
-			enum ec_config_type type)
+			const char *key, enum ec_config_type type)
 {
 	size_t i;
 
-	for (i = 0; i < schema_len; i++) {
+	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
 		if (!strcmp(key, schema[i].key) &&
 				type == schema[i].type)
 			return &schema[i];
@@ -481,7 +487,7 @@ ec_config_list_validate(const struct ec_config_list *list,
 				return -1;
 		} else if (value->type == EC_CONFIG_TYPE_DICT) {
 			if (ec_config_dict_validate(value->dict,
-					sch->subschema, sch->subschema_len) < 0)
+					sch->subschema) < 0)
 				return -1;
 		}
 	}
@@ -491,8 +497,7 @@ ec_config_list_validate(const struct ec_config_list *list,
 
 static int
 ec_config_dict_validate(const struct ec_keyval *dict,
-			const struct ec_config_schema *schema,
-			size_t schema_len)
+			const struct ec_config_schema *schema)
 {
 	const struct ec_config *value;
 	struct ec_keyval_iter *iter = NULL;
@@ -505,8 +510,7 @@ ec_config_dict_validate(const struct ec_keyval *dict,
 
 		key = ec_keyval_iter_get_key(iter);
 		value = ec_keyval_iter_get_val(iter);
-		sch = ec_config_schema_lookup(schema, schema_len,
-					key, value->type);
+		sch = ec_config_schema_lookup(schema, key, value->type);
 		if (sch == NULL) {
 			errno = EBADMSG;
 			goto fail;
@@ -518,7 +522,7 @@ ec_config_dict_validate(const struct ec_keyval *dict,
 				goto fail;
 		} else if (value->type == EC_CONFIG_TYPE_DICT) {
 			if (ec_config_dict_validate(value->dict,
-					sch->subschema, sch->subschema_len) < 0)
+					sch->subschema) < 0)
 				goto fail;
 		}
 	}
@@ -533,15 +537,14 @@ fail:
 
 int
 ec_config_validate(const struct ec_config *dict,
-		const struct ec_config_schema *schema,
-		size_t schema_len)
+		const struct ec_config_schema *schema)
 {
 	if (dict->type != EC_CONFIG_TYPE_DICT || schema == NULL) {
 		errno = EINVAL;
 		goto fail;
 	}
 
-	if (ec_config_dict_validate(dict->dict, schema, schema_len) < 0)
+	if (ec_config_dict_validate(dict->dict, schema) < 0)
 		goto fail;
 
 	return 0
@@ -851,6 +854,9 @@ static const struct ec_config_schema sch_intlist_elt[] = {
 		.desc = "This is a description for int",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static const struct ec_config_schema sch_dict[] = {
@@ -864,6 +870,9 @@ static const struct ec_config_schema sch_dict[] = {
 		.desc = "This is a description for int2",
 		.type = EC_CONFIG_TYPE_INT64,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static const struct ec_config_schema sch_dictlist_elt[] = {
@@ -871,7 +880,9 @@ static const struct ec_config_schema sch_dictlist_elt[] = {
 		.desc = "This is a description for dict",
 		.type = EC_CONFIG_TYPE_DICT,
 		.subschema = sch_dict,
-		.subschema_len = EC_COUNT_OF(sch_dict),
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
 	},
 };
 
@@ -901,14 +912,15 @@ static const struct ec_config_schema sch_baseconfig[] = {
 		.desc = "This is a description for list",
 		.type = EC_CONFIG_TYPE_LIST,
 		.subschema = sch_intlist_elt,
-		.subschema_len = EC_COUNT_OF(sch_intlist_elt),
 	},
 	{
 		.key = "my_dictlist",
 		.desc = "This is a description for list",
 		.type = EC_CONFIG_TYPE_LIST,
 		.subschema = sch_dictlist_elt,
-		.subschema_len = EC_COUNT_OF(sch_dictlist_elt),
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
 	},
 };
 
@@ -927,14 +939,12 @@ static int ec_config_testcase(void)
 	if (node == NULL)
 		goto fail;
 
-	if (ec_config_schema_validate(sch_baseconfig,
-					EC_COUNT_OF(sch_baseconfig)) < 0) {
+	if (ec_config_schema_validate(sch_baseconfig) < 0) {
 		EC_LOG(EC_LOG_ERR, "invalid config schema\n");
 		goto fail;
 	}
 
-	ec_config_schema_dump(stdout, sch_baseconfig,
-			EC_COUNT_OF(sch_baseconfig));
+	ec_config_schema_dump(stdout, sch_baseconfig);
 
 	config = ec_config_dict();
 	if (config == NULL)
@@ -959,8 +969,7 @@ static int ec_config_testcase(void)
 		"unexpected int value");
 
 	testres |= EC_TEST_CHECK(
-		ec_config_validate(config, sch_baseconfig,
-				EC_COUNT_OF(sch_baseconfig)) == 0,
+		ec_config_validate(config, sch_baseconfig) == 0,
 		"cannot validate config\n");
 
 	ret = ec_config_dict_set(config, "my_string", ec_config_string("toto"));
@@ -999,8 +1008,7 @@ static int ec_config_testcase(void)
 		"unexpected int value");
 
 	testres |= EC_TEST_CHECK(
-		ec_config_validate(subconfig, sch_dict,
-				EC_COUNT_OF(sch_dict)) == 0,
+		ec_config_validate(subconfig, sch_dict) == 0,
 		"cannot validate subconfig\n");
 
 	ret = ec_config_list_add(list, subconfig);
@@ -1030,8 +1038,7 @@ static int ec_config_testcase(void)
 		"unexpected int value");
 
 	testres |= EC_TEST_CHECK(
-		ec_config_validate(subconfig, sch_dict,
-				EC_COUNT_OF(sch_dict)) == 0,
+		ec_config_validate(subconfig, sch_dict) == 0,
 		"cannot validate subconfig\n");
 
 	ret = ec_config_list_add(list, subconfig);
@@ -1043,8 +1050,7 @@ static int ec_config_testcase(void)
 	testres |= EC_TEST_CHECK(ret == 0, "cannot set list");
 
 	testres |= EC_TEST_CHECK(
-		ec_config_validate(config, sch_baseconfig,
-				EC_COUNT_OF(sch_baseconfig)) == 0,
+		ec_config_validate(config, sch_baseconfig) == 0,
 		"cannot validate config\n");
 
 	list_ = ec_config_dict_get(config, "my_dictlist");
@@ -1066,8 +1072,7 @@ static int ec_config_testcase(void)
 	/* remove the first element */
 	ec_config_list_del(list_, ec_config_list_first(list_));
 	testres |= EC_TEST_CHECK(
-		ec_config_validate(config, sch_baseconfig,
-				EC_COUNT_OF(sch_baseconfig)) == 0,
+		ec_config_validate(config, sch_baseconfig) == 0,
 		"cannot validate config\n");
 
 	ec_config_dump(stdout, config);

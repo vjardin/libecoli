@@ -154,6 +154,9 @@ static const struct ec_config_schema ec_node_int_schema[] = {
 		.desc = "The base to use. If unset or 0, try to guess.",
 		.type = EC_CONFIG_TYPE_UINT64,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static int ec_node_int_set_config(struct ec_node *gen_node,
@@ -201,7 +204,6 @@ fail:
 static struct ec_node_type ec_node_int_type = {
 	.name = "int",
 	.schema = ec_node_int_schema,
-	.schema_len = EC_COUNT_OF(ec_node_int_schema),
 	.set_config = ec_node_int_set_config,
 	.parse = ec_node_int_uint_parse,
 	.complete = ec_node_complete_unknown,
@@ -265,6 +267,9 @@ static const struct ec_config_schema ec_node_uint_schema[] = {
 		.desc = "The base to use. If unset or 0, try to guess.",
 		.type = EC_CONFIG_TYPE_UINT64,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static int ec_node_uint_set_config(struct ec_node *gen_node,
@@ -312,7 +317,6 @@ fail:
 static struct ec_node_type ec_node_uint_type = {
 	.name = "uint",
 	.schema = ec_node_uint_schema,
-	.schema_len = EC_COUNT_OF(ec_node_uint_schema),
 	.set_config = ec_node_uint_set_config,
 	.parse = ec_node_int_uint_parse,
 	.complete = ec_node_complete_unknown,

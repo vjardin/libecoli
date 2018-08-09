@@ -99,6 +99,9 @@ static const struct ec_config_schema ec_node_str_schema[] = {
 		.desc = "The string to match.",
 		.type = EC_CONFIG_TYPE_STRING,
 	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
 };
 
 static int ec_node_str_set_config(struct ec_node *gen_node,
@@ -132,7 +135,6 @@ fail:
 static struct ec_node_type ec_node_str_type = {
 	.name = "str",
 	.schema = ec_node_str_schema,
-	.schema_len = EC_COUNT_OF(ec_node_str_schema),
 	.set_config = ec_node_str_set_config,
 	.parse = ec_node_str_parse,
 	.complete = ec_node_str_complete,

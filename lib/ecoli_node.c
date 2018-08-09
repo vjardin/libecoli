@@ -275,8 +275,7 @@ ec_node_set_config(struct ec_node *node, struct ec_config *config)
 		errno = EINVAL;
 		goto fail;
 	}
-	if (ec_config_validate(config, node->type->schema,
-				node->type->schema_len) < 0)
+	if (ec_config_validate(config, node->type->schema) < 0)
 		goto fail;
 	if (node->type->set_config != NULL) {
 		if (node->type->set_config(node, config) < 0)

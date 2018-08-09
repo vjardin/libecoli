@@ -92,9 +92,9 @@ typedef int (*ec_node_get_child_t)(const struct ec_node *,
 struct ec_node_type {
 	TAILQ_ENTRY(ec_node_type) next;  /**< Next in list. */
 	const char *name;                /**< Node type name. */
-	/** Generic configuration schema. */
+	/** Configuration schema array, must be terminated by a sentinel
+	 *  (.type = EC_CONFIG_TYPE_NONE). */
 	const struct ec_config_schema *schema;
-	size_t schema_len;               /**< Number of elts in schema array. */
 	ec_node_set_config_t set_config; /* validate/ack a config change */
 	ec_node_parse_t parse;
 	ec_node_complete_t complete;
