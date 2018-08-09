@@ -99,6 +99,21 @@ int ec_config_schema_validate(const struct ec_config_schema *schema);
 void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema);
 
 /**
+ * Find a schema entry matching the key.
+ *
+ * Browse the schema array and lookup for the given key.
+ *
+ * @param schema
+ *   Pointer to the first element of the schema array. The array
+ *   must be terminated by a sentinel entry (type == EC_CONFIG_TYPE_NONE).
+ * @return
+ *   The schema entry if it matches a key, or NULL if not found.
+ */
+const struct ec_config_schema *
+ec_config_schema_lookup(const struct ec_config_schema *schema,
+			const char *key);
+
+/**
  * Check if a key name is reserved in a config dict.
  *
  * Some key names are reserved and should not be used in configs.

@@ -360,15 +360,14 @@ ec_config_list(void)
 	return value;
 }
 
-static const struct ec_config_schema *
+const struct ec_config_schema *
 ec_config_schema_lookup(const struct ec_config_schema *schema,
-			const char *key, enum ec_config_type type)
+			const char *key)
 {
 	size_t i;
 
 	for (i = 0; schema[i].type != EC_CONFIG_TYPE_NONE; i++) {
-		if (!strcmp(key, schema[i].key) &&
-				type == schema[i].type)
+		if (!strcmp(key, schema[i].key))
 			return &schema[i];
 	}
 
@@ -536,12 +535,11 @@ ec_config_dict_validate(const struct ec_keyval *dict,
 
 		key = ec_keyval_iter_get_key(iter);
 		value = ec_keyval_iter_get_val(iter);
-		sch = ec_config_schema_lookup(schema, key, value->type);
-		if (sch == NULL) {
+		sch = ec_config_schema_lookup(schema, key);
+		if (sch == NULL || sch->type != value->type) {
 			errno = EBADMSG;
 			goto fail;
 		}
-
 		if (value->type == EC_CONFIG_TYPE_LIST) {
 			if (ec_config_list_validate(&value->list,
 							sch->subschema) < 0)
