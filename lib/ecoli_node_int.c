@@ -40,6 +40,7 @@ struct ec_node_int_uint {
 	unsigned int base;
 };
 
+/* XXX to utils.c ? */
 static int parse_llint(struct ec_node_int_uint *node, const char *str,
 	int64_t *val)
 {
