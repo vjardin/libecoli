@@ -114,6 +114,28 @@ ec_config_schema_lookup(const struct ec_config_schema *schema,
 			const char *key);
 
 /**
+ * Get the type of a schema entry.
+ *
+ * @param schema_elt
+ *   Pointer to an element of the schema array.
+ * @return
+ *   The type of the schema entry.
+ */
+enum ec_config_type
+ec_config_schema_type(const struct ec_config_schema *schema_elt);
+
+/**
+ * Get the subschema of a schema entry.
+ *
+ * @param schema_elt
+ *   Pointer to an element of the schema array.
+ * @return
+ *   The subschema if any, or NULL.
+ */
+const struct ec_config_schema *
+ec_config_schema_sub(const struct ec_config_schema *schema_elt);
+
+/**
  * Check if a key name is reserved in a config dict.
  *
  * Some key names are reserved and should not be used in configs.

@@ -375,6 +375,18 @@ ec_config_schema_lookup(const struct ec_config_schema *schema,
 	return NULL;
 }
 
+enum ec_config_type
+ec_config_schema_type(const struct ec_config_schema *schema_elt)
+{
+	return schema_elt->type;
+}
+
+const struct ec_config_schema *
+ec_config_schema_sub(const struct ec_config_schema *schema_elt)
+{
+	return schema_elt->subschema;
+}
+
 void
 ec_config_free(struct ec_config *value)
 {
