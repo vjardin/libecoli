@@ -778,12 +778,15 @@ ec_config_dup(const struct ec_config *config)
 }
 
 static int
-ec_config_list_dump(FILE *out, const struct ec_config_list *list,
-		size_t indent)
+ec_config_list_dump(FILE *out, const char *key,
+		const struct ec_config_list *list, size_t indent)
 {
 	const struct ec_config *v;
 
-	fprintf(out, "%*s" "type=list:\n", (int)indent * 4, "");
+	fprintf(out, "%*s" "%s%s%stype=list\n", (int)indent * 4, "",
+		key ? "key=": "",
+		key ? key: "",
+		key ? " ": "");
 
 	TAILQ_FOREACH(v, list, next) {
 		if (__ec_config_dump(out, NULL, v, indent + 1) < 0)
@@ -794,20 +797,24 @@ ec_config_list_dump(FILE *out, const struct ec_config_list *list,
 }
 
 static int
-ec_config_dict_dump(FILE *out, const struct ec_keyval *dict,
+ec_config_dict_dump(FILE *out, const char *key, const struct ec_keyval *dict,
 		size_t indent)
 {
 	const struct ec_config *value;
 	struct ec_keyval_iter *iter;
-	const char *key;
+	const char *k;
 
-	fprintf(out, "%*s" "type=dict:\n", (int)indent * 4, "");
+	fprintf(out, "%*s" "%s%s%stype=dict\n", (int)indent * 4, "",
+		key ? "key=": "",
+		key ? key: "",
+		key ? " ": "");
+
 	for (iter = ec_keyval_iter(dict);
 	     ec_keyval_iter_valid(iter);
 	     ec_keyval_iter_next(iter)) {
-		key = ec_keyval_iter_get_key(iter);
+		k = ec_keyval_iter_get_key(iter);
 		value = ec_keyval_iter_get_val(iter);
-		if (__ec_config_dump(out, key, value, indent + 1) < 0)
+		if (__ec_config_dump(out, k, value, indent + 1) < 0)
 			goto fail;
 	}
 	ec_keyval_iter_free(iter);
@@ -844,9 +851,9 @@ __ec_config_dump(FILE *out, const char *key, const struct ec_config *value,
 		ec_asprintf(&val_str, "%p", value->node);
 		break;
 	case EC_CONFIG_TYPE_LIST:
-		return ec_config_list_dump(out, &value->list, indent);
+		return ec_config_list_dump(out, key, &value->list, indent);
 	case EC_CONFIG_TYPE_DICT:
-		return ec_config_dict_dump(out, value->dict, indent);
+		return ec_config_dict_dump(out, key, value->dict, indent);
 	default:
 		errno = EINVAL;
 		break;
