@@ -63,6 +63,9 @@ exe-y-$(O)test = $(srcs) main.c
 ldflags-$(O)readline = -lreadline -ltermcap
 exe-y-$(O)readline = $(srcs) main-readline.c
 
+ldflags-$(O)parse-yaml = -lyaml
+exe-y-$(O)parse-yaml = $(srcs) parse-yaml.c
+
 include $(ECOLI)/mk/ecoli-post.mk
 
 all: _ecoli_all
