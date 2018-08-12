@@ -234,11 +234,17 @@ void ec_node_free(struct ec_node *node)
 
 	if (node->free.state != EC_NODE_FREE_STATE_FREEING) {
 		node->free.state = EC_NODE_FREE_STATE_FREEING;
+
+		/* children will be freed by config_free() and free_priv() */
+		ec_config_free(node->config);
+		node->config = NULL;
 		n = ec_node_get_children_count(node);
-		/* children should be freed by free_priv() */
 		assert(n == 0 || node->type->free_priv != NULL);
 		if (node->type->free_priv != NULL)
 			node->type->free_priv(node);
+		ec_free(node->id);
+		ec_free(node->desc);
+		ec_keyval_free(node->attrs);
 	}
 
 	node->refcnt--;
@@ -248,10 +254,6 @@ void ec_node_free(struct ec_node *node)
 	node->free.state = EC_NODE_FREE_STATE_NONE;
 	node->free.refcnt = 0;
 
-	ec_free(node->id);
-	ec_free(node->desc);
-	ec_keyval_free(node->attrs);
-	ec_config_free(node->config);
 	ec_free(node);
 }
 
