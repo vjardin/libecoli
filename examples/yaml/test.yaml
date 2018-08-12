@@ -1,0 +1,16 @@
+type: seq
+attrs:
+  toto: 1
+  titi: 2
+help: Say hello to someone
+children:
+- type: str
+  string: hello
+- type: or
+  id: name
+  help: Name of the person to greet
+  children:
+  - type: str
+    string: john
+  - type: str
+    string: mike
