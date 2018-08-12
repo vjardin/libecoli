@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
 
-ECOLI ?= $(abspath ..)
+ECOLI ?= $(abspath .)
 include $(ECOLI)/mk/ecoli-pre.mk
 
 # output path with trailing slash
@@ -9,7 +9,7 @@ O ?= build/
 
 # XXX -O0
 CFLAGS  = -g -O0 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
-CFLAGS += -I.
+CFLAGS += -Ilibecoli -Ilibecoli_yaml
 
 # XXX coverage
 CFLAGS += --coverage
@@ -55,16 +55,24 @@ srcs += ecoli_parse.c
 srcs += ecoli_string.c
 srcs += ecoli_vec.c
 
-shlib-y-$(O)libecoli.so := $(srcs)
+# libs
+shlib-y-$(O)libecoli.so := $(addprefix libecoli/,$(srcs))
 
+cflags-$(O)libecoli_yaml.so = -Ilibecoli_yaml
+shlib-y-$(O)libecoli_yaml.so := libecoli_yaml/ecoli_yaml.c
+
+# tests
 ldflags-$(O)test = -rdynamic
-exe-y-$(O)test = $(srcs) main.c
+exe-y-$(O)test = $(addprefix libecoli/,$(srcs)) test/test.c
 
+# examples
 ldflags-$(O)readline = -lreadline -ltermcap
-exe-y-$(O)readline = $(srcs) main-readline.c
+exe-y-$(O)readline = $(addprefix libecoli/,$(srcs)) \
+	examples/readline/main.c
 
 ldflags-$(O)parse-yaml = -lyaml
-exe-y-$(O)parse-yaml = $(srcs) parse-yaml.c
+exe-y-$(O)parse-yaml = $(addprefix libecoli/,$(srcs)) \
+	libecoli_yaml/ecoli_yaml.c examples/yaml/parse-yaml.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 
