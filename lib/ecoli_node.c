@@ -380,6 +380,7 @@ static void __ec_node_dump(FILE *out,
 	}
 }
 
+/* XXX this is too much debug-oriented, we should have a parameter or 2 funcs */
 void ec_node_dump(FILE *out, const struct ec_node *node)
 {
 	struct ec_keyval *dict = NULL;
