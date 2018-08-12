@@ -164,6 +164,8 @@ static void ec_node_seq_free_priv(struct ec_node *gen_node)
 	for (i = 0; i < node->len; i++)
 		ec_node_free(node->table[i]);
 	ec_free(node->table);
+	node->table = NULL;
+	node->len = 0;
 }
 
 static const struct ec_config_schema ec_node_seq_subschema[] = {

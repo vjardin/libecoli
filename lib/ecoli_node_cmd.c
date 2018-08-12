@@ -415,12 +415,18 @@ static void ec_node_cmd_free_priv(struct ec_node *gen_node)
 	size_t i;
 
 	ec_free(node->cmd_str);
+	node->cmd_str = NULL;
 	ec_node_free(node->expr);
+	node->expr = NULL;
 	ec_node_free(node->parser);
+	node->parser = NULL;
 	ec_node_free(node->cmd);
+	node->cmd = NULL;
 	for (i = 0; i < node->len; i++)
 		ec_node_free(node->table[i]);
 	ec_free(node->table);
+	node->table = NULL;
+	node->len = 0;
 }
 
 static const struct ec_config_schema ec_node_cmd_subschema[] = {
