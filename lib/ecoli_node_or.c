@@ -15,6 +15,9 @@
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
+#include <ecoli_node.h>
+#include <ecoli_config.h>
+#include <ecoli_node_helper.h>
 #include <ecoli_node_or.h>
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
@@ -24,7 +27,7 @@ EC_LOG_TYPE_REGISTER(node_or);
 struct ec_node_or {
 	struct ec_node gen;
 	struct ec_node **table;
-	unsigned int len;
+	size_t len;
 };
 
 static int
@@ -73,6 +76,58 @@ static void ec_node_or_free_priv(struct ec_node *gen_node)
 	for (i = 0; i < node->len; i++)
 		ec_node_free(node->table[i]);
 	ec_free(node->table);
+	node->table = NULL;
+	node->len = 0;
+}
+
+static const struct ec_config_schema ec_node_or_subschema[] = {
+	{
+		.desc = "A child node which is part of the choice.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static const struct ec_config_schema ec_node_or_schema[] = {
+	{
+		.key = "children",
+		.desc = "The list of children nodes defining the choice "
+		"elements.",
+		.type = EC_CONFIG_TYPE_LIST,
+		.subschema = ec_node_or_subschema,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_or_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node **table = NULL;
+	size_t i, len = 0;
+
+	table = ec_node_config_node_list_to_table(
+		ec_config_dict_get(config, "children"), &len);
+	if (table == NULL)
+		goto fail;
+
+	for (i = 0; i < node->len; i++)
+		ec_node_free(node->table[i]);
+	ec_free(node->table);
+	node->table = table;
+	node->len = len;
+
+	return 0;
+
+fail:
+	for (i = 0; i < len; i++)
+		ec_node_free(table[i]);
+	ec_free(table);
+	return -1;
 }
 
 static size_t
@@ -92,12 +147,16 @@ ec_node_or_get_child(const struct ec_node *gen_node, size_t i,
 		return -1;
 
 	*child = node->table[i];
-	*refs = 1;
+	/* each child node is referenced twice: once in the config and
+	 * once in the node->table[] */
+	*refs = 2;
 	return 0;
 }
 
 static struct ec_node_type ec_node_or_type = {
 	.name = "or",
+	.schema = ec_node_or_schema,
+	.set_config = ec_node_or_set_config,
 	.parse = ec_node_or_parse,
 	.complete = ec_node_or_complete,
 	.size = sizeof(struct ec_node_or),
@@ -111,71 +170,110 @@ EC_NODE_TYPE_REGISTER(ec_node_or_type);
 int ec_node_or_add(struct ec_node *gen_node, struct ec_node *child)
 {
 	struct ec_node_or *node = (struct ec_node_or *)gen_node;
-	struct ec_node **table;
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL, *children;
+	int ret;
 
 	assert(node != NULL);
 
-	assert(node != NULL);
-
-	if (child == NULL) {
-		errno = EINVAL;
-		goto fail;
-	}
+	/* XXX factorize this code in a helper */
 
 	if (ec_node_check_type(gen_node, &ec_node_or_type) < 0)
 		goto fail;
 
-	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
-	if (table == NULL)
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
 		goto fail;
 
-	node->table = table;
-	table[node->len] = child;
-	node->len++;
+	children = ec_config_dict_get(config, "children");
+	if (children == NULL) {
+		children = ec_config_list();
+		if (children == NULL)
+			goto fail;
+
+		if (ec_config_dict_set(config, "children", children) < 0)
+			goto fail; /* children list is freed on error */
+	}
+
+	if (ec_config_list_add(children, ec_config_node(child)) < 0) {
+		child = NULL;
+		goto fail;
+	}
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
 
 	return 0;
 
 fail:
+	ec_config_free(config);
 	ec_node_free(child);
 	return -1;
 }
 
 struct ec_node *__ec_node_or(const char *id, ...)
 {
+	struct ec_config *config = NULL, *children = NULL;
 	struct ec_node *gen_node = NULL;
-	struct ec_node_or *node = NULL;
 	struct ec_node *child;
 	va_list ap;
-	int fail = 0;
+	int ret;
 
 	va_start(ap, id);
+	child = va_arg(ap, struct ec_node *);
 
 	gen_node = ec_node_from_type(&ec_node_or_type, id);
-	node = (struct ec_node_or *)gen_node;
-	if (node == NULL)
-		fail = 1;;
+	if (gen_node == NULL)
+		goto fail_free_children;
 
-	for (child = va_arg(ap, struct ec_node *);
-	     child != EC_NODE_ENDLIST;
-	     child = va_arg(ap, struct ec_node *)) {
+	config = ec_config_dict();
+	if (config == NULL)
+		goto fail_free_children;
 
-		/* on error, don't quit the loop to avoid leaks */
-		if (fail == 1 || child == NULL ||
-				ec_node_or_add(gen_node, child) < 0) {
-			fail = 1;
-			ec_node_free(child);
+	children = ec_config_list();
+	if (children == NULL)
+		goto fail_free_children;
+
+	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *)) {
+		if (child == NULL)
+			goto fail_free_children;
+
+		if (ec_config_list_add(children, ec_config_node(child)) < 0) {
+			child = NULL;
+			goto fail_free_children;
 		}
 	}
 
-	if (fail == 1)
+	if (ec_config_dict_set(config, "children", children) < 0) {
+		children = NULL; /* freed */
+		goto fail;
+	}
+	children = NULL;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
 		goto fail;
 
 	va_end(ap);
+
 	return gen_node;
 
+fail_free_children:
+	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
+		ec_node_free(child);
 fail:
-	ec_node_free(gen_node); /* will also free children */
+	ec_node_free(gen_node); /* will also free added children */
+	ec_config_free(children);
+	ec_config_free(config);
 	va_end(ap);
+
 	return NULL;
 }
 
