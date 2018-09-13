@@ -28,16 +28,16 @@ struct enode_table {
 };
 
 static struct ec_node *
-parse_ec_node(struct ec_node **root, struct enode_table *table,
-	const yaml_document_t *document, const yaml_node_t *ynode);
+parse_ec_node(struct enode_table *table, const yaml_document_t *document,
+	const yaml_node_t *ynode);
 
 static struct ec_config *
-parse_ec_config_list(struct ec_node **root, struct enode_table *table,
+parse_ec_config_list(struct enode_table *table,
 		const struct ec_config_schema *schema,
 		const yaml_document_t *document, const yaml_node_t *ynode);
 
 static struct ec_config *
-parse_ec_config_dict(struct ec_node **root, struct enode_table *table,
+parse_ec_config_dict(struct enode_table *table,
 		const struct ec_config_schema *schema,
 		const yaml_document_t *document, const yaml_node_t *ynode);
 
@@ -133,7 +133,7 @@ free_table(struct enode_table *table)
 }
 
 static struct ec_config *
-parse_ec_config(struct ec_node **root, struct enode_table *table,
+parse_ec_config(struct enode_table *table,
 		const struct ec_config_schema *schema_elt,
 		const yaml_document_t *document, const yaml_node_t *ynode)
 {
@@ -210,7 +210,7 @@ parse_ec_config(struct ec_node **root, struct enode_table *table,
 		}
 		break;
 	case EC_CONFIG_TYPE_NODE:
-		enode = parse_ec_node(root, table, document, ynode);
+		enode = parse_ec_node(table, document, ynode);
 		if (enode == NULL)
 			goto fail;
 		config = ec_config_node(enode);
@@ -225,7 +225,7 @@ parse_ec_config(struct ec_node **root, struct enode_table *table,
 			fprintf(stderr, "List has no subschema\n");
 			goto fail;
 		}
-		config = parse_ec_config_list(root, table, subschema, document, ynode);
+		config = parse_ec_config_list(table, subschema, document, ynode);
 		if (config == NULL)
 			goto fail;
 		break;
@@ -235,7 +235,7 @@ parse_ec_config(struct ec_node **root, struct enode_table *table,
 			fprintf(stderr, "Dict has no subschema\n");
 			goto fail;
 		}
-		config = parse_ec_config_dict(root, table, subschema, document, ynode);
+		config = parse_ec_config_dict(table, subschema, document, ynode);
 		if (config == NULL)
 			goto fail;
 		break;
@@ -253,7 +253,7 @@ fail:
 }
 
 static struct ec_config *
-parse_ec_config_list(struct ec_node **root, struct enode_table *table,
+parse_ec_config_list(struct enode_table *table,
 		const struct ec_config_schema *schema,
 		const yaml_document_t *document, const yaml_node_t *ynode)
 {
@@ -275,7 +275,7 @@ parse_ec_config_list(struct ec_node **root, struct enode_table *table,
 	for (item = ynode->data.sequence.items.start;
 	     item < ynode->data.sequence.items.top; item++) {
 		value = document->nodes.start + (*item) - 1; // XXX -1 ?
-		subconfig = parse_ec_config(root, table, schema, document, value);
+		subconfig = parse_ec_config(table, schema, document, value);
 		if (subconfig == NULL)
 			goto fail;
 		if (ec_config_list_add(config, subconfig) < 0) {
@@ -292,7 +292,7 @@ fail:
 }
 
 static struct ec_config *
-parse_ec_config_dict(struct ec_node **root, struct enode_table *table,
+parse_ec_config_dict(struct enode_table *table,
 		const struct ec_config_schema *schema,
 		const yaml_document_t *document, const yaml_node_t *ynode)
 {
@@ -326,7 +326,7 @@ parse_ec_config_dict(struct ec_node **root, struct enode_table *table,
 			fprintf(stderr, "No such config %s\n", key_str);
 			goto fail;
 		}
-		subconfig = parse_ec_config(root, table, schema_elt, document, value);
+		subconfig = parse_ec_config(table, schema_elt, document, value);
 		if (subconfig == NULL)
 			goto fail;
 		if (ec_config_dict_set(config, key_str, subconfig) < 0) {
@@ -343,7 +343,7 @@ fail:
 }
 
 static struct ec_node *
-parse_ec_node(struct ec_node **root, struct enode_table *table,
+parse_ec_node(struct enode_table *table,
 	const yaml_document_t *document, const yaml_node_t *ynode)
 {
 	const struct ec_config_schema *schema;
@@ -428,10 +428,6 @@ parse_ec_node(struct ec_node **root, struct enode_table *table,
 		fprintf(stderr, "Cannot add node in table\n");
 		goto fail;
 	}
-	if (*root == NULL) {
-		ec_node_clone(enode);
-		*root = enode;
-	}
 
 	/* create its config */
 	schema = ec_node_type_schema(type);
@@ -441,7 +437,7 @@ parse_ec_node(struct ec_node **root, struct enode_table *table,
 		goto fail;
 	}
 
-	config = parse_ec_config_dict(root, table, schema, document, ynode);
+	config = parse_ec_config_dict(table, schema, document, ynode);
 	if (config == NULL)
 		goto fail;
 
@@ -461,17 +457,14 @@ fail:
 	return NULL;
 }
 
-static int
-parse_document(struct ec_node **root, struct enode_table *table,
+static struct ec_node *
+parse_document(struct enode_table *table,
 	const yaml_document_t *document)
 {
 	yaml_node_t *node;
 
 	node = document->nodes.start;
-	if (parse_ec_node(root, table, document, node) == NULL)
-		return -1;
-
-	return 0;
+	return parse_ec_node(table, document, node);
 }
 
 struct ec_node *
@@ -508,7 +501,8 @@ ec_yaml_import(const char *filename)
 		goto fail;
 	}
 
-	if (parse_document(&root, &table, &document) < 0) {
+	root = parse_document(&table, &document);
+	if (root == NULL) {
 		fprintf(stderr, "Failed to parse document\n");
 		goto fail;
 	}
@@ -526,6 +520,7 @@ fail_no_doc:
 	yaml_parser_delete(&parser);
 	if (file != NULL)
 		fclose(file);
+	free_table(&table);
 	ec_node_free(root);
 
 	return NULL;
