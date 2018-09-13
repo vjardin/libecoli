@@ -43,7 +43,7 @@ void *__ec_malloc(size_t size, const char *file, unsigned int line)
 
 void *ec_malloc_func(size_t size)
 {
-	return __ec_malloc(size, __FILE__, __LINE__);
+	return ec_malloc(size);
 }
 
 void __ec_free(void *ptr, const char *file, unsigned int line)
@@ -53,7 +53,7 @@ void __ec_free(void *ptr, const char *file, unsigned int line)
 
 void ec_free_func(void *ptr)
 {
-	__ec_free(ptr, __FILE__, __LINE__);
+	ec_free(ptr);
 }
 
 void *__ec_calloc(size_t nmemb, size_t size, const char *file,
@@ -80,6 +80,11 @@ void *__ec_calloc(size_t nmemb, size_t size, const char *file,
 void *__ec_realloc(void *ptr, size_t size, const char *file, unsigned int line)
 {
 	return ec_malloc_handler.realloc(ptr, size, file, line);
+}
+
+void ec_realloc_func(void *ptr, size_t size)
+{
+	ec_realloc(ptr, size);
 }
 
 char *__ec_strdup(const char *s, const char *file, unsigned int line)

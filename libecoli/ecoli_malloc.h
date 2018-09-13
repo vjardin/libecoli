@@ -172,6 +172,14 @@ void ec_free_func(void *ptr);
 	})
 
 /**
+ * Ecoli realloc function.
+ *
+ * Use this function when the macro ec_realloc() cannot be used,
+ * for instance when it is passed as a callback pointer.
+ */
+void ec_realloc_func(void *ptr, size_t size);
+
+/**
  * Allocate and initialize an array of elements.
  *
  * @param n
