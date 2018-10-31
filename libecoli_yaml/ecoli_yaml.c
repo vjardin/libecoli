@@ -11,6 +11,9 @@
 #include <assert.h>
 
 #include <yaml.h>
+
+#include <ecoli_malloc.h>
+#include <ecoli_keyval.h>
 #include <ecoli_node.h>
 #include <ecoli_config.h>
 #include <ecoli_yaml.h>
@@ -348,7 +351,8 @@ parse_ec_node(struct enode_table *table,
 {
 	const struct ec_config_schema *schema;
 	const struct ec_node_type *type = NULL;
-	const char *id = NULL, *help = NULL;
+	const char *id = NULL;
+	char *help = NULL;
 	struct ec_config *config = NULL;
 	const yaml_node_t *attrs = NULL;
 	const yaml_node_t *key, *value;
@@ -412,7 +416,11 @@ parse_ec_node(struct enode_table *table,
 				fprintf(stderr, "Help must be a scalar\n");
 				goto fail;
 			}
-			help = value_str;
+			help = ec_strdup(value_str);
+			if (help == NULL) {
+				fprintf(stderr, "Failed to allocate help\n");
+				goto fail;
+			}
 		}
 	}
 
@@ -446,6 +454,16 @@ parse_ec_node(struct enode_table *table,
 		goto fail;
 	}
 
+	if (help != NULL) {
+		if (ec_keyval_set(ec_node_attrs(enode), "help", help,
+					ec_free_func) < 0) {
+			fprintf(stderr, "Failed to set help\n");
+			help = NULL;
+			goto fail;
+		}
+		help = NULL;
+	}
+
 	/* add attributes (all as string) */
 	//XXX
 
@@ -454,6 +472,8 @@ parse_ec_node(struct enode_table *table,
 fail:
 	ec_node_free(enode);
 	ec_config_free(config);
+	ec_free(help);
+
 	return NULL;
 }
 

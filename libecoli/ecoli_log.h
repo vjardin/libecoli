@@ -34,7 +34,7 @@ enum ec_log_level {
  * Register a log type.
  *
  * This macro defines a function that will be called at startup (using
- * the "constructor" attribute). This function register the named type
+ * the "constructor" attribute). This function registers the named type
  * passed as argument, and sets a static global variable
  * "ec_log_local_type". This variable is used as the default log type
  * for this file when using EC_LOG() or EC_VLOG().

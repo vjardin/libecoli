@@ -39,7 +39,7 @@ static const char ec_short_options[] =
 #define EC_OPT_SEED "seed"
 
 static const struct option ec_long_options[] = {
-	{EC_OPT_HELP, 1, NULL, 'h'},
+	{EC_OPT_HELP, 0, NULL, 'h'},
 	{EC_OPT_LOG_LEVEL, 1, NULL, 'l'},
 	{EC_OPT_RANDOM_ALLOC_FAIL, 1, NULL, 'r'},
 	{EC_OPT_SEED, 1, NULL, 's'},
@@ -48,7 +48,7 @@ static const struct option ec_long_options[] = {
 
 static void usage(const char *prgname)
 {
-	printf("%s [options] [test1 test2 test3...]\n"
+	fprintf(stderr, "%s [options] [test1 test2 test3...]\n"
 		"  -h\n"
 		"  --"EC_OPT_HELP"\n"
 		"      Show this help.\n"

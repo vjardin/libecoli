@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <limits.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 struct ec_node;
 struct ec_parse;

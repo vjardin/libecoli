@@ -328,6 +328,9 @@ bool ec_parse_has_child(const struct ec_parse *parse)
 
 const struct ec_node *ec_parse_get_node(const struct ec_parse *parse)
 {
+	if (parse == NULL)
+		return NULL;
+
 	return parse->node;
 }
 

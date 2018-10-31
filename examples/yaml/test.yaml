@@ -1,16 +1,32 @@
-type: seq
-attrs:
-  toto: 1
-  titi: 2
-help: Say hello to someone
+type: or
 children:
-- type: str
-  string: hello
-- type: or
-  id: name
-  help: Name of the person to greet
+- type: seq
+  id: hello
+  help: Say hello to someone
   children:
   - type: str
-    string: john
+    string: hello
+  - type: or
+    id: name
+    help: Name of the person to greet
+    children:
+    - type: str
+      string: john
+    - type: str
+      string: mike
+- type: seq
+  id: goodbye
+  help: Say good bye to someone
+  children:
   - type: str
-    string: mike
+    string: good
+  - type: str
+    string: bye
+  - type: or
+    id: name
+    help: Name of the person to greet
+    children:
+    - type: str
+      string: mary
+    - type: str
+      string: jessica

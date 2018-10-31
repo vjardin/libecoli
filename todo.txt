@@ -3,7 +3,7 @@ tk_cmd
 
 X evaluate expression tree in ec_tk_expr
 X cmd token
-- example
+X example
 X tk_re
 
 cleanup / rework
@@ -24,7 +24,7 @@ X iterate children nodes without chaining them
 - better logs
 - check return values (-1 or NULL) + use errno
 - check missing static / const
-- license: SPDX
+X license: SPDX
 - check all completion nodes
 X split ecoli_tk.h
 - size_t or unsigned int?
@@ -37,11 +37,11 @@ X rename:
 X save node path in completion to fix help string
 - code coverage
 - try to hide structures
-- anything better than weakref?
+X anything better than weakref?
 - add ec_node_defaults.[ch] providing usual implementations of node methods
 X use vec for strvec
-- ELOOP in case of loop
-- remove weakref?
+/ ELOOP in case of loop
+X remove weakref?
 - sh_lex to provide offsets in attributes
 - accessors for all structs
 
@@ -61,15 +61,15 @@ yaml
 ====
 
 X register nodes by name
-- interface to add attributes: all nodes must be configurable through a
-  generic api
-  - attr string
-  - attr string list
-  - attr node
-  - attr node list
-  - attr int
+X interface to add attributes: all nodes must be configurable through a
+  generic api:
+  X attr string
+  X attr string list
+  X attr node
+  X attr node list
+  X attr int
 
-- yaml interface to create nodes
+X yaml interface to create nodes
 - example
 
 examples
@@ -83,6 +83,7 @@ examples
 - configuration file
 - mini shell: cd, ls, cat, stat
 - mini network console based on ip
+- dialog-like for use in shell
 
 doc
 ===
@@ -105,6 +106,7 @@ build framework
 - add make help
 - add make config
 - -fvisibility=
+- use meson
 
 tests
 =====
@@ -115,10 +117,10 @@ new nodes
 =========
 
 - regexp
-- node which always matches
-- file + partial completion
+X node which always matches
+X file + partial completion
 - ether, ip, network
-- fusion node: need to match several children, same for completion
+- fusion node: need to match several children, same for completion?
 - float
 - not
 
@@ -132,7 +134,7 @@ encoding
 netconf example
 ===============
 
-- demonstration example that parses yang file and generate cli
+/ demonstration example that parses yang file and generate cli
 
 
 

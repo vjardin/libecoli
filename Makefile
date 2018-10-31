@@ -9,7 +9,7 @@ O ?= build/
 
 # XXX -O0
 CFLAGS  = -g -O0 -Wall -Werror -W -Wextra -fPIC -Wmissing-prototypes
-CFLAGS += -Ilibecoli -Ilibecoli_yaml
+CFLAGS += -Ilibecoli -Ilibecoli_yaml -Ilibecoli_editline
 
 # XXX coverage
 CFLAGS += --coverage
@@ -61,6 +61,9 @@ shlib-y-$(O)libecoli.so := $(addprefix libecoli/,$(srcs))
 cflags-$(O)libecoli_yaml.so = -Ilibecoli_yaml
 shlib-y-$(O)libecoli_yaml.so := libecoli_yaml/ecoli_yaml.c
 
+cflags-$(O)libecoli_editline.so = -Ilibecoli_editline
+shlib-y-$(O)libecoli_editline.so := libecoli_editline/ecoli_editline.c
+
 # tests
 ldflags-$(O)test = -rdynamic
 exe-y-$(O)test = $(addprefix libecoli/,$(srcs)) test/test.c
@@ -70,9 +73,10 @@ ldflags-$(O)readline = -lreadline -ltermcap
 exe-y-$(O)readline = $(addprefix libecoli/,$(srcs)) \
 	examples/readline/main.c
 
-ldflags-$(O)parse-yaml = -lyaml
+ldflags-$(O)parse-yaml = -lyaml -ledit
 exe-y-$(O)parse-yaml = $(addprefix libecoli/,$(srcs)) \
-	libecoli_yaml/ecoli_yaml.c examples/yaml/parse-yaml.c
+	libecoli_yaml/ecoli_yaml.c libecoli_editline/ecoli_editline.c\
+	examples/yaml/parse-yaml.c
 
 include $(ECOLI)/mk/ecoli-post.mk
 

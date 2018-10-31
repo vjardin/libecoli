@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include <ecoli_assert.h>
 #include <ecoli_malloc.h>
@@ -75,4 +76,14 @@ int ec_asprintf(char **buf, const char *fmt, ...)
 	va_end(ap);
 
 	return ret;
+}
+
+bool ec_str_is_space(const char *s)
+{
+	while (*s) {
+		if (!isspace(*s))
+			return false;
+		s++;
+	}
+	return true;
 }

@@ -201,7 +201,7 @@ unsigned int ec_comp_count(
  */
 struct ec_comp_iter {
 	enum ec_comp_type type;
-	struct ec_comp *comp;
+	const struct ec_comp *comp;
 	struct ec_comp_group *cur_node;
 	struct ec_comp_item *cur_match;
 };
@@ -212,7 +212,7 @@ struct ec_comp_iter {
  *
  */
 struct ec_comp_iter *
-ec_comp_iter(struct ec_comp *comp,
+ec_comp_iter(const struct ec_comp *comp,
 	enum ec_comp_type type);
 
 /**
