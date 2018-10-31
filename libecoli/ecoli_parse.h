@@ -56,6 +56,7 @@ struct ec_parse *ec_parse_dup(const struct ec_parse *parse);
  *
  *
  */
+// _get_ XXX
 const struct ec_strvec *ec_parse_strvec(const struct ec_parse *parse);
 
 /* a NULL return value is an error, with errno set

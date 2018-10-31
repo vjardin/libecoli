@@ -91,6 +91,7 @@ int ec_node_parse_child(const struct ec_node *node, struct ec_parse *state,
 	return __ec_node_parse_child(node, state, false, strvec);
 }
 
+// XXX what is returned if no match ??
 struct ec_parse *ec_node_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec)
 {

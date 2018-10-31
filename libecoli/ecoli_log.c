@@ -95,6 +95,7 @@ ec_log_type_register(const char *name)
 	if (id >= 0)
 		return id;
 
+	// XXX not that good to allocate in constructor
 	new_types = ec_realloc(log_types,
 		sizeof(*new_types) * (log_types_len + 1));
 	if (new_types == NULL)
