@@ -16,6 +16,7 @@
 #include <ecoli_node.h>
 #include <ecoli_complete.h>
 #include <ecoli_parse.h>
+#include <ecoli_config.h>
 #include <ecoli_node_many.h>
 #include <ecoli_node_or.h>
 #include <ecoli_node_str.h>
@@ -106,6 +107,11 @@ ec_node_re_lex_parse(const struct ec_node *gen_node,
 	const char *str;
 	int ret;
 
+	if (node->child == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
 	if (ec_strvec_len(strvec) == 0) {
 		new_vec = ec_strvec();
 	} else {
@@ -172,12 +178,161 @@ ec_node_re_lex_get_child(const struct ec_node *gen_node, size_t i,
 		return -1;
 
 	*child = node->child;
-	*refs = 1;
+	*refs = 2;
 	return 0;
+}
+
+static const struct ec_config_schema ec_node_re_lex_dict[] = {
+	{
+		.key = "pattern",
+		.desc = "The pattern to match.",
+		.type = EC_CONFIG_TYPE_STRING,
+	},
+	{
+		.key = "keep",
+		.desc = "Whether to keep or drop the string matching "
+		"the regular expression.",
+		.type = EC_CONFIG_TYPE_BOOL,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static const struct ec_config_schema ec_node_re_lex_elt[] = {
+	{
+		.desc = "A pattern element.",
+		.type = EC_CONFIG_TYPE_DICT,
+		.subschema = ec_node_re_lex_dict,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static const struct ec_config_schema ec_node_re_lex_schema[] = {
+	{
+		.key = "patterns",
+		.desc = "The list of patterns elements.",
+		.type = EC_CONFIG_TYPE_LIST,
+		.subschema = ec_node_re_lex_elt,
+	},
+	{
+		.key = "child",
+		.desc = "The child node.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_re_lex_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct regexp_pattern *table = NULL;
+	const struct ec_config *patterns, *child, *elt, *pattern, *keep;
+	char *pattern_str = NULL;
+	ssize_t i, n = 0;
+	int ret;
+
+	child = ec_config_dict_get(config, "child");
+	if (child == NULL)
+		goto fail;
+	if (ec_config_get_type(child) != EC_CONFIG_TYPE_NODE) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	patterns = ec_config_dict_get(config, "patterns");
+	if (patterns != NULL) {
+		n = ec_config_count(patterns);
+		if (n < 0)
+			goto fail;
+
+		table = ec_calloc(n, sizeof(*table));
+		if (table == NULL)
+			goto fail;
+
+		n = 0;
+		TAILQ_FOREACH(elt, &patterns->list, next) {
+			if (ec_config_get_type(elt) != EC_CONFIG_TYPE_DICT) {
+				errno = EINVAL;
+				goto fail;
+			}
+			pattern = ec_config_dict_get(elt, "pattern");
+			if (pattern == NULL) {
+				errno = EINVAL;
+				goto fail;
+			}
+			if (ec_config_get_type(pattern) != EC_CONFIG_TYPE_STRING) {
+				errno = EINVAL;
+				goto fail;
+			}
+			keep = ec_config_dict_get(elt, "keep");
+			if (keep == NULL) {
+				errno = EINVAL;
+				goto fail;
+			}
+			if (ec_config_get_type(keep) != EC_CONFIG_TYPE_BOOL) {
+				errno = EINVAL;
+				goto fail;
+			}
+			pattern_str = ec_strdup(pattern->string);
+			if (pattern_str == NULL)
+				goto fail;
+
+			ret = regcomp(&table[n].r, pattern_str, REG_EXTENDED);
+			if (ret != 0) {
+				EC_LOG(EC_LOG_ERR,
+					"Regular expression <%s> compilation failed: %d\n",
+					pattern_str, ret);
+				if (ret == REG_ESPACE)
+					errno = ENOMEM;
+				else
+					errno = EINVAL;
+				goto fail;
+			}
+			table[n].pattern = pattern_str;
+			table[n].keep = keep->boolean;
+			pattern_str = NULL;
+
+			n++;
+		}
+	}
+
+	if (node->child != NULL)
+		ec_node_free(node->child);
+	node->child = ec_node_clone(child->node);
+	for (i = 0; i < (ssize_t)node->len; i++) {
+		ec_free(node->table[i].pattern);
+		regfree(&node->table[i].r);
+	}
+	ec_free(node->table);
+	node->table = table;
+	node->len = n;
+
+	return 0;
+
+fail:
+	if (table != NULL) {
+		for (i = 0; i < n; i++) {
+			if (table[i].pattern != NULL) {
+				ec_free(table[i].pattern);
+				regfree(&table[i].r);
+			}
+		}
+	}
+	ec_free(table);
+	ec_free(pattern_str);
+	return -1;
 }
 
 static struct ec_node_type ec_node_re_lex_type = {
 	.name = "re_lex",
+	.schema = ec_node_re_lex_schema,
+	.set_config = ec_node_re_lex_set_config,
 	.parse = ec_node_re_lex_parse,
 	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_re_lex),
@@ -190,60 +345,117 @@ EC_NODE_TYPE_REGISTER(ec_node_re_lex_type);
 
 int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
-	struct regexp_pattern *table;
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL, *patterns = NULL, *elt = NULL;
 	int ret;
-	char *pat_dup = NULL;
 
-	pat_dup = ec_strdup(pattern);
-	if (pat_dup == NULL)
+	if (ec_node_check_type(gen_node, &ec_node_re_lex_type) < 0)
 		goto fail;
 
-	table = ec_realloc(node->table, sizeof(*table) * (node->len + 1));
-	if (table == NULL)
+	elt = ec_config_dict();
+	if (elt == NULL)
+		goto fail;
+	if (ec_config_dict_set(elt, "pattern", ec_config_string(pattern)) < 0)
+		goto fail;
+	if (ec_config_dict_set(elt, "keep", ec_config_bool(keep)) < 0)
 		goto fail;
 
-	ret = regcomp(&table[node->len].r, pattern, REG_EXTENDED);
-	if (ret != 0) {
-		EC_LOG(EC_LOG_ERR,
-			"Regular expression <%s> compilation failed: %d\n",
-			pattern, ret);
-		if (ret == REG_ESPACE)
-			errno = ENOMEM;
-		else
-			errno = EINVAL;
-
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
 		goto fail;
+
+	patterns = ec_config_dict_get(config, "patterns");
+	if (patterns == NULL) {
+		patterns = ec_config_list();
+		if (patterns == NULL)
+			goto fail;
+
+		if (ec_config_dict_set(config, "patterns", patterns) < 0)
+			goto fail; /* patterns list is freed on error */
 	}
 
-	table[node->len].pattern = pat_dup;
-	table[node->len].keep = keep;
-	node->len++;
-	node->table = table;
+	if (ec_config_list_add(patterns, elt) < 0) {
+		elt = NULL;
+		goto fail;
+	}
+	elt = NULL;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
 
 	return 0;
 
 fail:
-	ec_free(pat_dup);
+	ec_config_free(config);
+	ec_config_free(elt);
+	return -1;
+}
+
+static int
+ec_node_re_lex_set_child(struct ec_node *gen_node, struct ec_node *child)
+{
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL;
+	int ret;
+
+	if (ec_node_check_type(gen_node, &ec_node_re_lex_type) < 0)
+		goto fail;
+
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
+		goto fail;
+
+	if (ec_config_dict_set(config, "child", ec_config_node(child)) < 0) {
+		child = NULL; /* freed */
+		goto fail;
+	}
+	child = NULL; /* freed */
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
+
+	return 0;
+
+fail:
+	ec_config_free(config);
+	ec_node_free(child);
 	return -1;
 }
 
 struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)
 {
-	struct ec_node_re_lex *node = NULL;
+	struct ec_node *gen_node = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_re_lex *)ec_node_from_type(&ec_node_re_lex_type, id);
-	if (node == NULL) {
-		ec_node_free(child);
-		return NULL;
+	gen_node = ec_node_from_type(&ec_node_re_lex_type, id);
+	if (gen_node == NULL)
+		goto fail;
+
+	if (ec_node_re_lex_set_child(gen_node, child) < 0) {
+		child = NULL; /* freed */
+		goto fail;
 	}
 
-	node->child = child;
+	return gen_node;
 
-	return &node->gen;
+fail:
+	ec_node_free(gen_node);
+	ec_node_free(child);
+	return NULL;
 }
 
 /* LCOV_EXCL_START */
@@ -268,6 +480,9 @@ static int ec_node_re_lex_testcase(void)
 
 	ret = ec_node_re_lex_add(node, "[a-zA-Z]+", 1);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
+	ec_node_free(node);
+	return 0;
+
 	ret = ec_node_re_lex_add(node, "[0-9]+", 1);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
 	ret = ec_node_re_lex_add(node, "=", 1);
