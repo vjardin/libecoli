@@ -266,6 +266,16 @@ int ec_config_list_add(struct ec_config *list, struct ec_config *value);
 int ec_config_list_del(struct ec_config *list, struct ec_config *config);
 
 /**
+ * Count the number of elements in a list or dict.
+ *
+ * @param config
+ *   The configuration that must be a list or a dict.
+ * @return
+ *   The number of elements, or -1 on error (errno is set).
+ */
+ssize_t ec_config_count(const struct ec_config *config);
+
+/**
  * Validate a configuration.
  *
  * @param dict

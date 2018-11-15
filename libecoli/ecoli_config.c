@@ -360,6 +360,25 @@ ec_config_list(void)
 	return value;
 }
 
+ssize_t ec_config_count(const struct ec_config *config)
+{
+	const struct ec_config *child;
+	ssize_t n;
+
+	switch (config->type) {
+	case EC_CONFIG_TYPE_LIST:
+		n = 0;
+		TAILQ_FOREACH(child, &config->list, next)
+			n++;
+		return n;
+	case EC_CONFIG_TYPE_DICT:
+		// XXX todo
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+}
+
 const struct ec_config_schema *
 ec_config_schema_lookup(const struct ec_config_schema *schema,
 			const char *key)
