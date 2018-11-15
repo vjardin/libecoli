@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
+#include <errno.h>
 
+#include <ecoli_init.h>
 #include <ecoli_strvec.h>
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
