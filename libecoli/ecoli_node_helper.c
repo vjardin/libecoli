@@ -19,7 +19,7 @@ ec_node_config_node_list_to_table(const struct ec_config *config,
 {
 	struct ec_node **table = NULL;
 	struct ec_config *child;
-	size_t n, i;
+	ssize_t n, i;
 
 	*len = 0;
 
@@ -33,21 +33,20 @@ ec_node_config_node_list_to_table(const struct ec_config *config,
 		return NULL;
 	}
 
-	n = 0;
-	TAILQ_FOREACH(child, &config->list, next) {
-		if (ec_config_get_type(child) != EC_CONFIG_TYPE_NODE) {
-			errno = EINVAL;
-			return NULL;
-		}
-		n++;
-	}
+	n = ec_config_count(config);
+	if (n < 0)
+		return NULL;
 
-	table = ec_malloc(n * sizeof(*table));
+	table = ec_calloc(n, sizeof(*table));
 	if (table == NULL)
 		goto fail;
 
 	n = 0;
 	TAILQ_FOREACH(child, &config->list, next) {
+		if (ec_config_get_type(child) != EC_CONFIG_TYPE_NODE) {
+			errno = EINVAL;
+			goto fail;
+		}
 		table[n] = ec_node_clone(child->node);
 		n++;
 	}
