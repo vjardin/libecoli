@@ -17,6 +17,7 @@
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_test.h>
+#include <ecoli_config.h>
 #include <ecoli_node_option.h>
 
 EC_LOG_TYPE_REGISTER(node_option);
@@ -81,12 +82,49 @@ ec_node_option_get_child(const struct ec_node *gen_node, size_t i,
 		return -1;
 
 	*child = node->child;
-	*refs = 1;
+	*refs = 2;
 	return 0;
+}
+
+static const struct ec_config_schema ec_node_option_schema[] = {
+	{
+		.key = "child",
+		.desc = "The child node.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_option_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_option *node = (struct ec_node_option *)gen_node;
+	const struct ec_config *child;
+
+	child = ec_config_dict_get(config, "child");
+	if (child == NULL)
+		goto fail;
+	if (ec_config_get_type(child) != EC_CONFIG_TYPE_NODE) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (node->child != NULL)
+		ec_node_free(node->child);
+	node->child = ec_node_clone(child->node);
+
+	return 0;
+
+fail:
+	return -1;
 }
 
 static struct ec_node_type ec_node_option_type = {
 	.name = "option",
+	.schema = ec_node_option_schema,
+	.set_config = ec_node_option_set_config,
 	.parse = ec_node_option_parse,
 	.complete = ec_node_option_complete,
 	.size = sizeof(struct ec_node_option),
@@ -97,23 +135,39 @@ static struct ec_node_type ec_node_option_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_option_type);
 
-int ec_node_option_set(struct ec_node *gen_node, struct ec_node *child)
+int
+ec_node_option_set_child(struct ec_node *gen_node, struct ec_node *child)
 {
-	struct ec_node_option *node = (struct ec_node_option *)gen_node;
-
-	if (gen_node == NULL || child == NULL) {
-		errno = EINVAL;
-		goto fail;
-	}
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL;
+	int ret;
 
 	if (ec_node_check_type(gen_node, &ec_node_option_type) < 0)
 		goto fail;
 
-	node->child = child;
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
+		goto fail;
+
+	if (ec_config_dict_set(config, "child", ec_config_node(child)) < 0) {
+		child = NULL; /* freed */
+		goto fail;
+	}
+	child = NULL; /* freed */
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
 
 	return 0;
 
 fail:
+	ec_config_free(config);
 	ec_node_free(child);
 	return -1;
 }
@@ -129,7 +183,7 @@ struct ec_node *ec_node_option(const char *id, struct ec_node *child)
 	if (gen_node == NULL)
 		goto fail;
 
-	ec_node_option_set(gen_node, child);
+	ec_node_option_set_child(gen_node, child);
 	child = NULL;
 
 	return gen_node;
