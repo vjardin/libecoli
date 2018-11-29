@@ -18,6 +18,7 @@
 #include <ecoli_complete.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_option.h>
+#include <ecoli_config.h>
 #include <ecoli_node_many.h>
 
 EC_LOG_TYPE_REGISTER(node_many);
@@ -181,12 +182,80 @@ ec_node_many_get_child(const struct ec_node *gen_node, size_t i,
 		return -1;
 
 	*child = node->child;
-	*refs = 1;
+	*refs = 2;
 	return 0;
+}
+
+static const struct ec_config_schema ec_node_many_schema[] = {
+	{
+		.key = "child",
+		.desc = "The child node.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+	{
+		.key = "min",
+		.desc = "The minimum number of matches (default = 0).",
+		.type = EC_CONFIG_TYPE_UINT64,
+	},
+	{
+		.key = "max",
+		.desc = "The maximum number of matches. If 0, there is "
+		"no maximum (default = 0).",
+		.type = EC_CONFIG_TYPE_UINT64,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_many_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_many *node = (struct ec_node_many *)gen_node;
+	const struct ec_config *child, *min, *max;
+
+	child = ec_config_dict_get(config, "child");
+	if (child == NULL)
+		goto fail;
+	if (ec_config_get_type(child) != EC_CONFIG_TYPE_NODE) {
+		errno = EINVAL;
+		goto fail;
+	}
+	min = ec_config_dict_get(config, "min");
+	if (min != NULL && (ec_config_get_type(min) != EC_CONFIG_TYPE_UINT64 ||
+				min->u64 >= UINT_MAX)) {
+		errno = EINVAL;
+		goto fail;
+	}
+	max = ec_config_dict_get(config, "max");
+	if (max != NULL && (ec_config_get_type(max) != EC_CONFIG_TYPE_UINT64 ||
+				max->u64 >= UINT_MAX)) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (node->child != NULL)
+		ec_node_free(node->child);
+	node->child = ec_node_clone(child->node);
+	if (min == NULL)
+		node->min = 0;
+	else
+		node->min = min->u64;
+	if (max == NULL)
+		node->max = 0;
+	else
+		node->max = max->u64;
+
+	return 0;
+
+fail:
+	return -1;
 }
 
 static struct ec_node_type ec_node_many_type = {
 	.name = "many",
+	.schema = ec_node_many_schema,
+	.set_config = ec_node_many_set_config,
 	.parse = ec_node_many_parse,
 	.complete = ec_node_many_complete,
 	.size = sizeof(struct ec_node_many),
@@ -197,25 +266,72 @@ static struct ec_node_type ec_node_many_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_many_type);
 
+int
+ec_node_many_set_params(struct ec_node *gen_node, struct ec_node *child,
+	unsigned int min, unsigned int max)
+{
+	const struct ec_config *cur_config = NULL;
+	struct ec_config *config = NULL;
+	int ret;
+
+	if (ec_node_check_type(gen_node, &ec_node_many_type) < 0)
+		goto fail;
+
+	cur_config = ec_node_get_config(gen_node);
+	if (cur_config == NULL)
+		config = ec_config_dict();
+	else
+		config = ec_config_dup(cur_config);
+	if (config == NULL)
+		goto fail;
+
+	if (ec_config_dict_set(config, "child", ec_config_node(child)) < 0) {
+		child = NULL; /* freed */
+		goto fail;
+	}
+	child = NULL; /* freed */
+
+	if (ec_config_dict_set(config, "min", ec_config_u64(min)) < 0)
+		goto fail;
+	if (ec_config_dict_set(config, "max", ec_config_u64(max)) < 0)
+		goto fail;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
+
+	return 0;
+
+fail:
+	ec_config_free(config);
+	ec_node_free(child);
+	return -1;
+}
+
 struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	unsigned int min, unsigned int max)
 {
-	struct ec_node_many *node = NULL;
+	struct ec_node *gen_node = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_many *)ec_node_from_type(&ec_node_many_type, id);
-	if (node == NULL) {
-		ec_node_free(child);
-		return NULL;
+	gen_node = ec_node_from_type(&ec_node_many_type, id);
+	if (gen_node == NULL)
+		goto fail;
+
+	if (ec_node_many_set_params(gen_node, child, min, max) < 0) {
+		child = NULL;
+		goto fail;
 	}
+	child = NULL;
 
-	node->child = child;
-	node->min = min;
-	node->max = max;
+	return gen_node;
 
-	return &node->gen;
+fail:
+	ec_node_free(child);
+	return NULL;
 }
 
 /* LCOV_EXCL_START */
