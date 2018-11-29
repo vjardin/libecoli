@@ -217,6 +217,7 @@ parse_ec_config(struct enode_table *table,
 		if (enode == NULL)
 			goto fail;
 		config = ec_config_node(enode);
+		enode = NULL;
 		if (config == NULL) {
 			fprintf(stderr, "Failed to create config\n");
 			goto fail;
@@ -450,9 +451,11 @@ parse_ec_node(struct enode_table *table,
 		goto fail;
 
 	if (ec_node_set_config(enode, config) < 0) {
+		config = NULL; /* freed */
 		fprintf(stderr, "Failed to set config\n");
 		goto fail;
 	}
+	config = NULL; /* freed */
 
 	if (help != NULL) {
 		if (ec_keyval_set(ec_node_attrs(enode), "help", help,
