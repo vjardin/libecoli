@@ -23,7 +23,7 @@
 /* on error, child is *not* freed */
 struct ec_node *ec_node_once(const char *id, struct ec_node *child);
 
-/* on error, child is *not* freed */
-int ec_node_once_set(struct ec_node *node, struct ec_node *child);
+/* on error, child is freed */
+int ec_node_once_set_child(struct ec_node *node, struct ec_node *child);
 
 #endif
