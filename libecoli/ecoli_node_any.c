@@ -14,6 +14,7 @@
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
+#include <ecoli_config.h>
 #include <ecoli_node_any.h>
 
 EC_LOG_TYPE_REGISTER(node_any);
@@ -35,8 +36,24 @@ static int ec_node_any_parse(const struct ec_node *gen_node,
 	return 1;
 }
 
+static const struct ec_config_schema ec_node_any_schema[] = {
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_any_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	(void)gen_node;
+	(void)config;
+	return 0;
+}
+
 static struct ec_node_type ec_node_any_type = {
 	.name = "any",
+	.schema = ec_node_any_schema,
+	.set_config = ec_node_any_set_config,
 	.parse = ec_node_any_parse,
 	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_any),
