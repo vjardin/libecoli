@@ -58,6 +58,20 @@ struct ec_strvec *ec_strvec_from_array(const char * const *strarr,
 	size_t n);
 
 /**
+ * Set a string in the vector at specified index.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param idx
+ *   The index of the string to set.
+ * @param s
+ *   The string to be set.
+ * @return
+ *   0 on success or -1 on error (errno is set).
+ */
+int ec_strvec_set(struct ec_strvec *strvec, size_t idx, const char *s);
+
+/**
  * Add a string in a vector.
  *
  * @param strvec
@@ -84,6 +98,8 @@ int ec_strvec_del_last(struct ec_strvec *strvec);
 /**
  * Duplicate a string vector.
  *
+ * Attributes are duplicated if any.
+ *
  * @param strvec
  *   The pointer to the string vector.
  * @return
@@ -93,6 +109,8 @@ struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec);
 
 /**
  * Duplicate a part of a string vector.
+ *
+ * Attributes are duplicated if any.
  *
  * @param strvec
  *   The pointer to the string vector.
@@ -138,6 +156,36 @@ size_t ec_strvec_len(const struct ec_strvec *strvec);
 const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
 
 /**
+ * Get the attributes of a vector element.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param idx
+ *   The index of the string to get.
+ * @return
+ *   The read-only attributes (dictionnary) of the string at specified
+ *   index, or NULL if there is no attribute.
+ */
+const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
+	size_t idx);
+
+/**
+ * Set the attributes of a vector element.
+ *
+ * @param strvec
+ *   The pointer to the string vector.
+ * @param idx
+ *   The index of the string to get.
+ * @param attrs
+ *   The attributes to be set.
+ * @return
+ *   0 on success, -1 on error (errno is set). On error, attrs
+ *   are freed and must not be used by the caller.
+ */
+int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
+			struct ec_keyval *attrs);
+
+/**
  * Compare two string vectors
  *
  * @param strvec
@@ -152,6 +200,8 @@ int ec_strvec_cmp(const struct ec_strvec *strvec1,
 
 /**
  * Sort the string vector.
+ *
+ * Attributes are not compared.
  *
  * @param strvec
  *   The pointer to the first string vector.

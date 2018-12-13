@@ -11,6 +11,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_log.h>
+#include <ecoli_keyval.h>
 #include <ecoli_strvec.h>
 
 EC_LOG_TYPE_REGISTER(strvec);
@@ -18,6 +19,7 @@ EC_LOG_TYPE_REGISTER(strvec);
 struct ec_strvec_elt {
 	unsigned int refcnt;
 	char *str;
+	struct ec_keyval *attrs;
 };
 
 struct ec_strvec {
@@ -36,9 +38,63 @@ struct ec_strvec *ec_strvec(void)
 	return strvec;
 }
 
+static struct ec_strvec_elt *
+__ec_strvec_elt(const char *s)
+{
+	struct ec_strvec_elt *elt;
+
+	elt = ec_calloc(1, sizeof(*elt));
+	if (elt == NULL)
+		return NULL;
+
+	elt->str = ec_strdup(s);
+	if (elt->str == NULL) {
+		ec_free(elt);
+		return NULL;
+	}
+	elt->refcnt = 1;
+
+	return elt;
+}
+
+static void
+__ec_strvec_elt_free(struct ec_strvec_elt *elt)
+{
+	elt->refcnt--;
+	if (elt->refcnt == 0) {
+		ec_free(elt->str);
+		ec_keyval_free(elt->attrs);
+		ec_free(elt);
+	}
+}
+
+int ec_strvec_set(struct ec_strvec *strvec, size_t idx, const char *s)
+{
+	struct ec_strvec_elt *elt;
+
+	if (strvec == NULL || s == NULL || idx >= strvec->len) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	elt = __ec_strvec_elt(s);
+	if (elt == NULL)
+		return -1;
+
+	__ec_strvec_elt_free(strvec->vec[idx]);
+	strvec->vec[idx] = elt;
+
+	return 0;
+}
+
 int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 {
 	struct ec_strvec_elt *elt, **new_vec;
+
+	if (strvec == NULL || s == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	new_vec = ec_realloc(strvec->vec,
 		sizeof(*strvec->vec) * (strvec->len + 1));
@@ -47,19 +103,13 @@ int ec_strvec_add(struct ec_strvec *strvec, const char *s)
 
 	strvec->vec = new_vec;
 
-	elt = ec_malloc(sizeof(*elt));
+	elt = __ec_strvec_elt(s);
 	if (elt == NULL)
 		return -1;
 
-	elt->str = ec_strdup(s);
-	if (elt->str == NULL) {
-		ec_free(elt);
-		return -1;
-	}
-	elt->refcnt = 1;
-
 	new_vec[strvec->len] = elt;
 	strvec->len++;
+
 	return 0;
 }
 
@@ -87,20 +137,14 @@ fail:
 
 int ec_strvec_del_last(struct ec_strvec *strvec)
 {
-	struct ec_strvec_elt *elt;
-
 	if (strvec->len == 0) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	elt = strvec->vec[strvec->len - 1];
-	elt->refcnt--;
-	if (elt->refcnt == 0) {
-		ec_free(elt->str);
-		ec_free(elt);
-	}
+	__ec_strvec_elt_free(strvec->vec[strvec->len - 1]);
 	strvec->len--;
+
 	return 0;
 }
 
@@ -153,11 +197,7 @@ void ec_strvec_free(struct ec_strvec *strvec)
 
 	for (i = 0; i < ec_strvec_len(strvec); i++) {
 		elt = strvec->vec[i];
-		elt->refcnt--;
-		if (elt->refcnt == 0) {
-			ec_free(elt->str);
-			ec_free(elt);
-		}
+		__ec_strvec_elt_free(elt);
 	}
 
 	ec_free(strvec->vec);
@@ -175,6 +215,46 @@ const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
 		return NULL;
 
 	return strvec->vec[idx]->str;
+}
+
+const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
+	size_t idx)
+{
+	if (strvec == NULL || idx >= strvec->len) {
+		errno = EINVAL;
+		return NULL;
+	}
+
+	return strvec->vec[idx]->attrs;
+}
+
+int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
+			struct ec_keyval *attrs)
+{
+	struct ec_strvec_elt *elt;
+
+	if (strvec == NULL || idx >= strvec->len) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	elt = strvec->vec[idx];
+	if (elt->refcnt > 1) {
+		if (ec_strvec_set(strvec, idx, elt->str) < 0)
+			goto fail;
+		elt = strvec->vec[idx];
+	}
+
+	if (elt->attrs != NULL)
+		ec_keyval_free(elt->attrs);
+
+	elt->attrs = attrs;
+
+	return 0;
+
+fail:
+	ec_keyval_free(attrs);
+	return -1;
 }
 
 int ec_strvec_cmp(const struct ec_strvec *strvec1,
@@ -237,6 +317,8 @@ static int ec_strvec_testcase(void)
 {
 	struct ec_strvec *strvec = NULL;
 	struct ec_strvec *strvec2 = NULL;
+	const struct ec_keyval *const_attrs = NULL;
+	struct ec_keyval *attrs = NULL;
 	FILE *f = NULL;
 	char *buf = NULL;
 	size_t buflen = 0;
@@ -393,7 +475,33 @@ static int ec_strvec_testcase(void)
 		EC_TEST_ERR("cannot create strvec from array\n");
 		goto fail;
 	}
+	attrs = ec_keyval();
+	if (attrs == NULL) {
+		EC_TEST_ERR("cannot create attrs\n");
+		goto fail;
+	}
+	if (ec_keyval_set(attrs, "key", "value", NULL) < 0) {
+		EC_TEST_ERR("cannot set attr\n");
+		goto fail;
+	}
+	if (ec_strvec_set_attrs(strvec, 1, attrs) < 0) {
+		attrs = NULL;
+		EC_TEST_ERR("cannot set attrs in strvec\n");
+		goto fail;
+	}
+	attrs = NULL;
+
 	ec_strvec_sort(strvec, NULL);
+
+	/* attrs are now at index 0 after sorting */
+	const_attrs = ec_strvec_get_attrs(strvec, 0);
+	if (const_attrs == NULL) {
+		EC_TEST_ERR("cannot get attrs\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(
+		ec_keyval_has_key(const_attrs, "key"), "cannot get attrs key\n");
+
 	strvec2 = EC_STRVEC("a", "b", "c", "d", "e", "f");
 	if (strvec2 == NULL) {
 		EC_TEST_ERR("cannot create strvec from array\n");
@@ -411,6 +519,7 @@ static int ec_strvec_testcase(void)
 fail:
 	if (f != NULL)
 		fclose(f);
+	ec_keyval_free(attrs);
 	ec_strvec_free(strvec);
 	ec_strvec_free(strvec2);
 	free(buf);
