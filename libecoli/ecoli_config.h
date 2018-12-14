@@ -43,6 +43,8 @@ struct ec_config_schema {
 	const char *key;          /**< The key string (NULL for list elts). */
 	const char *desc;         /**< A description of the value. */
 	enum ec_config_type type; /**< Type of the value */
+	/* XXX flags: mandatory */
+	/* XXX default */
 
 	/** If type is dict or list, the schema of the dict or list
 	 * elements. Else must be NULL. */
