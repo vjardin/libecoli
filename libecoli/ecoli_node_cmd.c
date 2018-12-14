@@ -329,19 +329,19 @@ ec_node_cmd_build_parser(struct ec_node *expr)
 	if (lex == NULL)
 		goto fail;
 
-	ret = ec_node_re_lex_add(lex, "[a-zA-Z0-9]+", 1);
+	ret = ec_node_re_lex_add(lex, "[a-zA-Z0-9]+", 1, NULL);
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_re_lex_add(lex, "[*|,()]", 1);
+	ret = ec_node_re_lex_add(lex, "[*|,()]", 1, NULL);
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_re_lex_add(lex, "\\[", 1);
+	ret = ec_node_re_lex_add(lex, "\\[", 1, NULL);
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_re_lex_add(lex, "\\]", 1);
+	ret = ec_node_re_lex_add(lex, "\\]", 1, NULL);
 	if (ret < 0)
 		goto fail;
-	ret = ec_node_re_lex_add(lex, "[	 ]+", 0);
+	ret = ec_node_re_lex_add(lex, "[	 ]+", 0, NULL);
 	if (ret < 0)
 		goto fail;
 

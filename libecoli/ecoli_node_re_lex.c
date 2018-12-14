@@ -13,6 +13,7 @@
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
+#include <ecoli_keyval.h>
 #include <ecoli_node.h>
 #include <ecoli_complete.h>
 #include <ecoli_parse.h>
@@ -27,6 +28,7 @@ EC_LOG_TYPE_REGISTER(node_re_lex);
 
 struct regexp_pattern {
 	char *pattern;
+	char *attr_name;
 	regex_t r;
 	bool keep;
 };
@@ -42,6 +44,7 @@ static struct ec_strvec *
 tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
+	struct ec_keyval *attrs = NULL;
 	char *dup = NULL;
 	char c;
 	size_t len, off = 0;
@@ -76,6 +79,22 @@ tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 			EC_LOG(EC_LOG_DEBUG, "re_lex match <%s>\n", &dup[off]);
 			if (ec_strvec_add(strvec, &dup[off]) < 0)
 				goto fail;
+
+			if (table[i].attr_name != NULL) {
+				attrs = ec_keyval();
+				if (attrs == NULL)
+					goto fail;
+				if (ec_keyval_set(attrs, table[i].attr_name,
+						NULL, NULL) < 0)
+					goto fail;
+				if (ec_strvec_set_attrs(strvec,
+						ec_strvec_len(strvec) - 1,
+						attrs) < 0) {
+					attrs = NULL;
+					goto fail;
+				}
+				attrs = NULL;
+			}
 
 			dup[pos.rm_eo + off] = c;
 			break;
@@ -152,6 +171,7 @@ static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
 	ec_node_free(node->child);
 	for (i = 0; i < node->len; i++) {
 		ec_free(node->table[i].pattern);
+		ec_free(node->table[i].attr_name);
 		regfree(&node->table[i].r);
 	}
 
@@ -195,6 +215,11 @@ static const struct ec_config_schema ec_node_re_lex_dict[] = {
 		.type = EC_CONFIG_TYPE_BOOL,
 	},
 	{
+		.key = "attr",
+		.desc = "The optional attribute name to attach.",
+		.type = EC_CONFIG_TYPE_STRING,
+	},
+	{
 		.type = EC_CONFIG_TYPE_NONE,
 	},
 };
@@ -232,8 +257,8 @@ static int ec_node_re_lex_set_config(struct ec_node *gen_node,
 {
 	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
 	struct regexp_pattern *table = NULL;
-	const struct ec_config *patterns, *child, *elt, *pattern, *keep;
-	char *pattern_str = NULL;
+	const struct ec_config *patterns, *child, *elt, *pattern, *keep, *attr;
+	char *pattern_str = NULL, *attr_name = NULL;
 	ssize_t i, n = 0;
 	int ret;
 
@@ -279,9 +304,20 @@ static int ec_node_re_lex_set_config(struct ec_node *gen_node,
 				errno = EINVAL;
 				goto fail;
 			}
+			attr = ec_config_dict_get(elt, "attr");
+			if (attr != NULL && ec_config_get_type(attr) !=
+					EC_CONFIG_TYPE_STRING) {
+				errno = EINVAL;
+				goto fail;
+			}
 			pattern_str = ec_strdup(pattern->string);
 			if (pattern_str == NULL)
 				goto fail;
+			if (attr != NULL && attr->string != NULL) {
+				attr_name = ec_strdup(attr->string);
+				if (attr_name == NULL)
+					goto fail;
+			}
 
 			ret = regcomp(&table[n].r, pattern_str, REG_EXTENDED);
 			if (ret != 0) {
@@ -296,7 +332,9 @@ static int ec_node_re_lex_set_config(struct ec_node *gen_node,
 			}
 			table[n].pattern = pattern_str;
 			table[n].keep = keep->boolean;
+			table[n].attr_name = attr_name;
 			pattern_str = NULL;
+			attr_name = NULL;
 
 			n++;
 		}
@@ -343,7 +381,8 @@ static struct ec_node_type ec_node_re_lex_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_re_lex_type);
 
-int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
+int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep,
+	const char *attr_name)
 {
 	const struct ec_config *cur_config = NULL;
 	struct ec_config *config = NULL, *patterns = NULL, *elt = NULL;
@@ -359,6 +398,11 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep)
 		goto fail;
 	if (ec_config_dict_set(elt, "keep", ec_config_bool(keep)) < 0)
 		goto fail;
+	if (attr_name != NULL) {
+		if (ec_config_dict_set(elt, "attr",
+					ec_config_string(attr_name)) < 0)
+			goto fail;
+	}
 
 	cur_config = ec_node_get_config(gen_node);
 	if (cur_config == NULL)
@@ -478,20 +522,17 @@ static int ec_node_re_lex_testcase(void)
 		return -1;
 	}
 
-	ret = ec_node_re_lex_add(node, "[a-zA-Z]+", 1);
+	ret = ec_node_re_lex_add(node, "[a-zA-Z]+", 1, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
-	ec_node_free(node);
-	return 0;
-
-	ret = ec_node_re_lex_add(node, "[0-9]+", 1);
+	ret = ec_node_re_lex_add(node, "[0-9]+", 1, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
-	ret = ec_node_re_lex_add(node, "=", 1);
+	ret = ec_node_re_lex_add(node, "=", 1, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
-	ret = ec_node_re_lex_add(node, "-", 1);
+	ret = ec_node_re_lex_add(node, "-", 1, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
-	ret = ec_node_re_lex_add(node, "\\+", 1);
+	ret = ec_node_re_lex_add(node, "\\+", 1, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
-	ret = ec_node_re_lex_add(node, "[ 	]+", 0);
+	ret = ec_node_re_lex_add(node, "[ 	]+", 0, NULL);
 	testres |= EC_TEST_CHECK(ret == 0, "cannot add regexp");
 	if (ret != 0) {
 		EC_LOG(EC_LOG_ERR, "cannot add regexp to node\n");
