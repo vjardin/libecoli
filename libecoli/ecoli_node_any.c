@@ -14,6 +14,7 @@
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
+#include <ecoli_keyval.h>
 #include <ecoli_config.h>
 #include <ecoli_node_any.h>
 
@@ -21,22 +22,42 @@ EC_LOG_TYPE_REGISTER(node_any);
 
 struct ec_node_any {
 	struct ec_node gen;
+	char *attr_name;
 };
 
 static int ec_node_any_parse(const struct ec_node *gen_node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
-	(void)gen_node;
+	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+	const struct ec_keyval *attrs;
+
 	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
+	if (node->attr_name != NULL) {
+		attrs = ec_strvec_get_attrs(strvec, 0);
+		if (attrs == NULL || !ec_keyval_has_key(attrs, node->attr_name))
+			return EC_PARSE_NOMATCH;
+	}
 
 	return 1;
 }
 
+static void ec_node_any_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+
+	ec_free(node->attr_name);
+}
+
 static const struct ec_config_schema ec_node_any_schema[] = {
+	{
+		.key = "attr",
+		.desc = "The optional attribute name to attach.",
+		.type = EC_CONFIG_TYPE_STRING,
+	},
 	{
 		.type = EC_CONFIG_TYPE_NONE,
 	},
@@ -45,9 +66,25 @@ static const struct ec_config_schema ec_node_any_schema[] = {
 static int ec_node_any_set_config(struct ec_node *gen_node,
 				const struct ec_config *config)
 {
-	(void)gen_node;
-	(void)config;
+	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+	const struct ec_config *value = NULL;
+	char *s = NULL;
+
+	value = ec_config_dict_get(config, "attr");
+	if (value != NULL) {
+		s = ec_strdup(value->string);
+		if (s == NULL)
+			goto fail;
+	}
+
+	ec_free(node->attr_name);
+	node->attr_name = s;
+
 	return 0;
+
+fail:
+	ec_free(s);
+	return -1;
 }
 
 static struct ec_node_type ec_node_any_type = {
@@ -57,6 +94,7 @@ static struct ec_node_type ec_node_any_type = {
 	.parse = ec_node_any_parse,
 	.complete = ec_node_complete_unknown,
 	.size = sizeof(struct ec_node_any),
+	.free_priv = ec_node_any_free_priv,
 };
 
 EC_NODE_TYPE_REGISTER(ec_node_any_type);
