@@ -123,6 +123,8 @@ X file + partial completion
 - fusion node: need to match several children, same for completion?
 - float
 - not
+- reparse: parse a tree with received strvec, then another tree
+  with strvec generated from first tree
 
 encoding
 ========
@@ -420,4 +422,18 @@ c
 
 ---------------
 
+
+about split in several libraries
+
+There are several options:
+
+1/ one library, config options to select libyaml, libedit
+   - need to manage dependencies in build system
+
+2/ one library for ecoli-core, one for ecoli-yaml, one for
+   ecoli-edit
+   - extra complexity
+
+3/ one library with core + yaml + edit
+   dependency is managed at runtime
 
