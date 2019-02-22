@@ -360,6 +360,7 @@ parse_ec_node(struct enode_table *table,
 	const yaml_node_pair_t *pair;
 	const char *key_str, *value_str;
 	struct ec_node *enode = NULL;
+	char *value_dup = NULL;
 
 	if (ynode->type != YAML_MAPPING_NODE) {
 		fprintf(stderr, "Ecoli node should be a yaml mapping node\n");
@@ -468,7 +469,24 @@ parse_ec_node(struct enode_table *table,
 	}
 
 	/* add attributes (all as string) */
-	//XXX
+	if (attrs != NULL) {
+		for (pair = attrs->data.mapping.pairs.start;
+		     pair < attrs->data.mapping.pairs.top; pair++) {
+			key = document->nodes.start + pair->key - 1;
+			value = document->nodes.start + pair->value - 1;
+			key_str = (const char *)key->data.scalar.value;
+			value_str = (const char *)value->data.scalar.value;
+			value_dup = ec_strdup(value_str);
+			if (value_dup == NULL)
+				goto fail;
+			if (ec_keyval_set(ec_node_attrs(enode), key_str,
+						value_dup, ec_free_func) < 0) {
+				value_dup = NULL;
+				goto fail;
+			}
+			value_dup = NULL;
+		}
+	}
 
 	return enode;
 
@@ -476,6 +494,7 @@ fail:
 	ec_node_free(enode);
 	ec_config_free(config);
 	ec_free(help);
+	ec_free(value_dup);
 
 	return NULL;
 }
