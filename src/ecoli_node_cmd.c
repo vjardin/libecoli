@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <limits.h>
 
+#include <ecoli_init.h>
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
@@ -34,12 +35,13 @@
 
 EC_LOG_TYPE_REGISTER(node_cmd);
 
+static struct ec_node *ec_node_cmd_parser; /* the expression parser. */
+static struct ec_node *ec_node_cmd_expr;   /* the expr parser without lexer. */
+
 struct ec_node_cmd {
 	struct ec_node gen;
 	char *cmd_str;           /* the command string. */
 	struct ec_node *cmd;     /* the command node. */
-	struct ec_node *parser;  /* the expression parser. */
-	struct ec_node *expr;    /* the expression parser without lexer. */
 	struct ec_node **table;  /* table of node referenced in command. */
 	unsigned int len;        /* len of the table. */
 };
@@ -354,8 +356,7 @@ fail:
 }
 
 static struct ec_node *
-ec_node_cmd_build(struct ec_node_cmd *node, const char *cmd_str,
-	struct ec_node **table, size_t len)
+ec_node_cmd_build(const char *cmd_str, struct ec_node **table, size_t len)
 {
 	struct ec_node_cmd_ctx ctx = { table, len };
 	struct ec_parse *p = NULL;
@@ -363,7 +364,7 @@ ec_node_cmd_build(struct ec_node_cmd *node, const char *cmd_str,
 	int ret;
 
 	/* parse the command expression */
-	p = ec_node_parse(node->parser, cmd_str);
+	p = ec_node_parse(ec_node_cmd_parser, cmd_str);
 	if (p == NULL)
 		goto fail;
 
@@ -376,7 +377,7 @@ ec_node_cmd_build(struct ec_node_cmd *node, const char *cmd_str,
 		goto fail;
 	}
 
-	ret = ec_node_expr_eval(&result, node->expr,
+	ret = ec_node_expr_eval(&result, ec_node_cmd_expr,
 				ec_parse_get_first_child(p),
 				&expr_ops, &ctx);
 	if (ret < 0)
@@ -416,10 +417,6 @@ static void ec_node_cmd_free_priv(struct ec_node *gen_node)
 
 	ec_free(node->cmd_str);
 	node->cmd_str = NULL;
-	ec_node_free(node->expr);
-	node->expr = NULL;
-	ec_node_free(node->parser);
-	node->parser = NULL;
 	ec_node_free(node->cmd);
 	node->cmd = NULL;
 	for (i = 0; i < node->len; i++)
@@ -488,7 +485,7 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 		goto fail;
 
 	/* parse expression to build the cmd child node */
-	cmd = ec_node_cmd_build(node, cmd_str, table, len);
+	cmd = ec_node_cmd_build(cmd_str, table, len);
 	if (cmd == NULL)
 		goto fail;
 
@@ -556,7 +553,6 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 {
 	struct ec_config *config = NULL, *children = NULL;
 	struct ec_node *gen_node = NULL;
-	struct ec_node_cmd *node = NULL;
 	va_list ap;
 	int ret;
 
@@ -569,15 +565,6 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 
 	gen_node = ec_node_from_type(&ec_node_cmd_type, id);
 	if (gen_node == NULL)
-		goto fail;
-	node = (struct ec_node_cmd *)gen_node;
-
-	node->expr = ec_node_cmd_build_expr();
-	if (node->expr == NULL)
-		goto fail;
-
-	node->parser = ec_node_cmd_build_parser(node->expr);
-	if (node->parser == NULL)
 		goto fail;
 
 	config = ec_config_dict();
@@ -607,6 +594,43 @@ fail:
 
 	return NULL;
 }
+
+static int ec_node_cmd_init_func(void)
+{
+	ec_node_cmd_expr = ec_node_cmd_build_expr();
+	if (ec_node_cmd_expr == NULL)
+		goto fail;
+
+	ec_node_cmd_parser = ec_node_cmd_build_parser(ec_node_cmd_expr);
+	if (ec_node_cmd_parser == NULL)
+		goto fail;
+
+	return 0;
+
+fail:
+	EC_LOG(EC_LOG_ERR, "Failed to initialize command parser\n");
+	ec_node_free(ec_node_cmd_expr);
+	ec_node_cmd_expr = NULL;
+	ec_node_free(ec_node_cmd_parser);
+	ec_node_cmd_parser = NULL;
+	return -1;
+}
+
+static void ec_node_cmd_exit_func(void)
+{
+	ec_node_free(ec_node_cmd_expr);
+	ec_node_cmd_expr = NULL;
+	ec_node_free(ec_node_cmd_parser);
+	ec_node_cmd_parser = NULL;
+}
+
+static struct ec_init ec_node_cmd_init = {
+	.init = ec_node_cmd_init_func,
+	.exit = ec_node_cmd_exit_func,
+	.priority = 75,
+};
+
+EC_INIT_REGISTER(ec_node_cmd_init);
 
 /* LCOV_EXCL_START */
 static int ec_node_cmd_testcase(void)
