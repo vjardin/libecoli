@@ -1,4 +1,8 @@
 type: or
+attrs:
+  key1: val1
+  key2: val2
+  key3:
 children:
 - type: seq
   id: hello

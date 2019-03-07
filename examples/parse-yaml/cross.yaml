@@ -1,0 +1,16 @@
+# matches "x", "x + x", "x + x + x", ...
+&term
+id: term
+type: or
+children:
+- type: seq
+  children:
+  - &value
+    id: value
+    type: str
+    string: x
+  - id: operator
+    type: str
+    string: +
+  - *term
+- *value
