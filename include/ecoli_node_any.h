@@ -3,12 +3,25 @@
  */
 
 /**
- * This node always matches 1 string in the vector
+ * This node always matches 1 string in the vector.
+ * An optional strvec attribute can be checked too. These
+ * attributes are usually set by a lexer node.
  */
 
 #ifndef ECOLI_NODE_ANY_
 #define ECOLI_NODE_ANY_
 
-/* no specific API for this node */
+/**
+ * Create a "any" node.
+ *
+ * @param id
+ *   The node identifier.
+ * @param attr
+ *   The strvec attribute to match, or NULL.
+ * @return
+ *   The ecoli node.
+ */
+struct ec_node *
+ec_node_any(const char *id, const char *attr);
 
 #endif

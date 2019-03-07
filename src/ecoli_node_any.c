@@ -99,6 +99,38 @@ static struct ec_node_type ec_node_any_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_any_type);
 
+struct ec_node *
+ec_node_any(const char *id, const char *attr)
+{
+	struct ec_config *config = NULL;
+	struct ec_node *gen_node = NULL;
+	int ret;
+
+	gen_node = ec_node_from_type(&ec_node_any_type, id);
+	if (gen_node == NULL)
+		return NULL;
+
+	config = ec_config_dict();
+	if (config == NULL)
+		goto fail;
+
+	ret = ec_config_dict_set(config, "attr", ec_config_string(attr));
+	if (ret < 0)
+		goto fail;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL;
+	if (ret < 0)
+		goto fail;
+
+	return gen_node;
+
+fail:
+	ec_config_free(config);
+	ec_node_free(gen_node);
+	return NULL;
+}
+
 /* LCOV_EXCL_START */
 static int ec_node_any_testcase(void)
 {
