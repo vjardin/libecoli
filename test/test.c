@@ -390,6 +390,8 @@ int main(int argc, char **argv)
 			ret |= ec_test_one(argv[i]);
 	}
 
+	ec_exit();
+
 	leaks = debug_alloc_dump_leaks();
 
 	if (alloc_fail_proba == 0 && ret != 0) {

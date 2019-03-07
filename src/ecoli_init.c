@@ -38,9 +38,19 @@ int ec_init(void)
 	struct ec_init *init;
 
 	TAILQ_FOREACH(init, &init_list, next) {
-		if (init->init() < 0)
+		if (init->init != NULL && init->init() < 0)
 			return -1;
 	}
 
 	return 0;
+}
+
+void ec_exit(void)
+{
+	struct ec_init *init;
+
+	TAILQ_FOREACH_REVERSE(init, &init_list, ec_init_list, next) {
+		if (init->exit != NULL)
+			init->exit();
+	}
 }

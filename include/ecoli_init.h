@@ -14,6 +14,11 @@
 #include <ecoli_log.h>
 #include <ecoli_node.h>
 
+/**
+ * Register initialization and exit callbacks. These callbacks are
+ * ordered by priority: for initialization, the lowest priority is called
+ * first. For exit, the callbacks are invoked in reverse order.
+ */
 #define EC_INIT_REGISTER(t)						\
 	static void ec_init_init_##t(void);				\
 	static void __attribute__((constructor, used))			\
@@ -27,6 +32,11 @@
  */
 typedef int (ec_init_t)(void);
 
+/**
+ * Type of exit function.
+ */
+typedef void (ec_exit_t)(void);
+
 TAILQ_HEAD(ec_init_list, ec_init);
 
 /**
@@ -35,6 +45,7 @@ TAILQ_HEAD(ec_init_list, ec_init);
 struct ec_init {
 	TAILQ_ENTRY(ec_init) next;  /**< Next in list. */
 	ec_init_t *init;            /**< Init function. */
+	ec_exit_t *exit;            /**< Exit function. */
 	unsigned int priority;      /**< Priority (0=first, 99=last) */
 };
 
@@ -47,7 +58,7 @@ struct ec_init {
 void ec_init_register(struct ec_init *test);
 
 /**
- * Initialize ecoli library
+ * Initialize ecoli library.
  *
  * Must be called before any other function from libecoli, except
  * ec_malloc_register().
@@ -56,5 +67,10 @@ void ec_init_register(struct ec_init *test);
  *   0 on success, -1 on error (errno is set).
  */
 int ec_init(void);
+
+/**
+ * Uninitialize ecoli library.
+ */
+void ec_exit(void);
 
 #endif
