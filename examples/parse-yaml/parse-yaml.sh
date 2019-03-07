@@ -2,86 +2,53 @@
 
 set -e
 
-# use a safer version of echo (no option)
-echo()
+parse_yaml=ecoli-parse-yaml
+libecoli=/usr/share/libecoli/ecoli.sh
+
+usage()
 {
-	printf "%s\n" "$*"
+        cat <<- END_OF_HELP
+        This example demonstrates how to build an interactive command
+        line in a shell script, using a description in yaml format.
+
+        Usage: $0 [options...] [tests...]
+            -h
+               show this help
+            -p <path>
+               path to ecoli-parse-yaml binary (default is to search
+               in PATH).
+            -l <path>
+               path to libecoli.sh library (default is $libecoli)
+END_OF_HELP
 }
 
-debug()
-{
-	echo "$@" >&2
-}
+ARG=0
+while getopts "hp:l:" opt; do
+        case "$opt" in
+        "h")
+                usage
+                exit 0
+                ;;
+        "p")
+                parse_yaml="$OPTARG"
+                ;;
+        "l")
+                libecoli="$OPTARG"
+                ;;
+	esac
+done
 
-# $1: node sequence number (ex: ec_node4)
-ec_parse_get_first_child()
-{
-	local first_child=${1}_first_child
-	echo $(eval 'echo ${'$first_child'}')
-}
+if ! command -v $parse_yaml > /dev/null 2> /dev/null && \
+		! readlink -e $parse_yaml > /dev/null 2> /dev/null; then
+	echo "Cannot find ecoli-parse-yaml ($parse_yaml)"
+	exit 1
+fi
+if ! readlink -e $libecoli > /dev/null 2> /dev/null; then
+	echo "Cannot find libecoli.sh ($libecoli)"
+	exit 1
+fi
 
-# $1: node sequence number (ex: ec_node4)
-ec_parse_get_next()
-{
-	local next=${1}_next
-	echo $(eval 'echo ${'$next'}')
-}
-
-# $1: node sequence number (ex: ec_node4)
-ec_parse_iter_next()
-{
-	local seq=${1#ec_node}
-	seq=$((seq+1))
-	local next=ec_node${seq}
-	if [ "$(ec_parse_get_id $next)" != "" ]; then
-		echo $next
-	fi
-}
-
-# $1: node sequence number (ex: ec_node4)
-ec_parse_get_id()
-{
-	local id=${1}_id
-	echo $(eval 'echo ${'$id'}')
-}
-
-# $1: node sequence number (ex: ec_node4)
-ec_parse_get_strvec_len()
-{
-	local strvec_len=${1}_strvec_len
-	echo $(eval 'echo ${'$strvec_len'}')
-}
-
-# $1: node sequence number (ex: ec_node4)
-# $2: index in strvec
-ec_parse_get_str()
-{
-	if [ $# -ne 2 ]; then
-		return
-	fi
-	local str=${1}_str${2}
-	echo $(eval 'echo ${'$str'}')
-}
-
-# $1: node sequence number (ex: ec_node4)
-# $2: node id (string)
-ec_parse_find_first()
-{
-	if [ $# -ne 2 ]; then
-		return
-	fi
-	local node_seq=$1
-	while [ "$node_seq" != "" ]; do
-		local id=$(ec_parse_get_id $node_seq)
-		if [ "$id" = "$2" ]; then
-			echo $node_seq
-			return 0
-		fi
-		node_seq=$(ec_parse_iter_next $node_seq)
-	done
-}
-
-path=$(dirname $0)
+. $libecoli
 
 yaml=$(mktemp)
 cat << EOF > $yaml
@@ -121,7 +88,7 @@ EOF
 
 output=$(mktemp)
 match=1
-$path/build/parse-yaml -i $yaml -o $output || match=0
+$parse_yaml -i $yaml -o $output || match=0
 if [ "$match" = "1" ]; then
 	cat $output
 	. $output
