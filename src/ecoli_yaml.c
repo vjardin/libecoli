@@ -361,10 +361,17 @@ parse_ec_node(struct enode_table *table,
 	const char *key_str, *value_str;
 	struct ec_node *enode = NULL;
 	char *value_dup = NULL;
+	size_t i;
 
 	if (ynode->type != YAML_MAPPING_NODE) {
 		fprintf(stderr, "Ecoli node should be a yaml mapping node\n");
 		goto fail;
+	}
+
+	/* if it's an anchor, the node may be already parsed, reuse it */
+	for (i = 0; i < table->len; i++) {
+		if (table->pair[i].ynode == ynode)
+			return ec_node_clone(table->pair[i].enode);
 	}
 
 	for (pair = ynode->data.mapping.pairs.start;
