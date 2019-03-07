@@ -2,4 +2,6 @@
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
 subdir('readline')
-subdir('parse-yaml')
+if get_option('with_yaml') and get_option('with_editline')
+	subdir('parse-yaml')
+endif

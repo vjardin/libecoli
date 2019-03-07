@@ -13,3 +13,7 @@ ecoli_parse_yaml = executable(
 	include_directories : inc,
 	link_with : libecoli,
 	dependencies: [yaml_dep, edit_dep])
+
+install_data(
+	'parse-yaml.sh',
+	install_dir : get_option('bindir'))

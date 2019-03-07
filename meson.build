@@ -4,16 +4,14 @@
 project('libecoli',
 	'c',
 	version : '0.1',
-	license : 'BSD-3-clause')
-
-# if debug
-add_global_arguments('-Wall', language : 'c')
-add_global_arguments('-Werror', language : 'c')
-add_global_arguments('-W', language : 'c')
-add_global_arguments('-Wextra', language : 'c')
+	license : 'BSD-3-clause',
+	default_options: ['warning_level=2'])
 
 edit_dep = dependency('libedit', method: 'pkg-config')
 yaml_dep = dependency('yaml-0.1', method: 'pkg-config')
+
+# XXX if debug
+add_global_arguments('-Werror', language : 'c')
 
 subdir('src')
 subdir('test')

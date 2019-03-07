@@ -7,7 +7,6 @@ libecoli_sources = [
 	'ecoli_assert.c',
 	'ecoli_complete.c',
 	'ecoli_config.c',
-	'ecoli_editline.c',
 	'ecoli_init.c',
 	'ecoli_keyval.c',
 	'ecoli_log.c',
@@ -41,10 +40,27 @@ libecoli_sources = [
 	'ecoli_strvec.c',
 	'ecoli_test.c',
 	'ecoli_vec.c',
-	'ecoli_yaml.c',
 ]
+deps = []
+if get_option('with_yaml')
+	libecoli_sources += [
+		'ecoli_yaml.c',
+	]
+	deps += [
+		yaml_dep,
+	]
+endif
+if get_option('with_editline')
+	libecoli_sources += [
+		'ecoli_editline.c',
+	]
+	deps += [
+		edit_dep,
+	]
+endif
+
 libecoli = shared_library('ecoli',
 	libecoli_sources,
 	include_directories : inc,
-	dependencies : [edit_dep, yaml_dep],
+	dependencies : deps,
 	install : true)
