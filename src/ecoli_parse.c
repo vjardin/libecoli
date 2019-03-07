@@ -42,6 +42,8 @@ static int __ec_node_parse_child(const struct ec_node *node,
 	struct ec_parse *child = NULL;
 	int ret;
 
+	// XXX limit max number of recursions to avoid segfault
+
 	if (ec_node_type(node)->parse == NULL) {
 		errno = ENOTSUP;
 		return -1;
