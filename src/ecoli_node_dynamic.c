@@ -135,13 +135,14 @@ static struct ec_node *
 build_counter(struct ec_parse *parse, void *opaque)
 {
 	const struct ec_node *node;
-	struct ec_parse *iter;
+	struct ec_parse *root, *iter;
 	unsigned int count = 0;
 	char buf[32];
 
 	(void)opaque;
-	for (iter = ec_parse_get_root(parse); iter != NULL;
-	     iter = ec_parse_iter_next(iter)) {
+	root = ec_parse_get_root(parse);
+	for (iter = root; iter != NULL;
+	     iter = EC_PARSE_ITER_NEXT(root, iter, 1)) {
 		node = ec_parse_get_node(iter);
 		if (node->id && !strcmp(node->id, "my-id"))
 			count++;

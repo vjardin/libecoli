@@ -159,7 +159,7 @@ struct ec_parse *ec_parse_get_last_child(const struct ec_parse *parse);
  *
  *
  */
-struct ec_parse *ec_parse_get_next(const struct ec_parse *parse);
+struct ec_parse *ec_parse_next(const struct ec_parse *parse);
 
 /**
  *
@@ -168,8 +168,8 @@ struct ec_parse *ec_parse_get_next(const struct ec_parse *parse);
  */
 #define EC_PARSE_FOREACH_CHILD(child, parse)			\
 	for (child = ec_parse_get_first_child(parse);		\
-		child != NULL;					\
-		child = ec_parse_get_next(child))		\
+	     child != NULL;					\
+	     child = ec_parse_next(child))			\
 
 /**
  *
@@ -211,16 +211,36 @@ void ec_parse_dump(FILE *out, const struct ec_parse *parse);
  *
  *
  */
-struct ec_parse *ec_parse_find_first(struct ec_parse *parse,
+struct ec_parse *ec_parse_find(struct ec_parse *parse,
 	const char *id);
+
+/**
+ *
+ *
+ *
+ */
+struct ec_parse *ec_parse_find_next(struct ec_parse *root,
+				struct ec_parse *start,
+				const char *id, bool iter_children);
 
 /**
  * Iterate among parse tree
  *
  * Use it with:
- * for (iter = state; iter != NULL; iter = ec_parse_iter_next(iter))
+ * for (iter = state; iter != NULL; iter = EC_PARSE_ITER_NEXT(state, iter, 1))
  */
-struct ec_parse *ec_parse_iter_next(struct ec_parse *parse);
+struct ec_parse *__ec_parse_iter_next(const struct ec_parse *root,
+				struct ec_parse *parse, bool iter_children);
+
+/* keep the const if any */
+#define EC_PARSE_ITER_NEXT(root, parse, iter_children) ({		\
+	const struct ec_parse *p_ = parse; /* check type */		\
+	struct ec_parse *parse_ = (struct ec_parse *)parse;		\
+	typeof(parse) res_;						\
+	(void)p_;							\
+	res_ = __ec_parse_iter_next(root, parse_, iter_children);	\
+	res_;								\
+})
 
 /**
  *

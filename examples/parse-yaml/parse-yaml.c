@@ -143,7 +143,7 @@ __dump_as_shell(FILE *f, const struct ec_parse *parse, size_t *seq)
 		__dump_as_shell(f, child, seq);
 	}
 
-	if (ec_parse_get_next(parse) != NULL) {
+	if (ec_parse_next(parse) != NULL) {
 		fprintf(f, "ec_node%zu_next='ec_node%zu'\n",
 			cur_seq, *seq + 1);
 	}

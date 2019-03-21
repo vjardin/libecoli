@@ -319,7 +319,7 @@ ec_parse_get_last_child(const struct ec_parse *parse)
 	return TAILQ_LAST(&parse->children, ec_parse_list);
 }
 
-struct ec_parse *ec_parse_get_next(const struct ec_parse *parse)
+struct ec_parse *ec_parse_next(const struct ec_parse *parse)
 {
 	return TAILQ_NEXT(parse, next);
 }
@@ -365,15 +365,18 @@ struct ec_parse *ec_parse_get_parent(const struct ec_parse *parse)
 	return parse->parent;
 }
 
-struct ec_parse *ec_parse_iter_next(struct ec_parse *parse)
+struct ec_parse *__ec_parse_iter_next(const struct ec_parse *root,
+				struct ec_parse *parse, bool iter_children)
 {
 	struct ec_parse *child, *parent, *next;
 
-	child = TAILQ_FIRST(&parse->children);
-	if (child != NULL)
-		return child;
+	if (iter_children) {
+		child = TAILQ_FIRST(&parse->children);
+		if (child != NULL)
+			return child;
+	}
 	parent = parse->parent;
-	while (parent != NULL) {
+	while (parent != NULL && parse != root) {
 		next = TAILQ_NEXT(parse, next);
 		if (next != NULL)
 			return next;
@@ -383,15 +386,21 @@ struct ec_parse *ec_parse_iter_next(struct ec_parse *parse)
 	return NULL;
 }
 
-struct ec_parse *ec_parse_find_first(struct ec_parse *parse,
-	const char *id)
+struct ec_parse *
+ec_parse_find_next(struct ec_parse *root, struct ec_parse *start,
+		const char *id, bool iter_children)
 {
 	struct ec_parse *iter;
 
-	if (parse == NULL)
+	if (root == NULL)
 		return NULL;
+	if (start == NULL)
+		start = root;
+	else
+		start = EC_PARSE_ITER_NEXT(root, start, iter_children);
 
-	for (iter = parse; iter != NULL; iter = ec_parse_iter_next(iter)) {
+	for (iter = start; iter != NULL;
+	     iter = EC_PARSE_ITER_NEXT(root, iter, 1)) {
 		if (iter->node != NULL &&
 				iter->node->id != NULL &&
 				!strcmp(iter->node->id, id))
@@ -399,6 +408,12 @@ struct ec_parse *ec_parse_find_first(struct ec_parse *parse,
 	}
 
 	return NULL;
+}
+
+struct ec_parse *ec_parse_find(struct ec_parse *parse,
+	const char *id)
+{
+	return ec_parse_find_next(parse, NULL, id, 1);
 }
 
 struct ec_keyval *
@@ -493,16 +508,16 @@ static int ec_parse_testcase(void)
 	ec_parse_free(p2);
 	p2 = NULL;
 
-	pc = ec_parse_find_first(p, "id_x");
+	pc = ec_parse_find(p, "id_x");
 	testres |= EC_TEST_CHECK(pc != NULL, "cannot find id_x");
 	testres |= EC_TEST_CHECK(pc != NULL &&
 		ec_parse_get_parent(pc) != NULL &&
 		ec_parse_get_parent(ec_parse_get_parent(pc)) == p,
 		"invalid parent\n");
 
-	pc = ec_parse_find_first(p, "id_y");
+	pc = ec_parse_find(p, "id_y");
 	testres |= EC_TEST_CHECK(pc != NULL, "cannot find id_y");
-	pc = ec_parse_find_first(p, "id_dezdezdez");
+	pc = ec_parse_find(p, "id_dezdezdez");
 	testres |= EC_TEST_CHECK(pc == NULL, "should not find bad id");
 
 
