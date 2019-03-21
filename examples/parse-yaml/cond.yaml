@@ -16,28 +16,25 @@ patterns:
 child:
   &term
   id: term
-  type: or
+  type: seq
   children:
-  - type: seq
-    id: function
-    children:
-    - type: any
-      id: function_name
-      attr: a_identifier
-    - type: any
-      attr: a_open
-    - type: option
-      id: term_list
-      child:
-        type: seq
-        children:
-        - *term
-        - type: many
-          child:
-            type: seq
-            children:
-            - type: str
-              string: ","
-            - *term
-    - type: any
-      attr: a_close
+  - type: any
+    id: function_name
+    attr: a_identifier
+  - type: any
+    attr: a_open
+  - type: option
+    id: term_list
+    child:
+      type: seq
+      children:
+      - *term
+      - type: many
+        child:
+          type: seq
+          children:
+          - type: str
+            string: ","
+          - *term
+  - type: any
+    attr: a_close
