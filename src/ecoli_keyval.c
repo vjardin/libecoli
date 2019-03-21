@@ -34,22 +34,18 @@ struct ec_keyval_elt {
 };
 
 struct ec_keyval_elt_ref {
-	LIST_ENTRY(ec_keyval_elt_ref) next;
+	TAILQ_ENTRY(ec_keyval_elt_ref) next;
+	TAILQ_ENTRY(ec_keyval_elt_ref) hnext;
 	struct ec_keyval_elt *elt;
 };
 
-LIST_HEAD(ec_keyval_elt_ref_list, ec_keyval_elt_ref);
+TAILQ_HEAD(ec_keyval_elt_ref_list, ec_keyval_elt_ref);
 
 struct ec_keyval {
 	size_t len;
 	size_t table_size;
+	struct ec_keyval_elt_ref_list list;
 	struct ec_keyval_elt_ref_list *table;
-};
-
-struct ec_keyval_iter {
-	const struct ec_keyval *keyval;
-	size_t cur_idx;
-	const struct ec_keyval_elt_ref *cur_ref;
 };
 
 struct ec_keyval *ec_keyval(void)
@@ -59,6 +55,7 @@ struct ec_keyval *ec_keyval(void)
 	keyval = ec_calloc(1, sizeof(*keyval));
 	if (keyval == NULL)
 		return NULL;
+	TAILQ_INIT(&keyval->list);
 
 	return keyval;
 }
@@ -79,7 +76,7 @@ ec_keyval_lookup(const struct ec_keyval *keyval, const char *key)
 	}
 
 	h = ec_murmurhash3(key, strlen(key), ec_keyval_seed);
-	LIST_FOREACH(ref, &keyval->table[h & mask], next) {
+	TAILQ_FOREACH(ref, &keyval->table[h & mask], hnext) {
 		if (strcmp(ref->elt->key, key) == 0)
 			return ref;
 	}
@@ -124,6 +121,7 @@ void *ec_keyval_get(const struct ec_keyval *keyval, const char *key)
 int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 {
 	struct ec_keyval_elt_ref *ref;
+	size_t idx;
 
 	ref = ec_keyval_lookup(keyval, key);
 	if (ref == NULL)
@@ -131,7 +129,9 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key)
 
 	/* we could resize table here */
 
-	LIST_REMOVE(ref, next);
+	TAILQ_REMOVE(&keyval->list, ref, next);
+	idx = ref->elt->hash & (keyval->table_size - 1);
+	TAILQ_REMOVE(&keyval->table[idx], ref, hnext);
 	ec_keyval_elt_ref_free(ref);
 	keyval->len--;
 
@@ -152,15 +152,14 @@ static int ec_keyval_table_resize(struct ec_keyval *keyval, size_t new_size)
 	new_table = ec_calloc(new_size, sizeof(*keyval->table));
 	if (new_table == NULL)
 		return -1;
+	for (i = 0; i < new_size; i++)
+		TAILQ_INIT(&new_table[i]);
 
-	for (i = 0; i < keyval->table_size; i++) {
-		while (!LIST_EMPTY(&keyval->table[i])) {
-			ref = LIST_FIRST(&keyval->table[i]);
-			LIST_REMOVE(ref, next);
-			LIST_INSERT_HEAD(
-				&new_table[ref->elt->hash & (new_size - 1)],
-				ref, next);
-		}
+	TAILQ_FOREACH(ref, &keyval->list, next) {
+		i = ref->elt->hash & (keyval->table_size - 1);
+		TAILQ_REMOVE(&keyval->table[i], ref, hnext);
+		i = ref->elt->hash & (new_size - 1);
+		TAILQ_INSERT_TAIL(&new_table[i], ref, hnext);
 	}
 
 	ec_free(keyval->table);
@@ -191,7 +190,8 @@ __ec_keyval_set(struct ec_keyval *keyval, struct ec_keyval_elt_ref *ref)
 	}
 
 	mask = keyval->table_size - 1;
-	LIST_INSERT_HEAD(&keyval->table[ref->elt->hash & mask], ref, next);
+	TAILQ_INSERT_TAIL(&keyval->table[ref->elt->hash & mask], ref, hnext);
+	TAILQ_INSERT_TAIL(&keyval->list, ref, next);
 	keyval->len++;
 
 	return 0;
@@ -243,17 +243,17 @@ fail:
 void ec_keyval_free(struct ec_keyval *keyval)
 {
 	struct ec_keyval_elt_ref *ref;
-	size_t i;
+	size_t idx;
 
 	if (keyval == NULL)
 		return;
 
-	for (i = 0; i < keyval->table_size; i++) {
-		while (!LIST_EMPTY(&keyval->table[i])) {
-			ref = LIST_FIRST(&keyval->table[i]);
-			LIST_REMOVE(ref, next);
-			ec_keyval_elt_ref_free(ref);
-		}
+	while (!TAILQ_EMPTY(&keyval->list)) {
+		ref = TAILQ_FIRST(&keyval->list);
+		TAILQ_REMOVE(&keyval->list, ref, next);
+		idx = ref->elt->hash & (keyval->table_size - 1);
+		TAILQ_REMOVE(&keyval->table[idx], ref, hnext);
+		ec_keyval_elt_ref_free(ref);
 	}
 	ec_free(keyval->table);
 	ec_free(keyval);
@@ -264,91 +264,45 @@ size_t ec_keyval_len(const struct ec_keyval *keyval)
 	return keyval->len;
 }
 
-void
-ec_keyval_iter_free(struct ec_keyval_iter *iter)
-{
-	ec_free(iter);
-}
-
-struct ec_keyval_iter *
+struct ec_keyval_elt_ref *
 ec_keyval_iter(const struct ec_keyval *keyval)
 {
-	struct ec_keyval_iter *iter = NULL;
+	if (keyval == NULL)
+		return NULL;
 
-	iter = ec_calloc(1, sizeof(*iter));
+	return TAILQ_FIRST(&keyval->list);
+}
+
+struct ec_keyval_elt_ref *
+ec_keyval_iter_next(struct ec_keyval_elt_ref *iter)
+{
 	if (iter == NULL)
 		return NULL;
 
-	iter->keyval = keyval;
-	iter->cur_idx = 0;
-	iter->cur_ref = NULL;
-
-	ec_keyval_iter_next(iter);
-
-	return iter;
-}
-
-void
-ec_keyval_iter_next(struct ec_keyval_iter *iter)
-{
-	const struct ec_keyval_elt_ref *ref;
-	size_t i;
-
-	i = iter->cur_idx;
-	if (i == iter->keyval->table_size)
-		return; /* no more element */
-
-	if (iter->cur_ref != NULL) {
-		ref = LIST_NEXT(iter->cur_ref, next);
-		if (ref != NULL) {
-			iter->cur_ref = ref;
-			return;
-		}
-		i++;
-	}
-
-	for (; i < iter->keyval->table_size; i++) {
-		LIST_FOREACH(ref, &iter->keyval->table[i], next) {
-			iter->cur_idx = i;
-			iter->cur_ref = LIST_FIRST(&iter->keyval->table[i]);
-			return;
-		}
-	}
-
-	iter->cur_idx = iter->keyval->table_size;
-	iter->cur_ref = NULL;
-}
-
-bool
-ec_keyval_iter_valid(const struct ec_keyval_iter *iter)
-{
-	if (iter == NULL || iter->cur_ref == NULL)
-		return false;
-
-	return true;
+	return TAILQ_NEXT(iter, next);
 }
 
 const char *
-ec_keyval_iter_get_key(const struct ec_keyval_iter *iter)
+ec_keyval_iter_get_key(const struct ec_keyval_elt_ref *iter)
 {
-	if (iter == NULL || iter->cur_ref == NULL)
+	if (iter == NULL)
 		return NULL;
 
-	return iter->cur_ref->elt->key;
+	return iter->elt->key;
 }
 
 void *
-ec_keyval_iter_get_val(const struct ec_keyval_iter *iter)
+ec_keyval_iter_get_val(const struct ec_keyval_elt_ref *iter)
 {
-	if (iter == NULL || iter->cur_ref == NULL)
+	if (iter == NULL)
 		return NULL;
 
-	return iter->cur_ref->elt->val;
+	return iter->elt->val;
 }
 
 void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 {
-	struct ec_keyval_iter *iter;
+	struct ec_keyval_elt_ref *iter;
 
 	if (keyval == NULL) {
 		fprintf(out, "empty keyval\n");
@@ -357,36 +311,32 @@ void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval)
 
 	fprintf(out, "keyval:\n");
 	for (iter = ec_keyval_iter(keyval);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		fprintf(out, "  %s: %p\n",
 			ec_keyval_iter_get_key(iter),
 			ec_keyval_iter_get_val(iter));
 	}
-	ec_keyval_iter_free(iter);
 }
 
 struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval)
 {
 	struct ec_keyval *dup = NULL;
 	struct ec_keyval_elt_ref *ref, *dup_ref = NULL;
-	size_t i;
 
 	dup = ec_keyval();
 	if (dup == NULL)
 		return NULL;
 
-	for (i = 0; i < keyval->table_size; i++) {
-		LIST_FOREACH(ref, &keyval->table[i], next) {
-			dup_ref = ec_calloc(1, sizeof(*ref));
-			if (dup_ref == NULL)
-				goto fail;
-			dup_ref->elt = ref->elt;
-			ref->elt->refcount++;
+	TAILQ_FOREACH(ref, &keyval->list, next) {
+		dup_ref = ec_calloc(1, sizeof(*ref));
+		if (dup_ref == NULL)
+			goto fail;
+		dup_ref->elt = ref->elt;
+		ref->elt->refcount++;
 
-			if (__ec_keyval_set(dup, dup_ref) < 0)
-				goto fail;
-		}
+		if (__ec_keyval_set(dup, dup_ref) < 0)
+			goto fail;
 	}
 
 	return dup;
@@ -429,7 +379,7 @@ EC_INIT_REGISTER(ec_keyval_init);
 static int ec_keyval_testcase(void)
 {
 	struct ec_keyval *keyval, *dup;
-	struct ec_keyval_iter *iter;
+	struct ec_keyval_elt_ref *iter;
 	char *val;
 	size_t i, count;
 	int ret, testres = 0;
@@ -445,11 +395,10 @@ static int ec_keyval_testcase(void)
 
 	count = 0;
 	for (iter = ec_keyval_iter(keyval);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		count++;
 	}
-	ec_keyval_iter_free(iter);
 	testres |= EC_TEST_CHECK(count == 0, "invalid count in iterator");
 
 	testres |= EC_TEST_CHECK(ec_keyval_len(keyval) == 0, "bad keyval len");
@@ -535,11 +484,10 @@ static int ec_keyval_testcase(void)
 
 	count = 0;
 	for (iter = ec_keyval_iter(keyval);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		count++;
 	}
-	ec_keyval_iter_free(iter);
 	testres |= EC_TEST_CHECK(count == 100, "invalid count in iterator");
 
 	/* einval */

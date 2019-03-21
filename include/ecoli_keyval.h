@@ -18,7 +18,7 @@
 typedef void (*ec_keyval_elt_free_t)(void *);
 
 struct ec_keyval;
-struct ec_keyval_iter;
+struct ec_keyval_elt_ref;
 
 /**
  * Create a hash table.
@@ -133,20 +133,19 @@ void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval);
  *
  *	// dump elements
  *	for (iter = ec_keyval_iter(keyval);
- *	     ec_keyval_iter_valid(iter);
- *	     ec_keyval_iter_next(iter)) {
+ *	     iter != NULL;
+ *	     iter = ec_keyval_iter_next(iter)) {
  *		printf("  %s: %p\n",
  *			ec_keyval_iter_get_key(iter),
  *			ec_keyval_iter_get_val(iter));
  *	}
- *	ec_keyval_iter_free(iter);
  *
  * @param keyval
  *   The hash table.
  * @return
- *   An iterator, or NULL on error (errno is set).
+ *   An iterator element, or NULL if the dict is empty.
  */
-struct ec_keyval_iter *
+struct ec_keyval_elt_ref *
 ec_keyval_iter(const struct ec_keyval *keyval);
 
 /**
@@ -154,27 +153,11 @@ ec_keyval_iter(const struct ec_keyval *keyval);
  *
  * @param iter
  *   The hash table iterator.
- */
-void ec_keyval_iter_next(struct ec_keyval_iter *iter);
-
-/**
- * Free the iterator.
- *
- * @param iter
- *   The hash table iterator.
- */
-void ec_keyval_iter_free(struct ec_keyval_iter *iter);
-
-/**
- * Check if the iterator points to a valid element.
- *
- * @param iter
- *   The hash table iterator.
  * @return
- *   true if the element is valid, else false.
+ *   An iterator element, or NULL there is no more element.
  */
-bool
-ec_keyval_iter_valid(const struct ec_keyval_iter *iter);
+struct ec_keyval_elt_ref *
+ec_keyval_iter_next(struct ec_keyval_elt_ref *iter);
 
 /**
  * Get the key of the current element.
@@ -186,7 +169,7 @@ ec_keyval_iter_valid(const struct ec_keyval_iter *iter);
  *   invalid element.
  */
 const char *
-ec_keyval_iter_get_key(const struct ec_keyval_iter *iter);
+ec_keyval_iter_get_key(const struct ec_keyval_elt_ref *iter);
 
 /**
  * Get the value of the current element.
@@ -198,7 +181,7 @@ ec_keyval_iter_get_key(const struct ec_keyval_iter *iter);
  *   invalid element.
  */
 void *
-ec_keyval_iter_get_val(const struct ec_keyval_iter *iter);
+ec_keyval_iter_get_val(const struct ec_keyval_elt_ref *iter);
 
 
 #endif

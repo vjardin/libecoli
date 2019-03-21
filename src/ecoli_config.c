@@ -461,15 +461,15 @@ ec_config_dict_cmp(const struct ec_keyval *d1,
 		const struct ec_keyval *d2)
 {
 	const struct ec_config *v1, *v2;
-	struct ec_keyval_iter *iter = NULL;
+	struct ec_keyval_elt_ref *iter = NULL;
 	const char *key;
 
 	if (ec_keyval_len(d1) != ec_keyval_len(d2))
 		return -1;
 
 	for (iter = ec_keyval_iter(d1);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		key = ec_keyval_iter_get_key(iter);
 		v1 = ec_keyval_iter_get_val(iter);
 		v2 = ec_keyval_get(d2, key);
@@ -478,11 +478,9 @@ ec_config_dict_cmp(const struct ec_keyval *d1,
 			goto fail;
 	}
 
-	ec_keyval_iter_free(iter);
 	return 0;
 
 fail:
-	ec_keyval_iter_free(iter);
 	return -1;
 }
 
@@ -556,13 +554,13 @@ ec_config_dict_validate(const struct ec_keyval *dict,
 			const struct ec_config_schema *schema)
 {
 	const struct ec_config *value;
-	struct ec_keyval_iter *iter = NULL;
+	struct ec_keyval_elt_ref *iter = NULL;
 	const struct ec_config_schema *sch;
 	const char *key;
 
 	for (iter = ec_keyval_iter(dict);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 
 		key = ec_keyval_iter_get_key(iter);
 		value = ec_keyval_iter_get_val(iter);
@@ -582,11 +580,9 @@ ec_config_dict_validate(const struct ec_keyval *dict,
 		}
 	}
 
-	ec_keyval_iter_free(iter);
 	return 0;
 
 fail:
-	ec_keyval_iter_free(iter);
 	return -1;
 }
 
@@ -738,7 +734,7 @@ static struct ec_config *
 ec_config_dict_dup(const struct ec_keyval *dict)
 {
 	struct ec_config *dup = NULL, *value;
-	struct ec_keyval_iter *iter = NULL;
+	struct ec_keyval_elt_ref *iter = NULL;
 	const char *key;
 
 	dup = ec_config_dict();
@@ -746,8 +742,8 @@ ec_config_dict_dup(const struct ec_keyval *dict)
 		goto fail;
 
 	for (iter = ec_keyval_iter(dict);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		key = ec_keyval_iter_get_key(iter);
 		value = ec_config_dup(ec_keyval_iter_get_val(iter));
 		if (value == NULL)
@@ -755,13 +751,11 @@ ec_config_dict_dup(const struct ec_keyval *dict)
 		if (ec_config_dict_set(dup, key, value) < 0)
 			goto fail;
 	}
-	ec_keyval_iter_free(iter);
 
 	return dup;
 
 fail:
 	ec_config_free(dup);
-	ec_keyval_iter_free(iter);
 	return NULL;
 }
 
@@ -820,7 +814,7 @@ ec_config_dict_dump(FILE *out, const char *key, const struct ec_keyval *dict,
 		size_t indent)
 {
 	const struct ec_config *value;
-	struct ec_keyval_iter *iter;
+	struct ec_keyval_elt_ref *iter;
 	const char *k;
 
 	fprintf(out, "%*s" "%s%s%stype=dict\n", (int)indent * 4, "",
@@ -829,18 +823,16 @@ ec_config_dict_dump(FILE *out, const char *key, const struct ec_keyval *dict,
 		key ? " ": "");
 
 	for (iter = ec_keyval_iter(dict);
-	     ec_keyval_iter_valid(iter);
-	     ec_keyval_iter_next(iter)) {
+	     iter != NULL;
+	     iter = ec_keyval_iter_next(iter)) {
 		k = ec_keyval_iter_get_key(iter);
 		value = ec_keyval_iter_get_val(iter);
 		if (__ec_config_dump(out, k, value, indent + 1) < 0)
 			goto fail;
 	}
-	ec_keyval_iter_free(iter);
 	return 0;
 
 fail:
-	ec_keyval_iter_free(iter);
 	return -1;
 }
 
