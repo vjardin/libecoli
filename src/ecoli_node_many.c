@@ -330,6 +330,7 @@ struct ec_node *ec_node_many(const char *id, struct ec_node *child,
 	return gen_node;
 
 fail:
+	ec_node_free(gen_node);
 	ec_node_free(child);
 	return NULL;
 }

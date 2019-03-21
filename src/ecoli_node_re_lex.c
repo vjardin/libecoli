@@ -345,6 +345,7 @@ static int ec_node_re_lex_set_config(struct ec_node *gen_node,
 	node->child = ec_node_clone(child->node);
 	for (i = 0; i < (ssize_t)node->len; i++) {
 		ec_free(node->table[i].pattern);
+		ec_free(node->table[i].attr_name);
 		regfree(&node->table[i].r);
 	}
 	ec_free(node->table);
