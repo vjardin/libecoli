@@ -183,5 +183,4 @@ ec_dict_iter_get_key(const struct ec_dict_elt_ref *iter);
 void *
 ec_dict_iter_get_val(const struct ec_dict_elt_ref *iter);
 
-
 #endif

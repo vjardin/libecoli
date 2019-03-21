@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-inc = include_directories('../include')
-
 libecoli_sources = [
 	'ecoli_assert.c',
 	'ecoli_complete.c',
@@ -63,6 +61,6 @@ endif
 
 libecoli = shared_library('ecoli',
 	libecoli_sources,
-	include_directories : inc,
+	include_directories : [inc, priv_inc],
 	dependencies : deps,
 	install : true)

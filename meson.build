@@ -13,6 +13,9 @@ yaml_dep = dependency('yaml-0.1', method: 'pkg-config')
 # XXX if debug
 add_global_arguments('-Werror', language : 'c')
 
+inc = include_directories('include')
+priv_inc = include_directories('src')
+
 subdir('src')
 subdir('test')
 subdir('examples')

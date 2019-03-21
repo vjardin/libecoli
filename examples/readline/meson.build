@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-inc = include_directories('../../include')
-
 readline_sources = [
 	'main.c',
 ]

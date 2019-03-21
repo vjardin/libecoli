@@ -178,8 +178,20 @@ ec_htable_iter_next(struct ec_htable_elt_ref *iter);
  *   The current element key, or NULL if the iterator points to an
  *   invalid element.
  */
-const char *
+const void *
 ec_htable_iter_get_key(const struct ec_htable_elt_ref *iter);
+
+/**
+ * Get the key length of the current element.
+ *
+ * @param iter
+ *   The hash table iterator.
+ * @return
+ *   The current element key length, or 0 if the iterator points to an
+ *   invalid element.
+ */
+size_t
+ec_htable_iter_get_key_len(const struct ec_htable_elt_ref *iter);
 
 /**
  * Get the value of the current element.
@@ -192,6 +204,5 @@ ec_htable_iter_get_key(const struct ec_htable_elt_ref *iter);
  */
 void *
 ec_htable_iter_get_val(const struct ec_htable_elt_ref *iter);
-
 
 #endif
