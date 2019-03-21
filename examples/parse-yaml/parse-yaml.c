@@ -55,7 +55,7 @@ static void usage(const char *prgname)
 		"      Set the output file.\n"
 		"  -c\n"
 		"  --"OPT_COMPLETE"\n"
-		"      Output the completion list."
+		"      Output the completion list.\n"
 		, prgname);
 }
 
