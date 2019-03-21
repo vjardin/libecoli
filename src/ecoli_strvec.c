@@ -11,7 +11,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_log.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_strvec.h>
 
 EC_LOG_TYPE_REGISTER(strvec);
@@ -19,7 +19,7 @@ EC_LOG_TYPE_REGISTER(strvec);
 struct ec_strvec_elt {
 	unsigned int refcnt;
 	char *str;
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 };
 
 struct ec_strvec {
@@ -63,7 +63,7 @@ __ec_strvec_elt_free(struct ec_strvec_elt *elt)
 	elt->refcnt--;
 	if (elt->refcnt == 0) {
 		ec_free(elt->str);
-		ec_keyval_free(elt->attrs);
+		ec_dict_free(elt->attrs);
 		ec_free(elt);
 	}
 }
@@ -217,7 +217,7 @@ const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx)
 	return strvec->vec[idx]->str;
 }
 
-const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
+const struct ec_dict *ec_strvec_get_attrs(const struct ec_strvec *strvec,
 	size_t idx)
 {
 	if (strvec == NULL || idx >= strvec->len) {
@@ -229,7 +229,7 @@ const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
 }
 
 int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
-			struct ec_keyval *attrs)
+			struct ec_dict *attrs)
 {
 	struct ec_strvec_elt *elt;
 
@@ -246,14 +246,14 @@ int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
 	}
 
 	if (elt->attrs != NULL)
-		ec_keyval_free(elt->attrs);
+		ec_dict_free(elt->attrs);
 
 	elt->attrs = attrs;
 
 	return 0;
 
 fail:
-	ec_keyval_free(attrs);
+	ec_dict_free(attrs);
 	return -1;
 }
 
@@ -317,8 +317,8 @@ static int ec_strvec_testcase(void)
 {
 	struct ec_strvec *strvec = NULL;
 	struct ec_strvec *strvec2 = NULL;
-	const struct ec_keyval *const_attrs = NULL;
-	struct ec_keyval *attrs = NULL;
+	const struct ec_dict *const_attrs = NULL;
+	struct ec_dict *attrs = NULL;
 	FILE *f = NULL;
 	char *buf = NULL;
 	size_t buflen = 0;
@@ -475,12 +475,12 @@ static int ec_strvec_testcase(void)
 		EC_TEST_ERR("cannot create strvec from array\n");
 		goto fail;
 	}
-	attrs = ec_keyval();
+	attrs = ec_dict();
 	if (attrs == NULL) {
 		EC_TEST_ERR("cannot create attrs\n");
 		goto fail;
 	}
-	if (ec_keyval_set(attrs, "key", "value", NULL) < 0) {
+	if (ec_dict_set(attrs, "key", "value", NULL) < 0) {
 		EC_TEST_ERR("cannot set attr\n");
 		goto fail;
 	}
@@ -500,7 +500,7 @@ static int ec_strvec_testcase(void)
 		goto fail;
 	}
 	testres |= EC_TEST_CHECK(
-		ec_keyval_has_key(const_attrs, "key"), "cannot get attrs key\n");
+		ec_dict_has_key(const_attrs, "key"), "cannot get attrs key\n");
 
 	strvec2 = EC_STRVEC("a", "b", "c", "d", "e", "f");
 	if (strvec2 == NULL) {
@@ -519,7 +519,7 @@ static int ec_strvec_testcase(void)
 fail:
 	if (f != NULL)
 		fclose(f);
-	ec_keyval_free(attrs);
+	ec_dict_free(attrs);
 	ec_strvec_free(strvec);
 	ec_strvec_free(strvec2);
 	free(buf);

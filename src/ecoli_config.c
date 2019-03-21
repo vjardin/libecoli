@@ -10,7 +10,7 @@
 
 #include <ecoli_string.h>
 #include <ecoli_malloc.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
@@ -29,7 +29,7 @@ static int
 __ec_config_dump(FILE *out, const char *key, const struct ec_config *config,
 	size_t indent);
 static int
-ec_config_dict_validate(const struct ec_keyval *dict,
+ec_config_dict_validate(const struct ec_dict *dict,
 			const struct ec_config_schema *schema);
 
 bool
@@ -324,9 +324,9 @@ struct ec_config *
 ec_config_dict(void)
 {
 	struct ec_config *value = NULL;
-	struct ec_keyval *dict = NULL;
+	struct ec_dict *dict = NULL;
 
-	dict = ec_keyval();
+	dict = ec_dict();
 	if (dict == NULL)
 		goto fail;
 
@@ -340,7 +340,7 @@ ec_config_dict(void)
 	return value;
 
 fail:
-	ec_keyval_free(dict);
+	ec_dict_free(dict);
 	ec_free(value);
 	return NULL;
 }
@@ -428,7 +428,7 @@ ec_config_free(struct ec_config *value)
 		}
 		break;
 	case EC_CONFIG_TYPE_DICT:
-		ec_keyval_free(value->dict);
+		ec_dict_free(value->dict);
 		break;
 	default:
 		break;
@@ -455,24 +455,24 @@ ec_config_list_cmp(const struct ec_config_list *list1,
 	return 0;
 }
 
-/* XXX -> ec_keyval_cmp() */
+/* XXX -> ec_dict_cmp() */
 static int
-ec_config_dict_cmp(const struct ec_keyval *d1,
-		const struct ec_keyval *d2)
+ec_config_dict_cmp(const struct ec_dict *d1,
+		const struct ec_dict *d2)
 {
 	const struct ec_config *v1, *v2;
-	struct ec_keyval_elt_ref *iter = NULL;
+	struct ec_dict_elt_ref *iter = NULL;
 	const char *key;
 
-	if (ec_keyval_len(d1) != ec_keyval_len(d2))
+	if (ec_dict_len(d1) != ec_dict_len(d2))
 		return -1;
 
-	for (iter = ec_keyval_iter(d1);
+	for (iter = ec_dict_iter(d1);
 	     iter != NULL;
-	     iter = ec_keyval_iter_next(iter)) {
-		key = ec_keyval_iter_get_key(iter);
-		v1 = ec_keyval_iter_get_val(iter);
-		v2 = ec_keyval_get(d2, key);
+	     iter = ec_dict_iter_next(iter)) {
+		key = ec_dict_iter_get_key(iter);
+		v1 = ec_dict_iter_get_val(iter);
+		v2 = ec_dict_get(d2, key);
 
 		if (ec_config_cmp(v1, v2))
 			goto fail;
@@ -550,20 +550,20 @@ ec_config_list_validate(const struct ec_config_list *list,
 }
 
 static int
-ec_config_dict_validate(const struct ec_keyval *dict,
+ec_config_dict_validate(const struct ec_dict *dict,
 			const struct ec_config_schema *schema)
 {
 	const struct ec_config *value;
-	struct ec_keyval_elt_ref *iter = NULL;
+	struct ec_dict_elt_ref *iter = NULL;
 	const struct ec_config_schema *sch;
 	const char *key;
 
-	for (iter = ec_keyval_iter(dict);
+	for (iter = ec_dict_iter(dict);
 	     iter != NULL;
-	     iter = ec_keyval_iter_next(iter)) {
+	     iter = ec_dict_iter_next(iter)) {
 
-		key = ec_keyval_iter_get_key(iter);
-		value = ec_keyval_iter_get_val(iter);
+		key = ec_dict_iter_get_key(iter);
+		value = ec_dict_iter_get_val(iter);
 		sch = ec_config_schema_lookup(schema, key);
 		if (sch == NULL || sch->type != value->type) {
 			errno = EBADMSG;
@@ -617,7 +617,7 @@ ec_config_dict_get(const struct ec_config *config, const char *key)
 		return NULL;
 	}
 
-	return ec_keyval_get(config->dict, key);
+	return ec_dict_get(config->dict, key);
 }
 
 struct ec_config *
@@ -653,7 +653,7 @@ int ec_config_dict_set(struct ec_config *config, const char *key,
 		goto fail;
 	}
 
-	return ec_keyval_set(config->dict, key, value,
+	return ec_dict_set(config->dict, key, value,
 			(void (*)(void *))free_cb);
 
 fail:
@@ -672,7 +672,7 @@ int ec_config_dict_del(struct ec_config *config, const char *key)
 		return -1;
 	}
 
-	return ec_keyval_del(config->dict, key);
+	return ec_dict_del(config->dict, key);
 }
 
 /* value is consumed */
@@ -731,21 +731,21 @@ fail:
 }
 
 static struct ec_config *
-ec_config_dict_dup(const struct ec_keyval *dict)
+ec_config_dict_dup(const struct ec_dict *dict)
 {
 	struct ec_config *dup = NULL, *value;
-	struct ec_keyval_elt_ref *iter = NULL;
+	struct ec_dict_elt_ref *iter = NULL;
 	const char *key;
 
 	dup = ec_config_dict();
 	if (dup == NULL)
 		goto fail;
 
-	for (iter = ec_keyval_iter(dict);
+	for (iter = ec_dict_iter(dict);
 	     iter != NULL;
-	     iter = ec_keyval_iter_next(iter)) {
-		key = ec_keyval_iter_get_key(iter);
-		value = ec_config_dup(ec_keyval_iter_get_val(iter));
+	     iter = ec_dict_iter_next(iter)) {
+		key = ec_dict_iter_get_key(iter);
+		value = ec_config_dup(ec_dict_iter_get_val(iter));
 		if (value == NULL)
 			goto fail;
 		if (ec_config_dict_set(dup, key, value) < 0)
@@ -810,11 +810,11 @@ ec_config_list_dump(FILE *out, const char *key,
 }
 
 static int
-ec_config_dict_dump(FILE *out, const char *key, const struct ec_keyval *dict,
+ec_config_dict_dump(FILE *out, const char *key, const struct ec_dict *dict,
 		size_t indent)
 {
 	const struct ec_config *value;
-	struct ec_keyval_elt_ref *iter;
+	struct ec_dict_elt_ref *iter;
 	const char *k;
 
 	fprintf(out, "%*s" "%s%s%stype=dict\n", (int)indent * 4, "",
@@ -822,11 +822,11 @@ ec_config_dict_dump(FILE *out, const char *key, const struct ec_keyval *dict,
 		key ? key: "",
 		key ? " ": "");
 
-	for (iter = ec_keyval_iter(dict);
+	for (iter = ec_dict_iter(dict);
 	     iter != NULL;
-	     iter = ec_keyval_iter_next(iter)) {
-		k = ec_keyval_iter_get_key(iter);
-		value = ec_keyval_iter_get_val(iter);
+	     iter = ec_dict_iter_next(iter)) {
+		k = ec_dict_iter_get_key(iter);
+		value = ec_dict_iter_get_val(iter);
 		if (__ec_config_dump(out, k, value, indent + 1) < 0)
 			goto fail;
 	}
@@ -981,7 +981,7 @@ static const struct ec_config_schema sch_baseconfig[] = {
 static int ec_config_testcase(void)
 {
 	struct ec_node *node = NULL;
-	struct ec_keyval *dict = NULL;
+	struct ec_dict *dict = NULL;
 	const struct ec_config *value = NULL;
 	struct ec_config *config = NULL, *config2 = NULL;
 	struct ec_config *list = NULL, *subconfig = NULL;
@@ -1139,7 +1139,7 @@ static int ec_config_testcase(void)
 	ec_config_free(list);
 	ec_config_free(subconfig);
 	ec_config_free(config);
-	ec_keyval_free(dict);
+	ec_dict_free(dict);
 	ec_node_free(node);
 
 	return testres;
@@ -1149,7 +1149,7 @@ fail:
 	ec_config_free(subconfig);
 	ec_config_free(config);
 	ec_config_free(config2);
-	ec_keyval_free(dict);
+	ec_dict_free(dict);
 	ec_node_free(node);
 
 	return -1;

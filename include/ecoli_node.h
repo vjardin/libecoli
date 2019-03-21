@@ -54,7 +54,7 @@ struct ec_node;
 struct ec_parse;
 struct ec_comp;
 struct ec_strvec;
-struct ec_keyval;
+struct ec_dict;
 struct ec_config;
 struct ec_config_schema;
 
@@ -157,7 +157,7 @@ struct ec_node {
 	struct ec_config *config;    /**< Generic configuration. */
 	char *id;
 	char *desc;
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 	unsigned int refcnt;
 	struct {
 		enum ec_node_free_state state; /**< State of loop detection */
@@ -192,7 +192,7 @@ ec_node_get_child(const struct ec_node *node, size_t i,
 
 /* XXX add more accessors */
 const struct ec_node_type *ec_node_type(const struct ec_node *node);
-struct ec_keyval *ec_node_attrs(const struct ec_node *node);
+struct ec_dict *ec_node_attrs(const struct ec_node *node);
 const char *ec_node_id(const struct ec_node *node);
 const char *ec_node_desc(const struct ec_node *node);
 

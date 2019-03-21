@@ -11,7 +11,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_string.h>
 #include <ecoli_strvec.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_node.h>
@@ -31,7 +31,7 @@ struct ec_comp_item {
 	char *full;       /* the full token after completion */
 	char *completion; /* chars that are added, NULL if not applicable */
 	char *display;    /* what should be displayed by help/completers */
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 };
 
 struct ec_comp *ec_comp(struct ec_parse *state)
@@ -42,7 +42,7 @@ struct ec_comp *ec_comp(struct ec_parse *state)
 	if (comp == NULL)
 		goto fail;
 
-	comp->attrs = ec_keyval();
+	comp->attrs = ec_dict();
 	if (comp->attrs == NULL)
 		goto fail;
 
@@ -54,7 +54,7 @@ struct ec_comp *ec_comp(struct ec_parse *state)
 
  fail:
 	if (comp != NULL)
-		ec_keyval_free(comp->attrs);
+		ec_dict_free(comp->attrs);
 	ec_free(comp);
 
 	return NULL;
@@ -165,7 +165,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
 	if (grp == NULL)
 		return NULL;
 
-	grp->attrs = ec_keyval();
+	grp->attrs = ec_dict();
 	if (grp->attrs == NULL)
 		goto fail;
 
@@ -181,7 +181,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
 fail:
 	if (grp != NULL) {
 		ec_parse_free(grp->state);
-		ec_keyval_free(grp->attrs);
+		ec_dict_free(grp->attrs);
 	}
 	ec_free(grp);
 	return NULL;
@@ -192,7 +192,7 @@ ec_comp_item(enum ec_comp_type type,
 	const char *start, const char *full)
 {
 	struct ec_comp_item *item = NULL;
-	struct ec_keyval *attrs = NULL;
+	struct ec_dict *attrs = NULL;
 	char *comp_cp = NULL, *start_cp = NULL;
 	char *full_cp = NULL, *display_cp = NULL;
 
@@ -209,7 +209,7 @@ ec_comp_item(enum ec_comp_type type,
 	if (item == NULL)
 		goto fail;
 
-	attrs = ec_keyval();
+	attrs = ec_dict();
 	if (attrs == NULL)
 		goto fail;
 
@@ -243,7 +243,7 @@ ec_comp_item(enum ec_comp_type type,
 	return item;
 
 fail:
-	ec_keyval_free(attrs);
+	ec_dict_free(attrs);
 	ec_free(comp_cp);
 	ec_free(start_cp);
 	ec_free(full_cp);
@@ -417,7 +417,7 @@ ec_comp_item_free(struct ec_comp_item *item)
 	ec_free(item->start);
 	ec_free(item->completion);
 	ec_free(item->display);
-	ec_keyval_free(item->attrs);
+	ec_dict_free(item->attrs);
 	ec_free(item);
 }
 
@@ -481,7 +481,7 @@ static void ec_comp_group_free(struct ec_comp_group *grp)
 		ec_comp_item_free(item);
 	}
 	ec_parse_free(ec_parse_get_root(grp->state));
-	ec_keyval_free(grp->attrs);
+	ec_dict_free(grp->attrs);
 	ec_free(grp);
 }
 
@@ -497,7 +497,7 @@ void ec_comp_free(struct ec_comp *comp)
 		TAILQ_REMOVE(&comp->groups, grp, next);
 		ec_comp_group_free(grp);
 	}
-	ec_keyval_free(comp->attrs);
+	ec_dict_free(comp->attrs);
 	ec_free(comp);
 }
 

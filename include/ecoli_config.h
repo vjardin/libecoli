@@ -16,7 +16,7 @@
 #endif
 
 struct ec_config;
-struct ec_keyval;
+struct ec_dict;
 
 /**
  * The type identifier for a config value.
@@ -66,7 +66,7 @@ struct ec_config {
 		uint64_t u64;   /** Unsigned integer value */
 		char *string;   /** String value */
 		struct ec_node *node;       /** Node value */
-		struct ec_keyval *dict;     /** Hash table value */
+		struct ec_dict *dict;     /** Hash table value */
 		struct ec_config_list list; /** List value */
 	};
 

@@ -11,7 +11,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
@@ -47,7 +47,7 @@ ec_node_dynamic_parse(const struct ec_node *gen_node,
 	/* add the node pointer in the attributes, so it will be freed
 	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_keyval_set(ec_parse_get_attrs(parse), key, child,
+	ret = ec_dict_set(ec_parse_get_attrs(parse), key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */
@@ -81,7 +81,7 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	/* add the node pointer in the attributes, so it will be freed
 	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_keyval_set(comp->attrs, key, child,
+	ret = ec_dict_set(comp->attrs, key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */

@@ -12,7 +12,7 @@
 #include <ecoli_assert.h>
 #include <ecoli_malloc.h>
 #include <ecoli_strvec.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_node.h>
@@ -31,7 +31,7 @@ struct ec_parse {
 	struct ec_parse *parent;
 	const struct ec_node *node;
 	struct ec_strvec *strvec;
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 };
 
 static int __ec_node_parse_child(const struct ec_node *node,
@@ -149,7 +149,7 @@ struct ec_parse *ec_parse(const struct ec_node *node)
 	TAILQ_INIT(&parse->children);
 
 	parse->node = node;
-	parse->attrs = ec_keyval();
+	parse->attrs = ec_dict();
 	if (parse->attrs == NULL)
 		goto fail;
 
@@ -157,7 +157,7 @@ struct ec_parse *ec_parse(const struct ec_node *node)
 
  fail:
 	if (parse != NULL)
-		ec_keyval_free(parse->attrs);
+		ec_dict_free(parse->attrs);
 	ec_free(parse);
 
 	return NULL;
@@ -169,7 +169,7 @@ __ec_parse_dup(const struct ec_parse *root, const struct ec_parse *ref,
 {
 	struct ec_parse *dup = NULL;
 	struct ec_parse *child, *dup_child;
-	struct ec_keyval *attrs = NULL;
+	struct ec_dict *attrs = NULL;
 
 	if (root == NULL)
 		return NULL;
@@ -181,10 +181,10 @@ __ec_parse_dup(const struct ec_parse *root, const struct ec_parse *ref,
 	if (root == ref)
 		*new_ref = dup;
 
-	attrs = ec_keyval_dup(root->attrs);
+	attrs = ec_dict_dup(root->attrs);
 	if (attrs == NULL)
 		goto fail;
-	ec_keyval_free(dup->attrs);
+	ec_dict_free(dup->attrs);
 	dup->attrs = attrs;
 
 	if (root->strvec != NULL) {
@@ -246,7 +246,7 @@ void ec_parse_free(struct ec_parse *parse)
 
 	ec_parse_free_children(parse);
 	ec_strvec_free(parse->strvec);
-	ec_keyval_free(parse->attrs);
+	ec_dict_free(parse->attrs);
 	ec_free(parse);
 }
 
@@ -416,7 +416,7 @@ struct ec_parse *ec_parse_find(struct ec_parse *parse,
 	return ec_parse_find_next(parse, NULL, id, 1);
 }
 
-struct ec_keyval *
+struct ec_dict *
 ec_parse_get_attrs(struct ec_parse *parse)
 {
 	if (parse == NULL)
@@ -497,7 +497,7 @@ static int ec_parse_testcase(void)
 	testres |= EC_TEST_CHECK(
 		ec_parse_len(p) == 1, "bad parse len\n");
 
-	ret = ec_keyval_set(ec_parse_get_attrs(p), "key", "val", NULL);
+	ret = ec_dict_set(ec_parse_get_attrs(p), "key", "val", NULL);
 	testres |= EC_TEST_CHECK(ret == 0,
 		"cannot set parse attribute\n");
 

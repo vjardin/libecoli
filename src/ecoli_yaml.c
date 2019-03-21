@@ -13,7 +13,7 @@
 #include <yaml.h>
 
 #include <ecoli_malloc.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node.h>
 #include <ecoli_config.h>
 #include <ecoli_yaml.h>
@@ -466,7 +466,7 @@ parse_ec_node(struct enode_table *table,
 	config = NULL; /* freed */
 
 	if (help != NULL) {
-		if (ec_keyval_set(ec_node_attrs(enode), "help", help,
+		if (ec_dict_set(ec_node_attrs(enode), "help", help,
 					ec_free_func) < 0) {
 			fprintf(stderr, "Failed to set help\n");
 			help = NULL;
@@ -486,7 +486,7 @@ parse_ec_node(struct enode_table *table,
 			value_dup = ec_strdup(value_str);
 			if (value_dup == NULL)
 				goto fail;
-			if (ec_keyval_set(ec_node_attrs(enode), key_str,
+			if (ec_dict_set(ec_node_attrs(enode), key_str,
 						value_dup, ec_free_func) < 0) {
 				value_dup = NULL;
 				goto fail;

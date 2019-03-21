@@ -166,7 +166,7 @@ const char *ec_strvec_val(const struct ec_strvec *strvec, size_t idx);
  *   The read-only attributes (dictionnary) of the string at specified
  *   index, or NULL if there is no attribute.
  */
-const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
+const struct ec_dict *ec_strvec_get_attrs(const struct ec_strvec *strvec,
 	size_t idx);
 
 /**
@@ -183,7 +183,7 @@ const struct ec_keyval *ec_strvec_get_attrs(const struct ec_strvec *strvec,
  *   are freed and must not be used by the caller.
  */
 int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
-			struct ec_keyval *attrs);
+			struct ec_dict *attrs);
 
 /**
  * Compare two string vectors

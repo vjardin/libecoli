@@ -12,7 +12,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_string.h>
 #include <ecoli_strvec.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_log.h>
 #include <ecoli_config.h>
 #include <ecoli_test.h>
@@ -90,7 +90,7 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
 	if (ec_asprintf(&node->desc, "<%s>", type->name) < 0)
 		goto fail;
 
-	node->attrs = ec_keyval();
+	node->attrs = ec_dict();
 	if (node->attrs == NULL)
 		goto fail;
 
@@ -103,7 +103,7 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
 
  fail:
 	if (node != NULL) {
-		ec_keyval_free(node->attrs);
+		ec_dict_free(node->attrs);
 		ec_free(node->desc);
 		ec_free(node->id);
 	}
@@ -245,7 +245,7 @@ void ec_node_free(struct ec_node *node)
 			node->type->free_priv(node);
 		ec_free(node->id);
 		ec_free(node->desc);
-		ec_keyval_free(node->attrs);
+		ec_dict_free(node->attrs);
 	}
 
 	node->refcnt--;
@@ -340,7 +340,7 @@ const struct ec_node_type *ec_node_type(const struct ec_node *node)
 	return node->type;
 }
 
-struct ec_keyval *ec_node_attrs(const struct ec_node *node)
+struct ec_dict *ec_node_attrs(const struct ec_node *node)
 {
 	return node->attrs;
 }
@@ -351,7 +351,7 @@ const char *ec_node_id(const struct ec_node *node)
 }
 
 static void __ec_node_dump(FILE *out,
-	const struct ec_node *node, size_t indent, struct ec_keyval *dict)
+	const struct ec_node *node, size_t indent, struct ec_dict *dict)
 {
 	const char *id, *typename;
 	struct ec_node *child;
@@ -364,13 +364,13 @@ static void __ec_node_dump(FILE *out,
 	typename = node->type->name;
 
 	snprintf(buf, sizeof(buf), "%p", node);
-	if (ec_keyval_has_key(dict, buf)) {
+	if (ec_dict_has_key(dict, buf)) {
 		fprintf(out, "%*s" "type=%s id=%s %p... (loop)\n",
 			(int)indent * 4, "", typename, id, node);
 		return;
 	}
 
-	ec_keyval_set(dict, buf, NULL, NULL);
+	ec_dict_set(dict, buf, NULL, NULL);
 	fprintf(out, "%*s" "type=%s id=%s %p refs=%u free_state=%d free_refs=%d\n",
 		(int)indent * 4, "", typename, id, node, node->refcnt,
 		node->free.state, node->free.refcnt);
@@ -386,7 +386,7 @@ static void __ec_node_dump(FILE *out,
 /* XXX this is too much debug-oriented, we should have a parameter or 2 funcs */
 void ec_node_dump(FILE *out, const struct ec_node *node)
 {
-	struct ec_keyval *dict = NULL;
+	struct ec_dict *dict = NULL;
 
 	fprintf(out, "------------------- node dump:\n");
 
@@ -395,17 +395,17 @@ void ec_node_dump(FILE *out, const struct ec_node *node)
 		return;
 	}
 
-	dict = ec_keyval();
+	dict = ec_dict();
 	if (dict == NULL)
 		goto fail;
 
 	__ec_node_dump(out, node, 0, dict);
 
-	ec_keyval_free(dict);
+	ec_dict_free(dict);
 	return;
 
 fail:
-	ec_keyval_free(dict);
+	ec_dict_free(dict);
 	EC_LOG(EC_LOG_ERR, "failed to dump node\n");
 }
 
@@ -507,7 +507,7 @@ static int ec_node_testcase(void)
 	testres |= EC_TEST_CHECK(child == NULL,
 		"child with wrong id should be NULL");
 
-	ret = ec_keyval_set(ec_node_attrs(node), "key", "val", NULL);
+	ret = ec_dict_set(ec_node_attrs(node), "key", "val", NULL);
 	testres |= EC_TEST_CHECK(ret == 0,
 		"cannot set node attribute\n");
 

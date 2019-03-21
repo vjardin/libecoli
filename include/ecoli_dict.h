@@ -15,10 +15,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef void (*ec_keyval_elt_free_t)(void *);
+typedef void (*ec_dict_elt_free_t)(void *);
 
-struct ec_keyval;
-struct ec_keyval_elt_ref;
+struct ec_dict;
+struct ec_dict_elt_ref;
 
 /**
  * Create a hash table.
@@ -26,12 +26,12 @@ struct ec_keyval_elt_ref;
  * @return
  *   The hash table, or NULL on error (errno is set).
  */
-struct ec_keyval *ec_keyval(void);
+struct ec_dict *ec_dict(void);
 
 /**
  * Get a value from the hash table.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @param key
  *   The key string.
@@ -39,36 +39,36 @@ struct ec_keyval *ec_keyval(void);
  *   The element if it is found, or NULL on error (errno is set).
  *   In case of success but the element is NULL, errno is set to 0.
  */
-void *ec_keyval_get(const struct ec_keyval *keyval, const char *key);
+void *ec_dict_get(const struct ec_dict *dict, const char *key);
 
 /**
  * Check if the hash table contains this key.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @param key
  *   The key string.
  * @return
  *   true if it contains the key, else false.
  */
-bool ec_keyval_has_key(const struct ec_keyval *keyval, const char *key);
+bool ec_dict_has_key(const struct ec_dict *dict, const char *key);
 
 /**
  * Delete an object from the hash table.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @param key
  *   The key string.
  * @return
  *   0 on success, or -1 on error (errno is set).
  */
-int ec_keyval_del(struct ec_keyval *keyval, const char *key);
+int ec_dict_del(struct ec_dict *dict, const char *key);
 
 /**
  * Add/replace an object in the hash table.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @param key
  *   The key string.
@@ -76,31 +76,31 @@ int ec_keyval_del(struct ec_keyval *keyval, const char *key);
  *   The pointer to be saved in the hash table.
  * @param free_cb
  *   An optional pointer to a destructor function called when an
- *   object is destroyed (ec_keyval_del() or ec_keyval_free()).
+ *   object is destroyed (ec_dict_del() or ec_dict_free()).
  * @return
  *   0 on success, or -1 on error (errno is set).
  *   On error, the passed value is freed (free_cb(val) is called).
  */
-int ec_keyval_set(struct ec_keyval *keyval, const char *key, void *val,
-	ec_keyval_elt_free_t free_cb);
+int ec_dict_set(struct ec_dict *dict, const char *key, void *val,
+	ec_dict_elt_free_t free_cb);
 
 /**
  * Free a hash table an all its objects.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  */
-void ec_keyval_free(struct ec_keyval *keyval);
+void ec_dict_free(struct ec_dict *dict);
 
 /**
  * Get the length of a hash table.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @return
  *   The length of the hash table.
  */
-size_t ec_keyval_len(const struct ec_keyval *keyval);
+size_t ec_dict_len(const struct ec_dict *dict);
 
 /**
  * Duplicate a hash table
@@ -109,22 +109,22 @@ size_t ec_keyval_len(const struct ec_keyval *keyval);
  * hash tables so that the objects are freed only when
  * the last reference is destroyed.
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @return
  *   The duplicated hash table, or NULL on error (errno is set).
  */
-struct ec_keyval *ec_keyval_dup(const struct ec_keyval *keyval);
+struct ec_dict *ec_dict_dup(const struct ec_dict *dict);
 
 /**
  * Dump a hash table.
  *
  * @param out
  *   The stream where the dump is sent.
- * @param keyval
+ * @param dict
  *   The hash table.
  */
-void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval);
+void ec_dict_dump(FILE *out, const struct ec_dict *dict);
 
 /**
  * Iterate the elements in the hash table.
@@ -132,21 +132,21 @@ void ec_keyval_dump(FILE *out, const struct ec_keyval *keyval);
  * The typical usage is as below:
  *
  *	// dump elements
- *	for (iter = ec_keyval_iter(keyval);
+ *	for (iter = ec_dict_iter(dict);
  *	     iter != NULL;
- *	     iter = ec_keyval_iter_next(iter)) {
+ *	     iter = ec_dict_iter_next(iter)) {
  *		printf("  %s: %p\n",
- *			ec_keyval_iter_get_key(iter),
- *			ec_keyval_iter_get_val(iter));
+ *			ec_dict_iter_get_key(iter),
+ *			ec_dict_iter_get_val(iter));
  *	}
  *
- * @param keyval
+ * @param dict
  *   The hash table.
  * @return
  *   An iterator element, or NULL if the dict is empty.
  */
-struct ec_keyval_elt_ref *
-ec_keyval_iter(const struct ec_keyval *keyval);
+struct ec_dict_elt_ref *
+ec_dict_iter(const struct ec_dict *dict);
 
 /**
  * Make the iterator point to the next element in the hash table.
@@ -156,8 +156,8 @@ ec_keyval_iter(const struct ec_keyval *keyval);
  * @return
  *   An iterator element, or NULL there is no more element.
  */
-struct ec_keyval_elt_ref *
-ec_keyval_iter_next(struct ec_keyval_elt_ref *iter);
+struct ec_dict_elt_ref *
+ec_dict_iter_next(struct ec_dict_elt_ref *iter);
 
 /**
  * Get the key of the current element.
@@ -169,7 +169,7 @@ ec_keyval_iter_next(struct ec_keyval_elt_ref *iter);
  *   invalid element.
  */
 const char *
-ec_keyval_iter_get_key(const struct ec_keyval_elt_ref *iter);
+ec_dict_iter_get_key(const struct ec_dict_elt_ref *iter);
 
 /**
  * Get the value of the current element.
@@ -181,7 +181,7 @@ ec_keyval_iter_get_key(const struct ec_keyval_elt_ref *iter);
  *   invalid element.
  */
 void *
-ec_keyval_iter_get_val(const struct ec_keyval_elt_ref *iter);
+ec_dict_iter_get_val(const struct ec_dict_elt_ref *iter);
 
 
 #endif

@@ -12,7 +12,7 @@
 #include <ecoli_malloc.h>
 #include <ecoli_string.h>
 #include <ecoli_editline.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
@@ -397,7 +397,7 @@ static int get_node_help(const struct ec_comp_item *item,
 	     state = ec_parse_get_parent(state)) {
 		node = ec_parse_get_node(state);
 		if (node_help == NULL)
-			node_help = ec_keyval_get(ec_node_attrs(node), "help");
+			node_help = ec_dict_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
 			node_desc = ec_node_desc(node);
 	}

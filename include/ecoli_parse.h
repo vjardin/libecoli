@@ -197,7 +197,7 @@ void ec_parse_del_last_child(struct ec_parse *parse);
  *
  *
  */
-struct ec_keyval *ec_parse_get_attrs(struct ec_parse *parse);
+struct ec_dict *ec_parse_get_attrs(struct ec_parse *parse);
 
 /**
  *

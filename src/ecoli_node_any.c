@@ -14,7 +14,7 @@
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_config.h>
 #include <ecoli_node_any.h>
 
@@ -30,7 +30,7 @@ static int ec_node_any_parse(const struct ec_node *gen_node,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_any *node = (struct ec_node_any *)gen_node;
-	const struct ec_keyval *attrs;
+	const struct ec_dict *attrs;
 
 	(void)state;
 
@@ -38,7 +38,7 @@ static int ec_node_any_parse(const struct ec_node *gen_node,
 		return EC_PARSE_NOMATCH;
 	if (node->attr_name != NULL) {
 		attrs = ec_strvec_get_attrs(strvec, 0);
-		if (attrs == NULL || !ec_keyval_has_key(attrs, node->attr_name))
+		if (attrs == NULL || !ec_dict_has_key(attrs, node->attr_name))
 			return EC_PARSE_NOMATCH;
 	}
 

@@ -15,7 +15,7 @@
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_space.h>
@@ -118,7 +118,7 @@ static char *get_node_help(const struct ec_comp_item *item)
 	     state = ec_parse_get_parent(state)) {
 		node = ec_parse_get_node(state);
 		if (node_help == NULL)
-			node_help = ec_keyval_get(ec_node_attrs(node), "help");
+			node_help = ec_dict_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
 			node_desc = ec_node_desc(node);
 	}
@@ -244,13 +244,13 @@ static int create_commands(void)
 	);
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_node_attrs(cmd), "help",
+	ec_dict_set(ec_node_attrs(cmd), "help",
 		"say hello to someone several times", NULL);
-	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "john")),
+	ec_dict_set(ec_node_attrs(ec_node_find(cmd, "john")),
 		"help", "specific help for john", NULL);
-	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")),
+	ec_dict_set(ec_node_attrs(ec_node_find(cmd, "name")),
 		"help", "the name of the person", NULL);
-	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "int")),
+	ec_dict_set(ec_node_attrs(ec_node_find(cmd, "int")),
 		"help", "an integer (0-10)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
@@ -261,11 +261,11 @@ static int create_commands(void)
 			ec_node_int("count", 0, 10, 10));
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_node_attrs(cmd), "help",
+	ec_dict_set(ec_node_attrs(cmd), "help",
 		"say good morning to someone several times", NULL);
-	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "name")), "help",
+	ec_dict_set(ec_node_attrs(ec_node_find(cmd, "name")), "help",
 		"the person to greet", NULL);
-	ec_keyval_set(ec_node_attrs(ec_node_find(cmd, "count")), "help",
+	ec_dict_set(ec_node_attrs(ec_node_find(cmd, "count")), "help",
 		"how many times to greet (0-10)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
@@ -275,7 +275,7 @@ static int create_commands(void)
 			"buy potatoes,carrots,pumpkins");
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_node_attrs(cmd), "help",
+	ec_dict_set(ec_node_attrs(cmd), "help",
 		"buy some vegetables", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
@@ -292,7 +292,7 @@ static int create_commands(void)
 			1, 0));
 	if (cmd == NULL)
 		goto fail;
-	ec_keyval_set(ec_node_attrs(cmd), "help",
+	ec_dict_set(ec_node_attrs(cmd), "help",
 		"eat vegetables (take some more potatoes)", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
@@ -301,7 +301,7 @@ static int create_commands(void)
 	cmd = EC_NODE_SEQ(EC_NO_ID,
 		ec_node_str(EC_NO_ID, "bye")
 	);
-	ec_keyval_set(ec_node_attrs(cmd), "help", "say bye", NULL);
+	ec_dict_set(ec_node_attrs(cmd), "help", "say bye", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 
@@ -310,7 +310,7 @@ static int create_commands(void)
 		ec_node_str(EC_NO_ID, "load"),
 		ec_node("file", EC_NO_ID)
 	);
-	ec_keyval_set(ec_node_attrs(cmd), "help", "load a file", NULL);
+	ec_dict_set(ec_node_attrs(cmd), "help", "load a file", NULL);
 	if (ec_node_or_add(cmdlist, cmd) < 0)
 		goto fail;
 

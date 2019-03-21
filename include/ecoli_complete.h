@@ -36,7 +36,7 @@ struct ec_comp_group {
 	const struct ec_node *node;
 	struct ec_comp_item_list items;
 	struct ec_parse *state;
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 };
 
 TAILQ_HEAD(ec_comp_group_list, ec_comp_group);
@@ -49,7 +49,7 @@ struct ec_comp {
 	struct ec_parse *cur_state;
 	struct ec_comp_group *cur_group;
 	struct ec_comp_group_list groups;
-	struct ec_keyval *attrs;
+	struct ec_dict *attrs;
 };
 
 /*

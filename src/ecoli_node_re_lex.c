@@ -13,7 +13,7 @@
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
-#include <ecoli_keyval.h>
+#include <ecoli_dict.h>
 #include <ecoli_node.h>
 #include <ecoli_complete.h>
 #include <ecoli_parse.h>
@@ -44,7 +44,7 @@ static struct ec_strvec *
 tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 {
 	struct ec_strvec *strvec = NULL;
-	struct ec_keyval *attrs = NULL;
+	struct ec_dict *attrs = NULL;
 	char *dup = NULL;
 	char c;
 	size_t len, off = 0;
@@ -81,10 +81,10 @@ tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 				goto fail;
 
 			if (table[i].attr_name != NULL) {
-				attrs = ec_keyval();
+				attrs = ec_dict();
 				if (attrs == NULL)
 					goto fail;
-				if (ec_keyval_set(attrs, table[i].attr_name,
+				if (ec_dict_set(attrs, table[i].attr_name,
 						NULL, NULL) < 0)
 					goto fail;
 				if (ec_strvec_set_attrs(strvec,
