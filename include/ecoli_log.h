@@ -16,6 +16,7 @@
 #define ECOLI_LOG_
 
 #include <stdarg.h>
+#include <syslog.h>
 
 #include <ecoli_assert.h>
 
