@@ -160,7 +160,7 @@ struct ec_dict_elt_ref *
 ec_dict_iter_next(struct ec_dict_elt_ref *iter);
 
 /**
- * Get the key of the current element.
+ * Get a pointer to the key of the current element.
  *
  * @param iter
  *   The hash table iterator.
