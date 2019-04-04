@@ -15,7 +15,7 @@ libecoli_sources = [
 	'ecoli_node.c',
 	'ecoli_node_bypass.c',
 	'ecoli_node_cmd.c',
-#	'ecoli_node_cond.c',
+	'ecoli_node_cond.c',
 	'ecoli_node_dynamic.c',
 	'ecoli_node_empty.c',
 	'ecoli_node_expr.c',

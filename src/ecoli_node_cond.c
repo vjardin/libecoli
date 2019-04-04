@@ -1,0 +1,854 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2019, Olivier MATZ <zer0@droids-corp.org>
+ */
+
+#include <sys/queue.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <limits.h>
+
+#include <ecoli_init.h>
+#include <ecoli_malloc.h>
+#include <ecoli_log.h>
+#include <ecoli_test.h>
+#include <ecoli_strvec.h>
+#include <ecoli_node.h>
+#include <ecoli_config.h>
+#include <ecoli_dict.h>
+#include <ecoli_htable.h>
+#include <ecoli_parse.h>
+#include <ecoli_complete.h>
+#include <ecoli_node_str.h>
+#include <ecoli_node_re.h>
+#include <ecoli_node_many.h>
+#include <ecoli_node_subset.h>
+#include <ecoli_node_seq.h>
+#include <ecoli_node_or.h>
+#include <ecoli_node_option.h>
+#include <ecoli_node_any.h>
+#include <ecoli_node_many.h>
+#include <ecoli_node_bypass.h>
+#include <ecoli_node_re_lex.h>
+#include <ecoli_node_cond.h>
+
+EC_LOG_TYPE_REGISTER(node_cond);
+
+static struct ec_node *ec_node_cond_parser; /* the expression parser. */
+static struct ec_dict *ec_node_cond_functions; /* functions dictionary */
+
+struct ec_node_cond {
+	struct ec_node gen;
+	char *cond_str;                /* the condition string. */
+	struct ec_parse *parsed_cond;  /* the parsed condition. */
+	struct ec_node *child;         /* the child node. */
+};
+
+enum cond_result_type {
+	NODESET,
+	BOOLEAN,
+	INT,
+	STR,
+};
+
+/*
+  compare(eq|ne|gt|lt|ge|le, x, y)
+  find(nodeset, id)
+  count(nodeset)
+
+  find by attrs? get_attr ?
+*/
+
+struct cond_result {
+	enum cond_result_type type;
+	union {
+		struct ec_htable *htable;
+		char *str;
+		int64_t int64;
+		bool boolean;
+	};
+};
+
+typedef struct cond_result *(cond_func_t)(
+	const struct ec_parse *state,
+	struct cond_result **in, size_t in_len);
+
+void cond_result_free(struct cond_result *res)
+{
+	if (res == NULL)
+		return;
+
+	switch (res->type) {
+	case NODESET:
+		ec_htable_free(res->htable);
+		break;
+	case STR:
+		ec_free(res->str);
+		break;
+	case BOOLEAN:
+	case INT:
+		break;
+	}
+
+	ec_free(res);
+}
+
+void cond_result_table_free(struct cond_result **table, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; i++) {
+		cond_result_free(table[i]);
+		table[i] = NULL;
+	}
+	ec_free(table);
+}
+
+static struct ec_node *
+ec_node_cond_build_parser(void)
+{
+	struct ec_node *lex = NULL;
+	struct ec_node *expr = NULL;
+	int ret;
+
+	expr = ec_node("or", "id_arg");
+	if (expr == NULL)
+		goto fail;
+
+	if (ec_node_or_add(expr,
+		EC_NODE_SEQ("id_function",
+			ec_node_any("id_function_name", "a_identifier"),
+			ec_node_any(EC_NO_ID, "a_open"),
+			ec_node_option("id_arg_list",
+				EC_NODE_SEQ(EC_NO_ID,
+					ec_node_clone(expr),
+					ec_node_many(EC_NO_ID,
+						EC_NODE_SEQ(EC_NO_ID,
+							ec_node_str(EC_NO_ID,
+								","),
+							ec_node_clone(expr)),
+					0, 0))),
+			ec_node_any(EC_NO_ID, "a_close"))) < 0)
+		goto fail;
+
+	if (ec_node_or_add(expr,
+			ec_node_any("id_value", "a_identifier")) < 0)
+		goto fail;
+
+	/* prepend a lexer to the expression node */
+	lex = ec_node_re_lex(EC_NO_ID, ec_node_clone(expr));
+	if (lex == NULL)
+		goto fail;
+
+	ec_node_free(expr);
+	expr = NULL;
+
+	ret = ec_node_re_lex_add(lex, "[_a-zA-Z][._a-zA-Z0-9]*", 1,
+				"a_identifier");
+	if (ret < 0)
+		goto fail;
+	ret = ec_node_re_lex_add(lex, "\\(", 1, "a_open");
+	if (ret < 0)
+		goto fail;
+	ret = ec_node_re_lex_add(lex, "\\)", 1, "a_close");
+	if (ret < 0)
+		goto fail;
+	ret = ec_node_re_lex_add(lex, ",", 1, NULL);
+	if (ret < 0)
+		goto fail;
+	ret = ec_node_re_lex_add(lex, "[ 	]", 0, NULL);
+	if (ret < 0)
+		goto fail;
+
+	return lex;
+
+fail:
+	ec_node_free(lex);
+	ec_node_free(expr);
+
+	return NULL;
+}
+
+static struct ec_parse *
+ec_node_cond_build(const char *cond_str)
+{
+	struct ec_parse *p = NULL;
+
+	/* parse the condition expression */
+	p = ec_node_parse(ec_node_cond_parser, cond_str);
+	if (p == NULL)
+		goto fail;
+
+	if (!ec_parse_matches(p)) {
+		errno = EINVAL;
+		goto fail;
+	}
+	if (!ec_parse_has_child(p)) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	return p;
+
+fail:
+	ec_parse_free(p);
+	return NULL;
+}
+
+static struct cond_result *
+eval_root(const struct ec_parse *state, struct cond_result **in, size_t in_len)
+{
+	struct cond_result *out = NULL;
+	const struct ec_parse *root = NULL;
+
+	(void)in;
+
+	if (in_len != 0) {
+		EC_LOG(LOG_ERR, "root() does not take any argument\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = NODESET;
+	out->htable = ec_htable();
+	if (out->htable == NULL)
+		goto fail;
+
+	root = ec_parse_get_root(state);
+	if (ec_htable_set(out->htable, &root, sizeof(root), NULL, NULL) < 0)
+		goto fail;
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_current(const struct ec_parse *state, struct cond_result **in,
+	size_t in_len)
+{
+	struct cond_result *out = NULL;
+
+	(void)in;
+
+	if (in_len != 0) {
+		EC_LOG(LOG_ERR, "current() does not take any argument\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = NODESET;
+	out->htable = ec_htable();
+	if (out->htable == NULL)
+		goto fail;
+
+	if (ec_htable_set(out->htable, &state, sizeof(state), NULL, NULL) < 0)
+		goto fail;
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static bool
+boolean_value(const struct cond_result *res)
+{
+	switch (res->type) {
+	case NODESET:
+		return (ec_htable_len(res->htable) > 0);
+	case BOOLEAN:
+		return res->boolean;
+	case INT:
+		return (res->int64 != 0);
+	case STR:
+		return (res->str[0] != 0);
+	}
+
+	return false;
+}
+
+static struct cond_result *
+eval_bool(const struct ec_parse *state, struct cond_result **in, size_t in_len)
+{
+	struct cond_result *out = NULL;
+
+	(void)state;
+
+	if (in_len != 1) {
+		EC_LOG(LOG_ERR, "bool() takes one argument.\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = BOOLEAN;
+	out->boolean = boolean_value(in[0]);
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_or(const struct ec_parse *state, struct cond_result **in, size_t in_len)
+{
+	struct cond_result *out = NULL;
+	size_t i;
+
+	(void)state;
+
+	if (in_len < 2) {
+		EC_LOG(LOG_ERR, "or() takes at least two arguments\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	/* return the first true element, or the last one */
+	for (i = 0; i < in_len; i++) {
+		if (boolean_value(in[i]))
+			break;
+	}
+	if (i == in_len)
+		i--;
+
+	out = in[i];
+	in[i] = NULL;
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_and(const struct ec_parse *state, struct cond_result **in, size_t in_len)
+{
+	struct cond_result *out = NULL;
+	size_t i;
+
+	(void)state;
+
+	if (in_len < 2) {
+		EC_LOG(LOG_ERR, "or() takes at least two arguments\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	/* return the first false element, or the last one */
+	for (i = 0; i < in_len; i++) {
+		if (!boolean_value(in[i]))
+			break;
+	}
+	if (i == in_len)
+		i--;
+
+	out = in[i];
+	in[i] = NULL;
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_first_child(const struct ec_parse *state, struct cond_result **in,
+	size_t in_len)
+{
+	struct cond_result *out = NULL;
+	struct ec_htable_elt_ref *iter;
+	const struct ec_parse * const *pparse;
+	struct ec_parse *parse;
+
+	(void)state;
+
+	if (in_len != 1 || in[0]->type != NODESET) {
+		EC_LOG(LOG_ERR, "first_child() takes one argument of type nodeset.\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = NODESET;
+	out->htable = ec_htable();
+	if (out->htable == NULL)
+		goto fail;
+
+	for (iter = ec_htable_iter(in[0]->htable);
+	     iter != NULL; iter = ec_htable_iter_next(iter)) {
+		pparse = ec_htable_iter_get_key(iter);
+		parse = ec_parse_get_first_child(*pparse);
+		if (parse == NULL)
+			continue;
+		if (ec_htable_set(out->htable, &parse, sizeof(parse), NULL,
+					NULL) < 0)
+			goto fail;
+	}
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_find(const struct ec_parse *state, struct cond_result **in,
+	size_t in_len)
+{
+	struct cond_result *out = NULL;
+	struct ec_htable_elt_ref *iter;
+	struct ec_parse * const *pparse;
+	struct ec_parse *parse;
+	const char *id;
+
+	(void)state;
+
+	if (in_len != 2 || in[0]->type != NODESET || in[1]->type != STR) {
+		EC_LOG(LOG_ERR, "find() takes two arguments (nodeset, str).\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = NODESET;
+	out->htable = ec_htable();
+	if (out->htable == NULL)
+		goto fail;
+
+	id = in[1]->str;
+	for (iter = ec_htable_iter(in[0]->htable);
+	     iter != NULL; iter = ec_htable_iter_next(iter)) {
+		pparse = ec_htable_iter_get_key(iter);
+		parse = ec_parse_find(*pparse, id);
+		while (parse != NULL) {
+			if (ec_htable_set(out->htable, &parse,
+						sizeof(parse), NULL,
+						NULL) < 0)
+				goto fail;
+			parse = ec_parse_find_next(*pparse, parse, id, 1);
+		}
+	}
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_func(const char *name, const struct ec_parse *state,
+	struct cond_result **in, size_t in_len)
+{
+	cond_func_t *f;
+
+	f = ec_dict_get(ec_node_cond_functions, name);
+	if (f == NULL) {
+		EC_LOG(LOG_ERR, "No such function <%s>\n",
+			name);
+		errno = ENOENT;
+		cond_result_table_free(in, in_len);
+		return NULL;
+	}
+
+	return f(state, in, in_len);
+}
+
+
+static struct cond_result *
+eval_condition(const struct ec_parse *cond, const struct ec_parse *state)
+{
+	const struct ec_parse *iter;
+	struct cond_result *res = NULL;
+	struct cond_result **args = NULL;
+	const struct ec_parse *func = NULL, *func_name = NULL, *arg_list = NULL;
+	const struct ec_parse *value = NULL;
+	const char *id;
+	size_t n_arg = 0;
+
+	// XXX fix cast (x3)
+	func = ec_parse_find((void *)cond, "id_function");
+	value = ec_parse_find((void *)cond, "id_value");
+	if (func != NULL) {
+		EC_PARSE_FOREACH_CHILD(iter, func) {
+			id = ec_node_id(ec_parse_get_node(iter));
+			if (!strcmp(id, "id_function_name"))
+				func_name = iter;
+			if (!strcmp(id, "id_arg_list"))
+				arg_list = iter;
+		}
+
+		iter = ec_parse_find((void *)arg_list, "id_arg");
+		while (iter != NULL) {
+			args = ec_realloc(args, (n_arg + 1) * sizeof(*args));
+			args[n_arg] = eval_condition(iter, state);
+			if (args[n_arg] == NULL)
+				goto fail;
+			n_arg++;
+			iter = ec_parse_find_next((void *)arg_list,
+						(void *)iter, "id_arg", 0);
+		}
+
+		res = eval_func(ec_strvec_val(ec_parse_strvec(func_name), 0),
+				state, args, n_arg);
+		printf("%s(%p[%zd]) -> %p\n", ec_strvec_val(ec_parse_strvec(func_name), 0),
+			args, n_arg, res);
+		args = NULL;
+	} else if (value != NULL) {
+		printf("%s\n", ec_strvec_val(ec_parse_strvec(value), 0));
+		res = ec_malloc(sizeof(*res));
+		if (res == NULL)
+			goto fail;
+		res->type = STR;
+		res->str = ec_strdup(ec_strvec_val(ec_parse_strvec(value), 0));
+		if (res->str == NULL)
+			goto fail;
+	} else {
+		goto fail;
+	}
+
+	return res;
+
+fail:
+	cond_result_free(res);
+	cond_result_table_free(args, n_arg);
+	return NULL;
+}
+
+static int
+validate_condition(const struct ec_parse *cond, const struct ec_parse *state)
+{
+	struct cond_result *res;
+	int ret;
+
+	res = eval_condition(cond, state);
+	if (res == NULL)
+		return -1;
+
+	ret = boolean_value(res);
+	cond_result_free(res);
+
+	return ret;
+}
+
+static int
+ec_node_cond_parse(const struct ec_node *gen_node, struct ec_parse *state,
+		const struct ec_strvec *strvec)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	int ret;
+
+	ret = validate_condition(node->parsed_cond, state);
+	if (ret < 0)
+		return ret;
+
+	if (ret == 0)
+		return EC_PARSE_NOMATCH;
+
+	return ec_node_parse_child(node->child, state, strvec);
+}
+
+static int
+ec_node_cond_complete(const struct ec_node *gen_node,
+		struct ec_comp *comp,
+		const struct ec_strvec *strvec)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+
+	// XXX eval condition
+	// XXX before or after completing ? configurable ?
+
+	return ec_node_complete_child(node->child, comp, strvec);
+}
+
+static void ec_node_cond_free_priv(struct ec_node *gen_node)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+
+	ec_free(node->cond_str);
+	node->cond_str = NULL;
+	ec_parse_free(node->parsed_cond);
+	node->parsed_cond = NULL;
+	ec_node_free(node->child);
+}
+
+static const struct ec_config_schema ec_node_cond_schema[] = {
+	{
+		.key = "expr",
+		.desc = "XXX",
+		.type = EC_CONFIG_TYPE_STRING,
+	},
+	{
+		.key = "child",
+		.desc = "The child node.",
+		.type = EC_CONFIG_TYPE_NODE,
+	},
+	{
+		.type = EC_CONFIG_TYPE_NONE,
+	},
+};
+
+static int ec_node_cond_set_config(struct ec_node *gen_node,
+				const struct ec_config *config)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	const struct ec_config *cond = NULL;
+	struct ec_parse *parsed_cond = NULL;
+	const struct ec_config *child;
+	char *cond_str = NULL;
+
+	cond = ec_config_dict_get(config, "expr");
+	if (cond == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	cond_str = ec_strdup(cond->string);
+	if (cond_str == NULL)
+		goto fail;
+
+	child = ec_config_dict_get(config, "child");
+	if (child == NULL)
+		goto fail;
+
+	/* parse expression to build the cmd child node */
+	parsed_cond = ec_node_cond_build(cond_str);
+	if (parsed_cond == NULL)
+		goto fail;
+
+	/* ok, store the config */
+	ec_parse_free(node->parsed_cond);
+	node->parsed_cond = parsed_cond;
+	ec_free(node->cond_str);
+	node->cond_str = cond_str;
+	ec_node_free(node->child);
+	node->child = ec_node_clone(child->node);
+
+	return 0;
+
+fail:
+	ec_parse_free(parsed_cond);
+	ec_free(cond_str);
+	return -1;
+}
+
+static size_t
+ec_node_cond_get_children_count(const struct ec_node *gen_node)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+
+	if (node->child == NULL)
+		return 0;
+	return 1;
+}
+
+static int
+ec_node_cond_get_child(const struct ec_node *gen_node, size_t i,
+		struct ec_node **child, unsigned int *refs)
+{
+	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+
+	if (i > 0)
+		return -1;
+
+	*child = node->child;
+	*refs = 1;
+	return 0;
+}
+
+static struct ec_node_type ec_node_cond_type = {
+	.name = "cond",
+	.schema = ec_node_cond_schema,
+	.set_config = ec_node_cond_set_config,
+	.parse = ec_node_cond_parse,
+	.complete = ec_node_cond_complete,
+	.size = sizeof(struct ec_node_cond),
+	.free_priv = ec_node_cond_free_priv,
+	.get_children_count = ec_node_cond_get_children_count,
+	.get_child = ec_node_cond_get_child,
+};
+
+EC_NODE_TYPE_REGISTER(ec_node_cond_type);
+
+struct ec_node *ec_node_cond(const char *id, const char *cmd,
+			struct ec_node *child)
+{
+	struct ec_config *config = NULL;
+	struct ec_node *gen_node = NULL;
+	int ret;
+
+	if (child == NULL)
+		return NULL;
+
+	gen_node = ec_node_from_type(&ec_node_cond_type, id);
+	if (gen_node == NULL)
+		goto fail;
+
+	config = ec_config_dict();
+	if (config == NULL)
+		goto fail;
+
+	if (ec_config_dict_set(config, "expr", ec_config_string(cmd)) < 0)
+		goto fail;
+
+	if (ec_config_dict_set(config, "child", ec_config_node(child)) < 0) {
+		child = NULL; /* freed */
+		goto fail;
+	}
+	child = NULL;
+
+	ret = ec_node_set_config(gen_node, config);
+	config = NULL; /* freed */
+	if (ret < 0)
+		goto fail;
+
+	return gen_node;
+
+fail:
+	ec_node_free(gen_node);
+	ec_node_free(child);
+	ec_config_free(config);
+
+	return NULL;
+}
+
+static void ec_node_cond_exit_func(void)
+{
+	ec_node_free(ec_node_cond_parser);
+	ec_node_cond_parser = NULL;
+	ec_dict_free(ec_node_cond_functions);
+	ec_node_cond_functions = NULL;
+}
+
+static int add_func(const char *name, cond_func_t *f)
+{
+	return ec_dict_set(ec_node_cond_functions, name, f, NULL);
+}
+
+static int ec_node_cond_init_func(void)
+{
+	ec_node_cond_parser = ec_node_cond_build_parser();
+	if (ec_node_cond_parser == NULL)
+		goto fail;
+
+	ec_node_cond_functions = ec_dict();
+	if (ec_node_cond_functions == NULL)
+		goto fail;
+
+	if (add_func("root", eval_root) < 0)
+		goto fail;
+	if (add_func("current", eval_current) < 0)
+		goto fail;
+	if (add_func("bool", eval_bool) < 0)
+		goto fail;
+	if (add_func("or", eval_or) < 0)
+		goto fail;
+	if (add_func("and", eval_and) < 0)
+		goto fail;
+	if (add_func("first_child", eval_first_child) < 0)
+		goto fail;
+	if (add_func("find", eval_find) < 0)
+		goto fail;
+
+	return 0;
+
+fail:
+	EC_LOG(EC_LOG_ERR, "Failed to initialize condition parser\n");
+	ec_node_cond_exit_func();
+	return -1;
+}
+
+static struct ec_init ec_node_cond_init = {
+	.init = ec_node_cond_init_func,
+	.exit = ec_node_cond_exit_func,
+	.priority = 75,
+};
+
+EC_INIT_REGISTER(ec_node_cond_init);
+
+/* LCOV_EXCL_START */
+static int ec_node_cond_testcase(void)
+{
+	struct ec_node *node;
+	int testres = 0;
+
+	node =  EC_NODE_SEQ(EC_NO_ID,
+			EC_NODE_SUBSET(EC_NO_ID,
+				ec_node_str("id_node1", "node1"),
+				ec_node_str("id_node2", "node2"),
+				ec_node_str("id_node3", "node3"),
+				ec_node_str("id_node4", "node4")),
+			ec_node_cond(EC_NO_ID,
+				"or(find(root(), id_node1), "
+				"  and(find(root(), id_node2),"
+				"    find(root(), id_node3)))",
+				ec_node_str(EC_NO_ID, "ok")));
+	if (node == NULL) {
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
+		return -1;
+	}
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "node1", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "node2", "node3", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, 4, "node1", "node2", "node3", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "node2", "node1", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "node2", "node4", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "node2", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "node3", "ok");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "node4", "ok");
+	ec_node_free(node);
+
+	// XXX test completion
+
+	return testres;
+}
+/* LCOV_EXCL_STOP */
+
+static struct ec_test ec_node_cond_test = {
+	.name = "node_cond",
+	.test = ec_node_cond_testcase,
+};
+
+EC_TEST_REGISTER(ec_node_cond_test);
