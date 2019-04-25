@@ -6,6 +6,9 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
 #include <ctype.h>
 
 #include <ecoli_assert.h>
@@ -86,4 +89,67 @@ bool ec_str_is_space(const char *s)
 		s++;
 	}
 	return true;
+}
+
+int ec_str_parse_llint(const char *str, unsigned int base, int64_t min,
+		int64_t max, int64_t *val)
+{
+	char *endptr;
+	int save_errno = errno;
+
+	errno = 0;
+	*val = strtoll(str, &endptr, base);
+
+	if ((errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN)) ||
+			(errno != 0 && *val == 0))
+		return -1;
+
+	if (*val < min) {
+		errno = ERANGE;
+		return -1;
+	}
+
+	if (*val > max) {
+		errno = ERANGE;
+		return -1;
+	}
+
+	if (*endptr != 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	errno = save_errno;
+	return 0;
+}
+
+int ec_str_parse_ullint(const char *str, unsigned int base, uint64_t min,
+			uint64_t max, uint64_t *val)
+{
+	char *endptr;
+	int save_errno = errno;
+
+	/* since a negative input is silently converted to a positive
+	 * one by strtoull(), first check that it is positive */
+	if (strchr(str, '-'))
+		return -1;
+
+	errno = 0;
+	*val = strtoull(str, &endptr, base);
+
+	if ((errno == ERANGE && *val == ULLONG_MAX) ||
+			(errno != 0 && *val == 0))
+		return -1;
+
+	if (*val < min)
+		return -1;
+
+	if (*val > max)
+		return -1;
+
+	if (*endptr != 0)
+		return -1;
+
+	errno = save_errno;
+	return 0;
 }

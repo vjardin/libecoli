@@ -18,8 +18,9 @@
 #include <ecoli_config.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
-#include <ecoli_node_int.h>
+#include <ecoli_string.h>
 #include <ecoli_test.h>
+#include <ecoli_node_int.h>
 
 EC_LOG_TYPE_REGISTER(node_int);
 
@@ -40,68 +41,38 @@ struct ec_node_int_uint {
 	unsigned int base;
 };
 
-/* XXX to utils.c ? */
 static int parse_llint(struct ec_node_int_uint *node, const char *str,
 	int64_t *val)
 {
-	char *endptr;
-	int save_errno = errno;
+	int64_t min, max;
 
-	errno = 0;
-	*val = strtoll(str, &endptr, node->base);
+	if (node->check_min)
+		min = node->min;
+	else
+		min = LLONG_MIN;
+	if (node->check_max)
+		max = node->max;
+	else
+		max = LLONG_MAX;
 
-	if ((errno == ERANGE && (*val == LLONG_MAX || *val == LLONG_MIN)) ||
-			(errno != 0 && *val == 0))
-		return -1;
-
-	if (node->check_min && *val < node->min) {
-		errno = ERANGE;
-		return -1;
-	}
-
-	if (node->check_max && *val > node->max) {
-		errno = ERANGE;
-		return -1;
-	}
-
-	if (*endptr != 0) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	errno = save_errno;
-	return 0;
+	return ec_str_parse_llint(str, node->base, min, max, val);
 }
 
 static int parse_ullint(struct ec_node_int_uint *node, const char *str,
 			uint64_t *val)
 {
-	char *endptr;
-	int save_errno = errno;
+	uint64_t min, max;
 
-	/* since a negative input is silently converted to a positive
-	 * one by strtoull(), first check that it is positive */
-	if (strchr(str, '-'))
-		return -1;
+	if (node->check_min)
+		min = node->min;
+	else
+		min = 0;
+	if (node->check_max)
+		max = node->max;
+	else
+		max = ULLONG_MAX;
 
-	errno = 0;
-	*val = strtoull(str, &endptr, node->base);
-
-	if ((errno == ERANGE && *val == ULLONG_MAX) ||
-			(errno != 0 && *val == 0))
-		return -1;
-
-	if (node->check_min && *val < node->umin)
-		return -1;
-
-	if (node->check_max && *val > node->umax)
-		return -1;
-
-	if (*endptr != 0)
-		return -1;
-
-	errno = save_errno;
-	return 0;
+	return ec_str_parse_ullint(str, node->base, min, max, val);
 }
 
 static int ec_node_int_uint_parse(const struct ec_node *gen_node,
