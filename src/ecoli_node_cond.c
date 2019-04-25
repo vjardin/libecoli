@@ -16,6 +16,7 @@
 #include <ecoli_log.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
+#include <ecoli_string.h>
 #include <ecoli_node.h>
 #include <ecoli_config.h>
 #include <ecoli_dict.h>
@@ -55,12 +56,10 @@ enum cond_result_type {
 };
 
 /*
-  compare(eq|ne|gt|lt|ge|le, x, y)
-  find(nodeset, id)
-  count(nodeset)
-
-  find by attrs? get_attr ?
-*/
+ * XXX missing:
+ * - find by attrs? get_attr ?
+ * - get/set variable
+ */
 
 struct cond_result {
 	enum cond_result_type type;
@@ -135,7 +134,11 @@ ec_node_cond_build_parser(void)
 		goto fail;
 
 	if (ec_node_or_add(expr,
-			ec_node_any("id_value", "a_identifier")) < 0)
+			ec_node_any("id_value_str", "a_identifier")) < 0)
+		goto fail;
+
+	if (ec_node_or_add(expr,
+			ec_node_any("id_value_int", "a_int")) < 0)
 		goto fail;
 
 	/* prepend a lexer to the expression node */
@@ -148,6 +151,9 @@ ec_node_cond_build_parser(void)
 
 	ret = ec_node_re_lex_add(lex, "[_a-zA-Z][._a-zA-Z0-9]*", 1,
 				"a_identifier");
+	if (ret < 0)
+		goto fail;
+	ret = ec_node_re_lex_add(lex, "[0-9]+", 1, "a_int");
 	if (ret < 0)
 		goto fail;
 	ret = ec_node_re_lex_add(lex, "\\(", 1, "a_open");
@@ -480,6 +486,118 @@ fail:
 }
 
 static struct cond_result *
+eval_cmp(const struct ec_parse *state, struct cond_result **in,
+	size_t in_len)
+{
+	struct cond_result *out = NULL;
+	struct ec_htable_elt_ref *iter;
+	bool eq = false, gt = false;
+
+	(void)state;
+
+	if (in_len != 3 || in[0]->type != STR || in[1]->type != in[2]->type) {
+		EC_LOG(LOG_ERR, "cmp() takes 3 arguments (str, <type>, <type>).\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (strcmp(in[0]->str, "eq") && strcmp(in[0]->str, "ne") &&
+			strcmp(in[0]->str, "gt") && strcmp(in[0]->str, "lt") &&
+			strcmp(in[0]->str, "ge") && strcmp(in[0]->str, "le")) {
+		EC_LOG(LOG_ERR, "invalid comparison operator in cmp().\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (strcmp(in[0]->str, "eq") && strcmp(in[0]->str, "ne") &&
+			in[1]->type != INT) {
+		EC_LOG(LOG_ERR, "cmp(gt|lt|ge|le, ...) is only allowed with integers.\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	if (in[1]->type == INT) {
+		eq = in[1]->int64 == in[2]->int64;
+		gt = in[1]->int64 > in[2]->int64;
+	} else if (in[1]->type == NODESET &&
+			ec_htable_len(in[1]->htable) !=
+			ec_htable_len(in[2]->htable)) {
+		eq = false;
+	} else if (in[1]->type == NODESET) {
+		eq = true;
+		for (iter = ec_htable_iter(in[1]->htable);
+		     iter != NULL; iter = ec_htable_iter_next(iter)) {
+			if (ec_htable_get(
+					in[2]->htable,
+					ec_htable_iter_get_key(iter),
+					sizeof(struct ec_parse *)) == NULL) {
+				eq = false;
+				break;
+			}
+		}
+	} else if (in[1]->type == STR) {
+		eq = !strcmp(in[1]->str, in[2]->str);;
+	} else if (in[1]->type == BOOLEAN) {
+		eq = in[1]->boolean == in[2]->boolean;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = BOOLEAN;
+	if (!strcmp(in[0]->str, "eq"))
+		out->boolean = eq;
+	else if (!strcmp(in[0]->str, "ne"))
+		out->boolean = !eq;
+	else if (!strcmp(in[0]->str, "lt"))
+		out->boolean = !gt && !eq;
+	else if (!strcmp(in[0]->str, "gt"))
+		out->boolean = gt && !eq;
+	else if (!strcmp(in[0]->str, "le"))
+		out->boolean = !gt || eq;
+	else if (!strcmp(in[0]->str, "ge"))
+		out->boolean = gt || eq;
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
+eval_count(const struct ec_parse *state, struct cond_result **in, size_t in_len)
+{
+	struct cond_result *out = NULL;
+
+	(void)state;
+
+	if (in_len != 1 || in[0]->type != NODESET) {
+		EC_LOG(LOG_ERR, "count() takes one argument of type nodeset.\n");
+		errno = EINVAL;
+		goto fail;
+	}
+
+	out = ec_malloc(sizeof(*out));
+	if (out == NULL)
+		goto fail;
+
+	out->type = INT;
+	out->int64 = ec_htable_len(in[0]->htable);
+
+	cond_result_table_free(in, in_len);
+	return out;
+
+fail:
+	cond_result_free(out);
+	cond_result_table_free(in, in_len);
+	return NULL;
+}
+
+static struct cond_result *
 eval_func(const char *name, const struct ec_parse *state,
 	struct cond_result **in, size_t in_len)
 {
@@ -511,7 +629,6 @@ eval_condition(const struct ec_parse *cond, const struct ec_parse *state)
 
 	// XXX fix cast (x3)
 	func = ec_parse_find((void *)cond, "id_function");
-	value = ec_parse_find((void *)cond, "id_value");
 	if (func != NULL) {
 		EC_PARSE_FOREACH_CHILD(iter, func) {
 			id = ec_node_id(ec_parse_get_node(iter));
@@ -534,11 +651,12 @@ eval_condition(const struct ec_parse *cond, const struct ec_parse *state)
 
 		res = eval_func(ec_strvec_val(ec_parse_strvec(func_name), 0),
 				state, args, n_arg);
-		printf("%s(%p[%zd]) -> %p\n", ec_strvec_val(ec_parse_strvec(func_name), 0),
-			args, n_arg, res);
 		args = NULL;
-	} else if (value != NULL) {
-		printf("%s\n", ec_strvec_val(ec_parse_strvec(value), 0));
+		return res;
+	}
+
+	value = ec_parse_find((void *)cond, "id_value_str");
+	if (value != NULL) {
 		res = ec_malloc(sizeof(*res));
 		if (res == NULL)
 			goto fail;
@@ -546,11 +664,21 @@ eval_condition(const struct ec_parse *cond, const struct ec_parse *state)
 		res->str = ec_strdup(ec_strvec_val(ec_parse_strvec(value), 0));
 		if (res->str == NULL)
 			goto fail;
-	} else {
-		goto fail;
+		return res;
 	}
 
-	return res;
+	value = ec_parse_find((void *)cond, "id_value_int");
+	if (value != NULL) {
+		res = ec_malloc(sizeof(*res));
+		if (res == NULL)
+			goto fail;
+		res->type = INT;
+		if (ec_str_parse_llint(ec_strvec_val(ec_parse_strvec(value), 0),
+					0, LLONG_MIN, LLONG_MAX,
+					&res->int64) < 0)
+			goto fail;
+		return res;
+	}
 
 fail:
 	cond_result_free(res);
@@ -579,16 +707,25 @@ ec_node_cond_parse(const struct ec_node *gen_node, struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
-	int ret;
+	struct ec_parse *child;
+	int ret, valid;
 
-	ret = validate_condition(node->parsed_cond, state);
-	if (ret < 0)
+	ret = ec_node_parse_child(node->child, state, strvec);
+	if (ret <= 0)
 		return ret;
 
-	if (ret == 0)
-		return EC_PARSE_NOMATCH;
+	valid = validate_condition(node->parsed_cond, state);
+	if (valid < 0)
+		return valid;
 
-	return ec_node_parse_child(node->child, state, strvec);
+	if (valid == 0) {
+		child = ec_parse_get_last_child(state);
+		ec_parse_unlink_child(state, child);
+		ec_parse_free(child);
+		return EC_PARSE_NOMATCH;
+	}
+
+	return ret;
 }
 
 static int
@@ -792,6 +929,10 @@ static int ec_node_cond_init_func(void)
 		goto fail;
 	if (add_func("find", eval_find) < 0)
 		goto fail;
+	if (add_func("cmp", eval_cmp) < 0)
+		goto fail;
+	if (add_func("count", eval_count) < 0)
+		goto fail;
 
 	return 0;
 
@@ -815,6 +956,7 @@ static int ec_node_cond_testcase(void)
 	struct ec_node *node;
 	int testres = 0;
 
+	if (0) {
 	node =  EC_NODE_SEQ(EC_NO_ID,
 			EC_NODE_SUBSET(EC_NO_ID,
 				ec_node_str("id_node1", "node1"),
@@ -838,6 +980,21 @@ static int ec_node_cond_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "node2", "ok");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "node3", "ok");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "node4", "ok");
+	ec_node_free(node);
+	}
+	node =  ec_node_cond(EC_NO_ID,
+			"cmp(le, count(find(root(), id_node)), 3)",
+			ec_node_many(EC_NO_ID,
+				ec_node_str("id_node", "foo"), 0, 0));
+	if (node == NULL) {
+		EC_LOG(EC_LOG_ERR, "cannot create node\n");
+		return -1;
+	}
+	testres |= EC_TEST_CHECK_PARSE(node, 0);
+	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, 3, "foo", "foo", "foo");
+	testres |= EC_TEST_CHECK_PARSE(node, -1, "foo", "foo", "foo", "foo");
 	ec_node_free(node);
 
 	// XXX test completion
