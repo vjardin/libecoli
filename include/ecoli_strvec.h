@@ -3,7 +3,10 @@
  */
 
 /**
- * Vectors of strings.
+ * @defgroup strvec String vectors
+ * @{
+ *
+ * @brief Helpers for strings vectors manipulation.
  *
  * The ec_strvec API provide helpers to manipulate string vectors.
  * When duplicating vectors, the strings are not duplicated in memory,
@@ -222,3 +225,5 @@ void ec_strvec_sort(struct ec_strvec *strvec,
 void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec);
 
 #endif
+
+/** } */

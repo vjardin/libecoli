@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_EXPR_
 #define ECOLI_NODE_EXPR_
 
@@ -91,3 +96,5 @@ int ec_node_expr_eval(void **result, const struct ec_node *node,
 	void *userctx);
 
 #endif
+
+/** @} */

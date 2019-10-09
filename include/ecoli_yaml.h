@@ -3,6 +3,11 @@
  */
 
 /**
+ * @defgroup yaml Yaml
+ * @{
+ *
+ * @brief YAML import/export
+ *
  * Interface to import/export ecoli data structures in YAML.
  */
 
@@ -23,3 +28,5 @@ struct ec_node;
 struct ec_node *ec_yaml_import(const char *filename);
 
 #endif
+
+/** } */

@@ -3,11 +3,18 @@
  */
 
 /**
+ * @defgroup parse Parse
+ * @{
+ *
+ * @brief Create parse tree from string input and grammar tree
+ *
  * Node parse API.
  *
  * The parse operation is to check if an input (a string or vector of
  * strings) matches the node tree. On success, the result is stored in a
  * tree that describes which part of the input matches which node.
+ *
+ * @}
  */
 
 #ifndef ECOLI_PARSE_

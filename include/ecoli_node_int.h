@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_INT_
 #define ECOLI_NODE_INT_
 
@@ -26,5 +31,6 @@ struct ec_node *ec_node_uint(const char *id, uint64_t min,
 int ec_node_uint_getval(const struct ec_node *node, const char *str,
 			uint64_t *result);
 
-
 #endif
+
+/** @} */

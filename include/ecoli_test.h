@@ -2,6 +2,13 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup test Test
+ * @{
+ *
+ * @brief Helpers for unit tests
+ */
+
 #ifndef ECOLI_TEST_
 #define ECOLI_TEST_
 
@@ -95,3 +102,5 @@ int ec_test_check_complete(struct ec_node *node,
 })
 
 #endif
+
+/** @} */

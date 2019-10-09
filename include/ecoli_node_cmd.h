@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_CMD_
 #define ECOLI_NODE_CMD_
 
@@ -12,3 +17,5 @@
 struct ec_node *__ec_node_cmd(const char *id, const char *cmd_str, ...);
 
 #endif
+
+/** @} */

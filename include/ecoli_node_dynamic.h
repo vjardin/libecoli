@@ -2,6 +2,11 @@
  * Copyright 2017, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_DYNAMIC_
 #define ECOLI_NODE_DYNAMIC_
 
@@ -17,3 +22,5 @@ struct ec_node *ec_node_dynamic(const char *id, ec_node_dynamic_build_t build,
 				void *opaque);
 
 #endif
+
+/** @} */

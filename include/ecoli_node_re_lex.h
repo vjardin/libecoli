@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_RE_LEX_
 #define ECOLI_NODE_RE_LEX_
 
@@ -13,3 +18,5 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep,
 	const char *attr_name);
 
 #endif
+
+/** @} */

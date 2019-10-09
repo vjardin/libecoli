@@ -1,0 +1,35 @@
+PROJECT_NAME           = "Libecoli"
+PROJECT_BRIEF          = "Extensible Command Line library"
+PROJECT_NUMBER         = @VERSION@
+INPUT                  = @TOPDIR@/include
+OUTPUT_DIRECTORY       = @OUTPUT@
+FILE_PATTERNS          = *.c *.h *.dox
+
+BRIEF_MEMBER_DESC = YES
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+INLINE_SIMPLE_STRUCTS = YES
+EXTRACT_ALL = YES
+SOURCE_BROWSER = YES
+REPEAT_BRIEF           = NO
+
+EXAMPLE_PATH           =
+EXAMPLE_PATTERNS       = *
+EXAMPLE_RECURSIVE      = NO
+
+GENERATE_TODOLIST      = YES
+GENERATE_TESTLIST      = YES
+GENERATE_BUGLIST       = YES
+GENERATE_DEPRECATEDLIST= YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+SOURCE_BROWSER          = YES
+
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+XML_PROGRAMLISTING     = YES
+
+GENERATE_LATEX         = NO
+HAVE_DOT               = NO

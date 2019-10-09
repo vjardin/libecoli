@@ -2,6 +2,13 @@
  * Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup config Node configuration
+ * @{
+ *
+ * @brief Configure nodes behavior through generic API.
+ */
+
 #ifndef ECOLI_CONFIG_
 #define ECOLI_CONFIG_
 
@@ -402,3 +409,5 @@ ec_config_dup(const struct ec_config *config);
 void ec_config_dump(FILE *out, const struct ec_config *config);
 
 #endif
+
+/** @} */

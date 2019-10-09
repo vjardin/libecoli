@@ -3,6 +3,11 @@
  */
 
 /**
+ * @defgroup alloc Allocation
+ * @{
+ *
+ * @brief Helpers to allocate and free memory
+ *
  * Interface to configure the allocator used by libecoli.
  * By default, the standard allocation functions from libc are used.
  */
@@ -253,3 +258,5 @@ char *__ec_strndup(const char *s, size_t n, const char *file,
 
 
 #endif
+
+/** @} */

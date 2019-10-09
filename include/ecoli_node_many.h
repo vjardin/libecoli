@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_MANY_
 #define ECOLI_NODE_MANY_
 
@@ -16,3 +21,5 @@ ec_node_many_set_params(struct ec_node *gen_node, struct ec_node *child,
 	unsigned int min, unsigned int max);
 
 #endif
+
+/** @} */

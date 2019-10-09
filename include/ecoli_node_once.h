@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_ONCE_
 #define ECOLI_NODE_ONCE_
 
@@ -27,3 +32,5 @@ struct ec_node *ec_node_once(const char *id, struct ec_node *child);
 int ec_node_once_set_child(struct ec_node *node, struct ec_node *child);
 
 #endif
+
+/** @} */

@@ -3,10 +3,13 @@
  */
 
 /**
- * Interface to manage the ecoli nodes.
+ * @defgroup grammar_tree Grammar Tree
+ * @{
  *
- * A node is a main structure of the ecoli library, used to define how
- * to match and complete the input tokens. A node is a generic object
+ * @brief Libecoli grammar nodes.
+ *
+ * The grammar node is a main structure of the ecoli library, used to define
+ * how to match and complete the input tokens. A node is a generic object
  * that implements:
  * - a parse(node, input) method: check if an input matches
  * - a complete(node, input) method: return possible completions for
@@ -46,6 +49,9 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+/**
+ * Node has no identifier.
+ */
 #define EC_NO_ID "no-id"
 
 #define EC_NODE_ENDLIST ((void *)1)
@@ -204,3 +210,5 @@ int ec_node_check_type(const struct ec_node *node,
 		const struct ec_node_type *type);
 
 #endif
+
+ /** @} */

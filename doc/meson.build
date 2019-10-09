@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2019, Olivier MATZ <zer0@droids-corp.org>
+
+doc_install_dir = join_paths('share', 'doc', 'libecoli')
+
+doxygen = find_program('doxygen', required : false)
+if not doxygen.found()
+  error('MESON_SKIP_TEST doxygen not found.')
+endif
+
+cdata = configuration_data()
+cdata.set('VERSION', meson.project_version())
+cdata.set('OUTPUT', join_paths(meson.build_root(), 'doc', 'api'))
+cdata.set('TOPDIR', meson.source_root())
+
+doxygen_conf = configure_file(
+  input: 'Doxyfile.in',
+  output: 'Doxyfile',
+  configuration: cdata,
+  install: false)
+
+doxygen_build = custom_target(
+  'doxygen',
+  input: doxygen_conf,
+  output: 'api',
+  command: [doxygen, '@INPUT@', '@OUTPUT@'],
+  build_by_default: true,
+  install_dir: doc_install_dir)
+
+sphinx_build = find_program(
+  'sphinx-build', required: get_option('build_doc'))
+if get_option('build_doc') and sphinx_build.found()
+	html_doc = custom_target('html_doc',
+		input: meson.current_source_dir(),
+		output: 'html_doc',
+		command: [sphinx_build, '@INPUT@', '@OUTPUT@'],
+		install: get_option('build_doc'),
+		install_dir: doc_install_dir)
+endif

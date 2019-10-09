@@ -3,7 +3,10 @@
  */
 
 /**
- * Assert API
+ * @defgroup assert Assert
+ * @{
+ *
+ * @brief Assertion helpers
  *
  * Helpers to check at runtime if a condition is true, or otherwise
  * either abort (exit program) or return an error.
@@ -53,3 +56,5 @@ void __ec_assert_print(bool expr, const char *expr_str,
 	} while(0)
 
 #endif
+
+/** @} */

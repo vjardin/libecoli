@@ -3,7 +3,10 @@
  */
 
 /**
- * Simple hash table API
+ * @defgroup htable Hash table
+ * @{
+ *
+ * @brief Simple hash table API (any key)
  *
  * This file provides functions to store objects in hash tables,
  * using arbitrary data as keys.
@@ -206,3 +209,5 @@ void *
 ec_htable_iter_get_val(const struct ec_htable_elt_ref *iter);
 
 #endif
+
+/** @} */

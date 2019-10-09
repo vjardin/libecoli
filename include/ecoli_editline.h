@@ -3,6 +3,11 @@
  */
 
 /**
+ * @defgroup editline Editline
+ * @{
+ *
+ * @brief Helpers for editline
+ *
  * Helpers that can be used to associate an editline instance with
  * an ecoli node tree.
  *

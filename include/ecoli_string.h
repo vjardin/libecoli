@@ -2,6 +2,13 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup string String
+ * @{
+ *
+ * @brief Helpers for strings manipulation.
+ */
+
 #ifndef ECOLI_STRING_
 #define ECOLI_STRING_
 

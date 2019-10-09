@@ -3,6 +3,9 @@
  */
 
 /**
+ * @defgroup nodes Nodes
+ * @{
+ *
  * This node matches one string in the vector if it is only composed of
  * spaces, as interpreted by isspace().
  */
@@ -13,3 +16,5 @@
 /* no API for now, since there is no specific configuration for this node */
 
 #endif
+
+/** @} */

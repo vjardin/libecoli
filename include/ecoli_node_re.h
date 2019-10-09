@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_RE_
 #define ECOLI_NODE_RE_
 
@@ -13,3 +18,5 @@ struct ec_node *ec_node_re(const char *id, const char *str);
 int ec_node_re_set_regexp(struct ec_node *node, const char *re);
 
 #endif
+
+/** @} */

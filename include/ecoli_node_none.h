@@ -3,10 +3,15 @@
  */
 
 /**
+ * @defgroup nodes Nodes
+ * @{
+ *
  * This node does not match anything
  */
 
-#ifndef ECOLI_NODE_ANY_
-#define ECOLI_NODE_ANY_
+#ifndef ECOLI_NODE_NONE_
+#define ECOLI_NODE_NONE_
 
 #endif
+
+/** @} */

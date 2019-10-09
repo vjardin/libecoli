@@ -2,6 +2,11 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup nodes Nodes
+ * @{
+ */
+
 #ifndef ECOLI_NODE_SUBSET_
 #define ECOLI_NODE_SUBSET_
 
@@ -21,3 +26,5 @@ struct ec_node *ec_node_subset(const char *id);
 int ec_node_subset_add(struct ec_node *node, struct ec_node *child);
 
 #endif
+
+/** @} */

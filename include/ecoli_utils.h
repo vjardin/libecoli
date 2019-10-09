@@ -2,6 +2,14 @@
  * Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
  */
 
+/**
+ * @defgroup utils Utils
+ * @{
+ *
+ * @brief Misc utils
+ */
+
+
 #ifndef ECOLI_UTILS_
 #define ECOLI_UTILS_
 
@@ -14,3 +22,5 @@
 	})
 
 #endif
+
+/** @} */

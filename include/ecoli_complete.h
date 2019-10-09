@@ -3,12 +3,17 @@
  */
 
 /**
- * API for generating completions item on a node.
+ * @defgroup complete Complete
+ * @{
+ *
+ * @brief Complete string input using a grammar tree
  *
  * This file provide helpers to list and manipulate the possible
  * completions for a given input.
  *
  * XXX comp vs item
+ *
+ * @}
  */
 
 #ifndef ECOLI_COMPLETE_

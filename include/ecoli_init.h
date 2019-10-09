@@ -3,7 +3,10 @@
  */
 
 /**
- * Register initialization routines.
+ * @defgroup nodes Nodes
+ * @{
+ *
+ * @brief Register initialization routines.
  */
 
 #ifndef ECOLI_INIT_
@@ -74,3 +77,5 @@ int ec_init(void);
 void ec_exit(void);
 
 #endif
+
+/** @} */

@@ -2,6 +2,7 @@
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
 libecoli_headers = [
+	'ecoli.h',
 	'ecoli_assert.h',
 	'ecoli_complete.h',
 	'ecoli_config.h',

@@ -3,6 +3,9 @@
  */
 
 /**
+ * @defgroup nodes Nodes
+ * @{
+ *
  * This node always matches 1 string in the vector.
  * An optional strvec attribute can be checked too. These
  * attributes are usually set by a lexer node.
@@ -25,3 +28,5 @@ struct ec_node *
 ec_node_any(const char *id, const char *attr);
 
 #endif
+
+/** @} */

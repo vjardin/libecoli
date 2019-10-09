@@ -3,7 +3,10 @@
  */
 
 /**
- * Logging API
+ * @defgroup log Log
+ * @{
+ *
+ * @brief Log API
  *
  * This file provide logging helpers:
  * - logging functions, supporting printf-like format
@@ -237,3 +240,5 @@ int ec_log_level_set(enum ec_log_level level);
 enum ec_log_level ec_log_level_get(void);
 
 #endif
+
+/** @} */

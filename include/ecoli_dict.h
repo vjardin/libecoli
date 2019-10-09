@@ -3,7 +3,10 @@
  */
 
 /**
- * Simple hash table API
+ * @defgroup dict Dictionary
+ * @{
+ *
+ * @brief Simple hash table API (string keys)
  *
  * This file provides functions to store objects in hash tables, using strings
  * as keys.
@@ -184,3 +187,5 @@ void *
 ec_dict_iter_get_val(const struct ec_dict_elt_ref *iter);
 
 #endif
+
+/** @} */

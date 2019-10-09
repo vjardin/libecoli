@@ -19,6 +19,7 @@ priv_inc = include_directories('src')
 subdir('src')
 subdir('test')
 subdir('examples')
+subdir('doc')
 
 pkg_mod = import('pkgconfig')
 pkg_mod.generate(libraries : libecoli,

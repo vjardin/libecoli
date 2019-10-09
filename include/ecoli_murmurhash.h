@@ -3,6 +3,11 @@
  */
 
 /**
+ * @defgroup murmurhash Murmurhash
+ * @{
+ *
+ * @brief Hash calculation using murmurhash algorithm
+ *
  * MurmurHash3 is a hash implementation that was written by Austin Appleby, and
  * is placed in the public domain. The author hereby disclaims copyright to this
  * source code.
@@ -64,3 +69,5 @@ static inline uint32_t ec_murmurhash3_fmix32(uint32_t h)
 uint32_t ec_murmurhash3(const void *key, int len, uint32_t seed);
 
 #endif /* ECOLI_MURMURHASH_H_ */
+
+/** @} */

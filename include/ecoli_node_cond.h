@@ -3,6 +3,9 @@
  */
 
 /**
+ * @defgroup nodes Nodes
+ * @{
+ *
  * The condition node checks that an expression is true before
  * parsing/completing the child node. If it is false, the node
  * doesn't match anything.
@@ -29,3 +32,5 @@ struct ec_node *ec_node_cond(const char *id, const char *cond_str,
 	struct ec_node *child);
 
 #endif
+
+/** @} */

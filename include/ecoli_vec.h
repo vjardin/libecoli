@@ -3,7 +3,10 @@
  */
 
 /**
- * Vectors of objects.
+ * @defgroup vec Vectors
+ * @{
+ *
+ * @brief Helpers for vectors manipulation.
  *
  * The ec_vec API provide helpers to manipulate vectors of objects
  * of any kind.
@@ -45,3 +48,5 @@ __attribute__((pure))
 size_t ec_vec_len(const struct ec_vec *vec);
 
 #endif
+
+/** @} */
