@@ -500,18 +500,23 @@ ec_config_cmp(const struct ec_config *value1,
 	case EC_CONFIG_TYPE_BOOL:
 		if (value1->boolean == value2->boolean)
 			return 0;
+		break;
 	case EC_CONFIG_TYPE_INT64:
 		if (value1->i64 == value2->i64)
 			return 0;
+		break;
 	case EC_CONFIG_TYPE_UINT64:
 		if (value1->u64 == value2->u64)
 			return 0;
+		break;
 	case EC_CONFIG_TYPE_STRING:
 		if (!strcmp(value1->string, value2->string))
 			return 0;
+		break;
 	case EC_CONFIG_TYPE_NODE:
 		if (value1->node == value2->node)
 			return 0;
+		break;
 	case EC_CONFIG_TYPE_LIST:
 		return ec_config_list_cmp(&value1->list, &value2->list);
 	case EC_CONFIG_TYPE_DICT:
