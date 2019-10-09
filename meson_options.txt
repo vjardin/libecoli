@@ -1,0 +1,6 @@
+option('with_yaml', type : 'boolean', value : true,
+       description: 'Compile with yaml support using libyaml.')
+option('with_editline', type : 'boolean', value : true,
+       description: 'Compile with editline support using libedit.')
+option('build_doc', type : 'boolean', value : false,
+       description: 'Generate project documentation.')
