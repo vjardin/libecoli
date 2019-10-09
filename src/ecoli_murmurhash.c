@@ -27,8 +27,8 @@ uint32_t ec_murmurhash3(const void *key, int len, uint32_t seed)
 	k1 = 0;
 
 	switch(len & 3) {
-	case 3: k1 ^= tail[2] << 16;
-	case 2: k1 ^= tail[1] << 8;
+	case 3: k1 ^= tail[2] << 16; /* fallthrough */
+	case 2: k1 ^= tail[1] << 8; /* fallthrough */
 	case 1: k1 ^= tail[0];
 		h1 = ec_murmurhash3_add32(h1, k1);
 	};

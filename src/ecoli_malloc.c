@@ -7,6 +7,7 @@
 #include <ecoli_malloc.h>
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 
@@ -164,7 +165,10 @@ static int ec_malloc_testcase(void)
 	ec_free_func(ptr);
 	ptr = NULL;
 
-	ptr = ec_calloc(2, (size_t)-1);
+	/* here we use atoll() instead of a constant because we want to
+	 * prevent the compiler to check the overflow at compilation
+	 * time */
+	ptr = ec_calloc(2, atoll("0xffffffffffffffff"));
 	EC_TEST_CHECK(ptr == NULL, "bad overflow check in ec_calloc\n");
 
 	return testres;
