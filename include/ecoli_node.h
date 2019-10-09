@@ -158,20 +158,6 @@ enum ec_node_free_state {
 	EC_NODE_FREE_STATE_FREEING,
 };
 
-struct ec_node {
-	const struct ec_node_type *type;
-	struct ec_config *config;    /**< Generic configuration. */
-	char *id;
-	char *desc;
-	struct ec_dict *attrs;
-	unsigned int refcnt;
-	struct {
-		enum ec_node_free_state state; /**< State of loop detection */
-		unsigned int refcnt;    /**< Number of reachable references
-					 *   starting from node beeing freed */
-	} free; /**< Freeing state: used for loop detection */
-};
-
 /* create a new node when the type is known, typically called from the node
  * code */
 struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *id);
@@ -208,6 +194,18 @@ struct ec_node *ec_node_find(struct ec_node *node, const char *id);
 /* check the type of a node */
 int ec_node_check_type(const struct ec_node *node,
 		const struct ec_node_type *type);
+
+const char *ec_node_get_type_name(const struct ec_node *node);
+
+/**
+ * Get the pointer to the node private area.
+ *
+ * @param node
+ *   The grammar node.
+ * @return
+ *   The pointer to the node private area.
+ */
+void *ec_node_priv(const struct ec_node *node);
 
 #endif
 

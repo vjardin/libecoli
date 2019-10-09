@@ -259,7 +259,7 @@ static void __ec_parse_dump(FILE *out,
 
 	/* node can be null when parsing is incomplete */
 	if (parse->node != NULL) {
-		id = parse->node->id;
+		id = ec_node_id(parse->node);
 		typename = ec_node_type(parse->node)->name;
 	}
 
@@ -402,8 +402,7 @@ ec_parse_find_next(struct ec_parse *root, struct ec_parse *start,
 	for (iter = start; iter != NULL;
 	     iter = EC_PARSE_ITER_NEXT(root, iter, 1)) {
 		if (iter->node != NULL &&
-				iter->node->id != NULL &&
-				!strcmp(iter->node->id, id))
+				!strcmp(ec_node_id(iter->node), id))
 			return iter;
 	}
 

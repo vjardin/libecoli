@@ -20,22 +20,21 @@
 EC_LOG_TYPE_REGISTER(node_str);
 
 struct ec_node_str {
-	struct ec_node gen;
 	char *string;
 	unsigned len;
 };
 
 static int
-ec_node_str_parse(const struct ec_node *gen_node,
+ec_node_str_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	struct ec_node_str *priv = ec_node_priv(node);
 	const char *str;
 
 	(void)state;
 
-	if (node->string == NULL) {
+	if (priv->string == NULL) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -44,18 +43,18 @@ ec_node_str_parse(const struct ec_node *gen_node,
 		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
-	if (strcmp(str, node->string) != 0)
+	if (strcmp(str, priv->string) != 0)
 		return EC_PARSE_NOMATCH;
 
 	return 1;
 }
 
 static int
-ec_node_str_complete(const struct ec_node *gen_node,
+ec_node_str_complete(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	struct ec_node_str *priv = ec_node_priv(node);
 	const char *str;
 	size_t n = 0;
 
@@ -63,8 +62,8 @@ ec_node_str_complete(const struct ec_node *gen_node,
 		return 0;
 
 	str = ec_strvec_val(strvec, 0);
-	for (n = 0; n < node->len; n++) {
-		if (str[n] != node->string[n])
+	for (n = 0; n < priv->len; n++) {
+		if (str[n] != priv->string[n])
 			break;
 	}
 
@@ -72,25 +71,25 @@ ec_node_str_complete(const struct ec_node *gen_node,
 	if (str[n] != '\0')
 		return EC_PARSE_NOMATCH;
 
-	if (ec_comp_add_item(comp, gen_node, NULL, EC_COMP_FULL,
-					str, node->string) < 0)
+	if (ec_comp_add_item(comp, node, NULL, EC_COMP_FULL,
+					str, priv->string) < 0)
 		return -1;
 
 	return 0;
 }
 
-static const char *ec_node_str_desc(const struct ec_node *gen_node)
+static const char *ec_node_str_desc(const struct ec_node *node)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	struct ec_node_str *priv = ec_node_priv(node);
 
-	return node->string;
+	return priv->string;
 }
 
-static void ec_node_str_free_priv(struct ec_node *gen_node)
+static void ec_node_str_free_priv(struct ec_node *node)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	struct ec_node_str *priv = ec_node_priv(node);
 
-	ec_free(node->string);
+	ec_free(priv->string);
 }
 
 static const struct ec_config_schema ec_node_str_schema[] = {
@@ -104,10 +103,10 @@ static const struct ec_config_schema ec_node_str_schema[] = {
 	},
 };
 
-static int ec_node_str_set_config(struct ec_node *gen_node,
+static int ec_node_str_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_str *node = (struct ec_node_str *)gen_node;
+	struct ec_node_str *priv = ec_node_priv(node);
 	const struct ec_config *value = NULL;
 	char *s = NULL;
 
@@ -121,9 +120,9 @@ static int ec_node_str_set_config(struct ec_node *gen_node,
 	if (s == NULL)
 		goto fail;
 
-	ec_free(node->string);
-	node->string = s;
-	node->len = strlen(node->string);
+	ec_free(priv->string);
+	priv->string = s;
+	priv->len = strlen(priv->string);
 
 	return 0;
 
@@ -145,12 +144,12 @@ static struct ec_node_type ec_node_str_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_str_type);
 
-int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
+int ec_node_str_set_str(struct ec_node *node, const char *str)
 {
 	struct ec_config *config = NULL;
 	int ret;
 
-	if (ec_node_check_type(gen_node, &ec_node_str_type) < 0)
+	if (ec_node_check_type(node, &ec_node_str_type) < 0)
 		goto fail;
 
 	if (str == NULL) {
@@ -166,7 +165,7 @@ int ec_node_str_set_str(struct ec_node *gen_node, const char *str)
 	if (ret < 0)
 		goto fail;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL;
 	if (ret < 0)
 		goto fail;
@@ -180,19 +179,19 @@ fail:
 
 struct ec_node *ec_node_str(const char *id, const char *str)
 {
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 
-	gen_node = ec_node_from_type(&ec_node_str_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_str_type, id);
+	if (node == NULL)
 		goto fail;
 
-	if (ec_node_str_set_str(gen_node, str) < 0)
+	if (ec_node_str_set_str(node, str) < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 }
 

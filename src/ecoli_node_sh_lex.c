@@ -26,7 +26,6 @@
 EC_LOG_TYPE_REGISTER(node_sh_lex);
 
 struct ec_node_sh_lex {
-	struct ec_node gen;
 	struct ec_node *child;
 };
 
@@ -213,11 +212,11 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 }
 
 static int
-ec_node_sh_lex_parse(const struct ec_node *gen_node,
+ec_node_sh_lex_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_node_sh_lex *priv = ec_node_priv(node);
 	struct ec_strvec *new_vec = NULL;
 	struct ec_parse *child_parse;
 	const char *str;
@@ -234,7 +233,7 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 	if (new_vec == NULL)
 		goto fail;
 
-	ret = ec_node_parse_child(node->child, state, new_vec);
+	ret = ec_node_parse_child(priv->child, state, new_vec);
 	if (ret < 0)
 		goto fail;
 
@@ -258,11 +257,11 @@ ec_node_sh_lex_parse(const struct ec_node *gen_node,
 }
 
 static int
-ec_node_sh_lex_complete(const struct ec_node *gen_node,
+ec_node_sh_lex_complete(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_node_sh_lex *priv = ec_node_priv(node);
 	struct ec_comp *tmp_comp = NULL;
 	struct ec_strvec *new_vec = NULL;
 	struct ec_comp_iter *iter = NULL;
@@ -286,7 +285,7 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 	if (tmp_comp == NULL)
 		goto fail;
 
-	ret = ec_node_complete_child(node->child, tmp_comp, new_vec);
+	ret = ec_node_complete_child(priv->child, tmp_comp, new_vec);
 	if (ret < 0)
 		goto fail;
 
@@ -336,34 +335,34 @@ ec_node_sh_lex_complete(const struct ec_node *gen_node,
 	return -1;
 }
 
-static void ec_node_sh_lex_free_priv(struct ec_node *gen_node)
+static void ec_node_sh_lex_free_priv(struct ec_node *node)
 {
-	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_node_sh_lex *priv = ec_node_priv(node);
 
-	ec_node_free(node->child);
+	ec_node_free(priv->child);
 }
 
 static size_t
-ec_node_sh_lex_get_children_count(const struct ec_node *gen_node)
+ec_node_sh_lex_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_node_sh_lex *priv = ec_node_priv(node);
 
-	if (node->child)
+	if (priv->child)
 		return 1;
 	return 0;
 }
 
 static int
-ec_node_sh_lex_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_sh_lex_get_child(const struct ec_node *node, size_t i,
 	struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_sh_lex *node = (struct ec_node_sh_lex *)gen_node;
+	struct ec_node_sh_lex *priv = ec_node_priv(node);
 
 	if (i >= 1)
 		return -1;
 
 	*refs = 1;
-	*child = node->child;
+	*child = priv->child;
 	return 0;
 }
 
@@ -381,20 +380,22 @@ EC_NODE_TYPE_REGISTER(ec_node_sh_lex_type);
 
 struct ec_node *ec_node_sh_lex(const char *id, struct ec_node *child)
 {
-	struct ec_node_sh_lex *node = NULL;
+	struct ec_node *node = NULL;
+	struct ec_node_sh_lex *priv;
 
 	if (child == NULL)
 		return NULL;
 
-	node = (struct ec_node_sh_lex *)ec_node_from_type(&ec_node_sh_lex_type, id);
+	node = ec_node_from_type(&ec_node_sh_lex_type, id);
 	if (node == NULL) {
 		ec_node_free(child);
 		return NULL;
 	}
 
-	node->child = child;
+	priv = ec_node_priv(node);
+	priv->child = child;
 
-	return &node->gen;
+	return node;
 }
 
 /* LCOV_EXCL_START */

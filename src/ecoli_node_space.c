@@ -19,11 +19,10 @@
 EC_LOG_TYPE_REGISTER(node_space);
 
 struct ec_node_space {
-	struct ec_node gen;
 };
 
 static int
-ec_node_space_parse(const struct ec_node *gen_node,
+ec_node_space_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
@@ -31,7 +30,7 @@ ec_node_space_parse(const struct ec_node *gen_node,
 	size_t len = 0;
 
 	(void)state;
-	(void)gen_node;
+	(void)node;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;

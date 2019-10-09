@@ -25,22 +25,21 @@
 EC_LOG_TYPE_REGISTER(node_or);
 
 struct ec_node_or {
-	struct ec_node gen;
 	struct ec_node **table;
 	size_t len;
 };
 
 static int
-ec_node_or_parse(const struct ec_node *gen_node,
+ec_node_or_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node_or *priv = ec_node_priv(node);
 	unsigned int i;
 	int ret;
 
-	for (i = 0; i < node->len; i++) {
-		ret = ec_node_parse_child(node->table[i], state, strvec);
+	for (i = 0; i < priv->len; i++) {
+		ret = ec_node_parse_child(priv->table[i], state, strvec);
 		if (ret == EC_PARSE_NOMATCH)
 			continue;
 		return ret;
@@ -50,16 +49,16 @@ ec_node_or_parse(const struct ec_node *gen_node,
 }
 
 static int
-ec_node_or_complete(const struct ec_node *gen_node,
+ec_node_or_complete(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node_or *priv = ec_node_priv(node);
 	int ret;
 	size_t n;
 
-	for (n = 0; n < node->len; n++) {
-		ret = ec_node_complete_child(node->table[n],
+	for (n = 0; n < priv->len; n++) {
+		ret = ec_node_complete_child(priv->table[n],
 					comp, strvec);
 		if (ret < 0)
 			return ret;
@@ -68,16 +67,16 @@ ec_node_or_complete(const struct ec_node *gen_node,
 	return 0;
 }
 
-static void ec_node_or_free_priv(struct ec_node *gen_node)
+static void ec_node_or_free_priv(struct ec_node *node)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node_or *priv = ec_node_priv(node);
 	size_t i;
 
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
-	node->table = NULL;
-	node->len = 0;
+	for (i = 0; i < priv->len; i++)
+		ec_node_free(priv->table[i]);
+	ec_free(priv->table);
+	priv->table = NULL;
+	priv->len = 0;
 }
 
 static const struct ec_config_schema ec_node_or_subschema[] = {
@@ -103,10 +102,10 @@ static const struct ec_config_schema ec_node_or_schema[] = {
 	},
 };
 
-static int ec_node_or_set_config(struct ec_node *gen_node,
+static int ec_node_or_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node_or *priv = ec_node_priv(node);
 	struct ec_node **table = NULL;
 	size_t i, len = 0;
 
@@ -115,11 +114,11 @@ static int ec_node_or_set_config(struct ec_node *gen_node,
 	if (table == NULL)
 		goto fail;
 
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
-	node->table = table;
-	node->len = len;
+	for (i = 0; i < priv->len; i++)
+		ec_node_free(priv->table[i]);
+	ec_free(priv->table);
+	priv->table = table;
+	priv->len = len;
 
 	return 0;
 
@@ -131,24 +130,24 @@ fail:
 }
 
 static size_t
-ec_node_or_get_children_count(const struct ec_node *gen_node)
+ec_node_or_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
-	return node->len;
+	struct ec_node_or *priv = ec_node_priv(node);
+	return priv->len;
 }
 
 static int
-ec_node_or_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_or_get_child(const struct ec_node *node, size_t i,
 		struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
+	struct ec_node_or *priv = ec_node_priv(node);
 
-	if (i >= node->len)
+	if (i >= priv->len)
 		return -1;
 
-	*child = node->table[i];
+	*child = priv->table[i];
 	/* each child node is referenced twice: once in the config and
-	 * once in the node->table[] */
+	 * once in the priv->table[] */
 	*refs = 2;
 	return 0;
 }
@@ -167,9 +166,8 @@ static struct ec_node_type ec_node_or_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_or_type);
 
-int ec_node_or_add(struct ec_node *gen_node, struct ec_node *child)
+int ec_node_or_add(struct ec_node *node, struct ec_node *child)
 {
-	struct ec_node_or *node = (struct ec_node_or *)gen_node;
 	const struct ec_config *cur_config = NULL;
 	struct ec_config *config = NULL, *children;
 	int ret;
@@ -178,10 +176,10 @@ int ec_node_or_add(struct ec_node *gen_node, struct ec_node *child)
 
 	/* XXX factorize this code in a helper */
 
-	if (ec_node_check_type(gen_node, &ec_node_or_type) < 0)
+	if (ec_node_check_type(node, &ec_node_or_type) < 0)
 		goto fail;
 
-	cur_config = ec_node_get_config(gen_node);
+	cur_config = ec_node_get_config(node);
 	if (cur_config == NULL)
 		config = ec_config_dict();
 	else
@@ -204,7 +202,7 @@ int ec_node_or_add(struct ec_node *gen_node, struct ec_node *child)
 		goto fail;
 	}
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
@@ -220,7 +218,7 @@ fail:
 struct ec_node *__ec_node_or(const char *id, ...)
 {
 	struct ec_config *config = NULL, *children = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	struct ec_node *child;
 	va_list ap;
 	int ret;
@@ -228,8 +226,8 @@ struct ec_node *__ec_node_or(const char *id, ...)
 	va_start(ap, id);
 	child = va_arg(ap, struct ec_node *);
 
-	gen_node = ec_node_from_type(&ec_node_or_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_or_type, id);
+	if (node == NULL)
 		goto fail_free_children;
 
 	config = ec_config_dict();
@@ -256,20 +254,20 @@ struct ec_node *__ec_node_or(const char *id, ...)
 	}
 	children = NULL;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
 
 	va_end(ap);
 
-	return gen_node;
+	return node;
 
 fail_free_children:
 	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
 		ec_node_free(child);
 fail:
-	ec_node_free(gen_node); /* will also free added children */
+	ec_node_free(node); /* will also free added children */
 	ec_config_free(children);
 	ec_config_free(config);
 	va_end(ap);

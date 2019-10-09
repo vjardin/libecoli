@@ -19,14 +19,13 @@
 EC_LOG_TYPE_REGISTER(node_empty);
 
 struct ec_node_empty {
-	struct ec_node gen;
 };
 
-static int ec_node_empty_parse(const struct ec_node *gen_node,
+static int ec_node_empty_parse(const struct ec_node *node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
-	(void)gen_node;
+	(void)node;
 	(void)state;
 	(void)strvec;
 	return 0;

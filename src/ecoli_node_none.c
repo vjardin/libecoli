@@ -19,14 +19,13 @@
 EC_LOG_TYPE_REGISTER(node_none);
 
 struct ec_node_none {
-	struct ec_node gen;
 };
 
-static int ec_node_none_parse(const struct ec_node *gen_node,
+static int ec_node_none_parse(const struct ec_node *node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
-	(void)gen_node;
+	(void)node;
 	(void)state;
 	(void)strvec;
 
@@ -34,11 +33,11 @@ static int ec_node_none_parse(const struct ec_node *gen_node,
 }
 
 static int
-ec_node_none_complete(const struct ec_node *gen_node,
+ec_node_none_complete(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	(void)gen_node;
+	(void)node;
 	(void)comp;
 	(void)strvec;
 

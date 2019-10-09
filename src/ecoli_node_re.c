@@ -21,17 +21,16 @@
 EC_LOG_TYPE_REGISTER(node_re);
 
 struct ec_node_re {
-	struct ec_node gen;
 	char *re_str;
 	regex_t re;
 };
 
 static int
-ec_node_re_parse(const struct ec_node *gen_node,
+ec_node_re_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_re *node = (struct ec_node_re *)gen_node;
+	struct ec_node_re *priv = ec_node_priv(node);
 	const char *str;
 	regmatch_t pos;
 
@@ -41,7 +40,7 @@ ec_node_re_parse(const struct ec_node *gen_node,
 		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
-	if (regexec(&node->re, str, 1, &pos, 0) != 0)
+	if (regexec(&priv->re, str, 1, &pos, 0) != 0)
 		return EC_PARSE_NOMATCH;
 	if (pos.rm_so != 0 || pos.rm_eo != (int)strlen(str))
 		return EC_PARSE_NOMATCH;
@@ -49,13 +48,13 @@ ec_node_re_parse(const struct ec_node *gen_node,
 	return 1;
 }
 
-static void ec_node_re_free_priv(struct ec_node *gen_node)
+static void ec_node_re_free_priv(struct ec_node *node)
 {
-	struct ec_node_re *node = (struct ec_node_re *)gen_node;
+	struct ec_node_re *priv = ec_node_priv(node);
 
-	if (node->re_str != NULL) {
-		ec_free(node->re_str);
-		regfree(&node->re);
+	if (priv->re_str != NULL) {
+		ec_free(priv->re_str);
+		regfree(&priv->re);
 	}
 }
 
@@ -70,10 +69,10 @@ static const struct ec_config_schema ec_node_re_schema[] = {
 	},
 };
 
-static int ec_node_re_set_config(struct ec_node *gen_node,
+static int ec_node_re_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_re *node = (struct ec_node_re *)gen_node;
+	struct ec_node_re *priv = ec_node_priv(node);
 	const struct ec_config *value = NULL;
 	char *s = NULL;
 	regex_t re;
@@ -98,12 +97,12 @@ static int ec_node_re_set_config(struct ec_node *gen_node,
 		goto fail;
 	}
 
-	if (node->re_str != NULL) {
-		ec_free(node->re_str);
-		regfree(&node->re);
+	if (priv->re_str != NULL) {
+		ec_free(priv->re_str);
+		regfree(&priv->re);
 	}
-	node->re_str = s;
-	node->re = re;
+	priv->re_str = s;
+	priv->re = re;
 
 	return 0;
 
@@ -124,14 +123,14 @@ static struct ec_node_type ec_node_re_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_re_type);
 
-int ec_node_re_set_regexp(struct ec_node *gen_node, const char *str)
+int ec_node_re_set_regexp(struct ec_node *node, const char *str)
 {
 	struct ec_config *config = NULL;
 	int ret;
 
 	EC_CHECK_ARG(str != NULL, -1, EINVAL);
 
-	if (ec_node_check_type(gen_node, &ec_node_re_type) < 0)
+	if (ec_node_check_type(node, &ec_node_re_type) < 0)
 		goto fail;
 
 	config = ec_config_dict();
@@ -142,7 +141,7 @@ int ec_node_re_set_regexp(struct ec_node *gen_node, const char *str)
 	if (ret < 0)
 		goto fail;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL;
 	if (ret < 0)
 		goto fail;
@@ -156,19 +155,19 @@ fail:
 
 struct ec_node *ec_node_re(const char *id, const char *re_str)
 {
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 
-	gen_node = ec_node_from_type(&ec_node_re_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_re_type, id);
+	if (node == NULL)
 		goto fail;
 
-	if (ec_node_re_set_regexp(gen_node, re_str) < 0)
+	if (ec_node_re_set_regexp(node, re_str) < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 }
 

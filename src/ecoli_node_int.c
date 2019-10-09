@@ -26,7 +26,6 @@ EC_LOG_TYPE_REGISTER(node_int);
 
 /* common to int and uint */
 struct ec_node_int_uint {
-	struct ec_node gen;
 	bool is_signed;
 	bool check_min;
 	bool check_max;
@@ -41,45 +40,45 @@ struct ec_node_int_uint {
 	unsigned int base;
 };
 
-static int parse_llint(struct ec_node_int_uint *node, const char *str,
+static int parse_llint(struct ec_node_int_uint *priv, const char *str,
 	int64_t *val)
 {
 	int64_t min, max;
 
-	if (node->check_min)
-		min = node->min;
+	if (priv->check_min)
+		min = priv->min;
 	else
 		min = LLONG_MIN;
-	if (node->check_max)
-		max = node->max;
+	if (priv->check_max)
+		max = priv->max;
 	else
 		max = LLONG_MAX;
 
-	return ec_str_parse_llint(str, node->base, min, max, val);
+	return ec_str_parse_llint(str, priv->base, min, max, val);
 }
 
-static int parse_ullint(struct ec_node_int_uint *node, const char *str,
+static int parse_ullint(struct ec_node_int_uint *priv, const char *str,
 			uint64_t *val)
 {
 	uint64_t min, max;
 
-	if (node->check_min)
-		min = node->min;
+	if (priv->check_min)
+		min = priv->min;
 	else
 		min = 0;
-	if (node->check_max)
-		max = node->max;
+	if (priv->check_max)
+		max = priv->max;
 	else
 		max = ULLONG_MAX;
 
-	return ec_str_parse_ullint(str, node->base, min, max, val);
+	return ec_str_parse_ullint(str, priv->base, min, max, val);
 }
 
-static int ec_node_int_uint_parse(const struct ec_node *gen_node,
+static int ec_node_int_uint_parse(const struct ec_node *node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 	const char *str;
 	uint64_t u64;
 	int64_t i64;
@@ -90,22 +89,22 @@ static int ec_node_int_uint_parse(const struct ec_node *gen_node,
 		return EC_PARSE_NOMATCH;
 
 	str = ec_strvec_val(strvec, 0);
-	if (node->is_signed) {
-		if (parse_llint(node, str, &i64) < 0)
+	if (priv->is_signed) {
+		if (parse_llint(priv, str, &i64) < 0)
 			return EC_PARSE_NOMATCH;
 	} else {
-		if (parse_ullint(node, str, &u64) < 0)
+		if (parse_ullint(priv, str, &u64) < 0)
 			return EC_PARSE_NOMATCH;
 	}
 	return 1;
 }
 
 static int
-ec_node_uint_init_priv(struct ec_node *gen_node)
+ec_node_uint_init_priv(struct ec_node *node)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 
-	node->is_signed = true;
+	priv->is_signed = true;
 
 	return 0;
 }
@@ -131,10 +130,10 @@ static const struct ec_config_schema ec_node_int_schema[] = {
 	},
 };
 
-static int ec_node_int_set_config(struct ec_node *gen_node,
+static int ec_node_int_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 	const struct ec_config *min_value = NULL;
 	const struct ec_config *max_value = NULL;
 	const struct ec_config *base_value = NULL;
@@ -150,21 +149,21 @@ static int ec_node_int_set_config(struct ec_node *gen_node,
 	}
 
 	if (min_value != NULL) {
-		node->check_min = true;
-		node->min = min_value->i64;
+		priv->check_min = true;
+		priv->min = min_value->i64;
 	} else {
-		node->check_min = false;
+		priv->check_min = false;
 	}
 	if (max_value != NULL) {
-		node->check_max = true;
-		node->max = max_value->i64;
+		priv->check_max = true;
+		priv->max = max_value->i64;
 	} else {
-		node->check_min = false;
+		priv->check_min = false;
 	}
 	if (base_value != NULL)
-		node->base = base_value->u64;
+		priv->base = base_value->u64;
 	else
-		node->base = 0;
+		priv->base = 0;
 
 	return 0;
 
@@ -189,11 +188,11 @@ struct ec_node *ec_node_int(const char *id, int64_t min,
 	int64_t max, unsigned int base)
 {
 	struct ec_config *config = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	int ret;
 
-	gen_node = ec_node_from_type(&ec_node_int_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_int_type, id);
+	if (node == NULL)
 		return NULL;
 
 	config = ec_config_dict();
@@ -210,16 +209,16 @@ struct ec_node *ec_node_int(const char *id, int64_t min,
 	if (ret < 0)
 		goto fail;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL;
 	if (ret < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
 	ec_config_free(config);
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 }
 
@@ -244,10 +243,10 @@ static const struct ec_config_schema ec_node_uint_schema[] = {
 	},
 };
 
-static int ec_node_uint_set_config(struct ec_node *gen_node,
+static int ec_node_uint_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 	const struct ec_config *min_value = NULL;
 	const struct ec_config *max_value = NULL;
 	const struct ec_config *base_value = NULL;
@@ -263,21 +262,21 @@ static int ec_node_uint_set_config(struct ec_node *gen_node,
 	}
 
 	if (min_value != NULL) {
-		node->check_min = true;
-		node->min = min_value->u64;
+		priv->check_min = true;
+		priv->min = min_value->u64;
 	} else {
-		node->check_min = false;
+		priv->check_min = false;
 	}
 	if (max_value != NULL) {
-		node->check_max = true;
-		node->max = max_value->u64;
+		priv->check_max = true;
+		priv->max = max_value->u64;
 	} else {
-		node->check_min = false;
+		priv->check_min = false;
 	}
 	if (base_value != NULL)
-		node->base = base_value->u64;
+		priv->base = base_value->u64;
 	else
-		node->base = 0;
+		priv->base = 0;
 
 	return 0;
 
@@ -301,11 +300,11 @@ struct ec_node *ec_node_uint(const char *id, uint64_t min,
 	uint64_t max, unsigned int base)
 {
 	struct ec_config *config = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	int ret;
 
-	gen_node = ec_node_from_type(&ec_node_uint_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_uint_type, id);
+	if (node == NULL)
 		return NULL;
 
 	config = ec_config_dict();
@@ -322,46 +321,46 @@ struct ec_node *ec_node_uint(const char *id, uint64_t min,
 	if (ret < 0)
 		goto fail;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL;
 	if (ret < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
 	ec_config_free(config);
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 }
 
-int ec_node_int_getval(const struct ec_node *gen_node, const char *str,
+int ec_node_int_getval(const struct ec_node *node, const char *str,
 			int64_t *result)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 	int ret;
 
-	ret = ec_node_check_type(gen_node, &ec_node_int_type);
+	ret = ec_node_check_type(node, &ec_node_int_type);
 	if (ret < 0)
 		return ret;
 
-	if (parse_llint(node, str, result) < 0)
+	if (parse_llint(priv, str, result) < 0)
 		return -1;
 
 	return 0;
 }
 
-int ec_node_uint_getval(const struct ec_node *gen_node, const char *str,
+int ec_node_uint_getval(const struct ec_node *node, const char *str,
 			uint64_t *result)
 {
-	struct ec_node_int_uint *node = (struct ec_node_int_uint *)gen_node;
+	struct ec_node_int_uint *priv = ec_node_priv(node);
 	int ret;
 
-	ret = ec_node_check_type(gen_node, &ec_node_uint_type);
+	ret = ec_node_check_type(node, &ec_node_uint_type);
 	if (ret < 0)
 		return ret;
 
-	if (parse_ullint(node, str, result) < 0)
+	if (parse_ullint(priv, str, result) < 0)
 		return -1;
 
 	return 0;

@@ -24,7 +24,6 @@
 EC_LOG_TYPE_REGISTER(node_subset);
 
 struct ec_node_subset {
-	struct ec_node gen;
 	struct ec_node **table;
 	unsigned int len;
 };
@@ -122,19 +121,19 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 }
 
 static int
-ec_node_subset_parse(const struct ec_node *gen_node,
+ec_node_subset_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node_subset *priv = ec_node_priv(node);
 	struct ec_parse *parse = NULL;
 	struct parse_result result;
 	int ret;
 
 	memset(&result, 0, sizeof(result));
 
-	ret = __ec_node_subset_parse(&result, node->table,
-				node->len, state, strvec);
+	ret = __ec_node_subset_parse(&result, priv->table,
+				priv->len, state, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -221,43 +220,43 @@ fail:
 }
 
 static int
-ec_node_subset_complete(const struct ec_node *gen_node,
+ec_node_subset_complete(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node_subset *priv = ec_node_priv(node);
 
-	return __ec_node_subset_complete(node->table, node->len, comp,
+	return __ec_node_subset_complete(priv->table, priv->len, comp,
 					strvec);
 }
 
-static void ec_node_subset_free_priv(struct ec_node *gen_node)
+static void ec_node_subset_free_priv(struct ec_node *node)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node_subset *priv = ec_node_priv(node);
 	size_t i;
 
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
+	for (i = 0; i < priv->len; i++)
+		ec_node_free(priv->table[i]);
+	ec_free(priv->table);
 }
 
 static size_t
-ec_node_subset_get_children_count(const struct ec_node *gen_node)
+ec_node_subset_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
-	return node->len;
+	struct ec_node_subset *priv = ec_node_priv(node);
+	return priv->len;
 }
 
 static int
-ec_node_subset_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_subset_get_child(const struct ec_node *node, size_t i,
 			struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node_subset *priv = ec_node_priv(node);
 
-	if (i >= node->len)
+	if (i >= priv->len)
 		return -1;
 
-	*child = node->table[i];
+	*child = priv->table[i];
 	*refs = 1;
 	return 0;
 }
@@ -274,9 +273,9 @@ static struct ec_node_type ec_node_subset_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_subset_type);
 
-int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
+int ec_node_subset_add(struct ec_node *node, struct ec_node *child)
 {
-	struct ec_node_subset *node = (struct ec_node_subset *)gen_node;
+	struct ec_node_subset *priv = ec_node_priv(node);
 	struct ec_node **table;
 
 	assert(node != NULL); // XXX specific assert for it, like in libyang
@@ -286,18 +285,18 @@ int ec_node_subset_add(struct ec_node *gen_node, struct ec_node *child)
 		goto fail;
 	}
 
-	if (ec_node_check_type(gen_node, &ec_node_subset_type) < 0)
+	if (ec_node_check_type(node, &ec_node_subset_type) < 0)
 		goto fail;
 
-	table = ec_realloc(node->table, (node->len + 1) * sizeof(*node->table));
+	table = ec_realloc(priv->table, (priv->len + 1) * sizeof(*priv->table));
 	if (table == NULL) {
 		ec_node_free(child);
 		return -1;
 	}
 
-	node->table = table;
-	table[node->len] = child;
-	node->len++;
+	priv->table = table;
+	table[priv->len] = child;
+	priv->len++;
 
 	return 0;
 
@@ -308,16 +307,14 @@ fail:
 
 struct ec_node *__ec_node_subset(const char *id, ...)
 {
-	struct ec_node *gen_node = NULL;
-	struct ec_node_subset *node = NULL;
+	struct ec_node *node = NULL;
 	struct ec_node *child;
 	va_list ap;
 	int fail = 0;
 
 	va_start(ap, id);
 
-	gen_node = ec_node_from_type(&ec_node_subset_type, id);
-	node = (struct ec_node_subset *)gen_node;
+	node = ec_node_from_type(&ec_node_subset_type, id);
 	if (node == NULL)
 		fail = 1;;
 
@@ -327,7 +324,7 @@ struct ec_node *__ec_node_subset(const char *id, ...)
 
 		/* on error, don't quit the loop to avoid leaks */
 		if (fail == 1 || child == NULL ||
-				ec_node_subset_add(gen_node, child) < 0) {
+				ec_node_subset_add(node, child) < 0) {
 			fail = 1;
 			ec_node_free(child);
 		}
@@ -337,10 +334,10 @@ struct ec_node *__ec_node_subset(const char *id, ...)
 		goto fail;
 
 	va_end(ap);
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node); /* will also free children */
+	ec_node_free(node); /* will also free children */
 	va_end(ap);
 	return NULL;
 }

@@ -25,6 +25,20 @@
 
 EC_LOG_TYPE_REGISTER(node);
 
+struct ec_node {
+	const struct ec_node_type *type;
+	struct ec_config *config;    /**< Generic configuration. */
+	char *id;
+	char *desc;
+	struct ec_dict *attrs;
+	unsigned int refcnt;
+	struct {
+		enum ec_node_free_state state; /**< State of loop detection */
+		unsigned int refcnt;    /**< Number of reachable references
+					 *   starting from node beeing freed */
+	} free; /**< Freeing state: used for loop detection */
+};
+
 static struct ec_node_type_list node_type_list =
 	TAILQ_HEAD_INITIALIZER(node_type_list);
 
@@ -44,8 +58,6 @@ ec_node_type_lookup(const char *name)
 
 int ec_node_type_register(struct ec_node_type *type)
 {
-	EC_CHECK_ARG(type->size >= sizeof(struct ec_node), -1, EINVAL);
-
 	if (ec_node_type_lookup(type->name) != NULL) {
 		errno = EEXIST;
 		return -1;
@@ -75,7 +87,7 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
 		goto fail;
 	}
 
-	node = ec_calloc(1, type->size);
+	node = ec_calloc(1, sizeof(*node) + type->size);
 	if (node == NULL)
 		goto fail;
 
@@ -426,6 +438,18 @@ int ec_node_check_type(const struct ec_node *node,
 	}
 
 	return 0;
+}
+
+const char *ec_node_get_type_name(const struct ec_node *node)
+{
+	return node->type->name;
+}
+
+void *ec_node_priv(const struct ec_node *node)
+{
+	if (node == NULL)
+		return NULL;
+	return (void *)(node + 1);
 }
 
 /* LCOV_EXCL_START */

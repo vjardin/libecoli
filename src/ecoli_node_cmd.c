@@ -39,7 +39,6 @@ static struct ec_node *ec_node_cmd_parser; /* the expression parser. */
 static struct ec_node *ec_node_cmd_expr;   /* the expr parser without lexer. */
 
 struct ec_node_cmd {
-	struct ec_node gen;
 	char *cmd_str;           /* the command string. */
 	struct ec_node *cmd;     /* the command node. */
 	struct ec_node **table;  /* table of node referenced in command. */
@@ -160,7 +159,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	}
 
 	if (ec_strvec_len(vec) == 0) {
-		if (!strcmp(in1->type->name, "seq")) {
+		if (!strcmp(ec_node_get_type_name(in1), "seq")) {
 			if (ec_node_seq_add(in1, ec_node_clone(in2)) < 0)
 				return -1;
 			ec_node_free(in2);
@@ -175,12 +174,12 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 			*result = out;
 		}
 	} else if (!strcmp(ec_strvec_val(vec, 0), "|")) {
-		if (!strcmp(in2->type->name, "or")) {
+		if (!strcmp(ec_node_get_type_name(in2), "or")) {
 			if (ec_node_or_add(in2, ec_node_clone(in1)) < 0)
 				return -1;
 			ec_node_free(in1);
 			*result = in2;
-		} else if (!strcmp(in1->type->name, "or")) {
+		} else if (!strcmp(ec_node_get_type_name(in1), "or")) {
 			if (ec_node_or_add(in1, ec_node_clone(in2)) < 0)
 				return -1;
 			ec_node_free(in2);
@@ -195,12 +194,12 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 			*result = out;
 		}
 	} else if (!strcmp(ec_strvec_val(vec, 0), ",")) {
-		if (!strcmp(in2->type->name, "subset")) {
+		if (!strcmp(ec_node_get_type_name(in2), "subset")) {
 			if (ec_node_subset_add(in2, ec_node_clone(in1)) < 0)
 				return -1;
 			ec_node_free(in1);
 			*result = in2;
-		} else if (!strcmp(in1->type->name, "subset")) {
+		} else if (!strcmp(ec_node_get_type_name(in1), "subset")) {
 			if (ec_node_subset_add(in1, ec_node_clone(in2)) < 0)
 				return -1;
 			ec_node_free(in2);
@@ -392,38 +391,38 @@ fail:
 }
 
 static int
-ec_node_cmd_parse(const struct ec_node *gen_node, struct ec_parse *state,
+ec_node_cmd_parse(const struct ec_node *node, struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	return ec_node_parse_child(node->cmd, state, strvec);
+	return ec_node_parse_child(priv->cmd, state, strvec);
 }
 
 static int
-ec_node_cmd_complete(const struct ec_node *gen_node,
+ec_node_cmd_complete(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	return ec_node_complete_child(node->cmd, comp, strvec);
+	return ec_node_complete_child(priv->cmd, comp, strvec);
 }
 
-static void ec_node_cmd_free_priv(struct ec_node *gen_node)
+static void ec_node_cmd_free_priv(struct ec_node *node)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 	size_t i;
 
-	ec_free(node->cmd_str);
-	node->cmd_str = NULL;
-	ec_node_free(node->cmd);
-	node->cmd = NULL;
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
-	node->table = NULL;
-	node->len = 0;
+	ec_free(priv->cmd_str);
+	priv->cmd_str = NULL;
+	ec_node_free(priv->cmd);
+	priv->cmd = NULL;
+	for (i = 0; i < priv->len; i++)
+		ec_node_free(priv->table[i]);
+	ec_free(priv->table);
+	priv->table = NULL;
+	priv->len = 0;
 }
 
 static const struct ec_config_schema ec_node_cmd_subschema[] = {
@@ -458,10 +457,10 @@ static const struct ec_config_schema ec_node_cmd_schema[] = {
 	},
 };
 
-static int ec_node_cmd_set_config(struct ec_node *gen_node,
+static int ec_node_cmd_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 	const struct ec_config *expr = NULL;
 	struct ec_node *cmd = NULL;
 	struct ec_node **table = NULL;
@@ -490,15 +489,15 @@ static int ec_node_cmd_set_config(struct ec_node *gen_node,
 		goto fail;
 
 	/* ok, store the config */
-	ec_node_free(node->cmd);
-	node->cmd = cmd;
-	ec_free(node->cmd_str);
-	node->cmd_str = cmd_str;
-	for (i = 0; i < node->len; i++)
-		ec_node_free(node->table[i]);
-	ec_free(node->table);
-	node->table = table;
-	node->len = len;
+	ec_node_free(priv->cmd);
+	priv->cmd = cmd;
+	ec_free(priv->cmd_str);
+	priv->cmd_str = cmd_str;
+	for (i = 0; i < priv->len; i++)
+		ec_node_free(priv->table[i]);
+	ec_free(priv->table);
+	priv->table = table;
+	priv->len = len;
 
 	return 0;
 
@@ -512,25 +511,25 @@ fail:
 }
 
 static size_t
-ec_node_cmd_get_children_count(const struct ec_node *gen_node)
+ec_node_cmd_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	if (node->cmd == NULL)
+	if (priv->cmd == NULL)
 		return 0;
 	return 1;
 }
 
 static int
-ec_node_cmd_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_cmd_get_child(const struct ec_node *node, size_t i,
 		struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_cmd *node = (struct ec_node_cmd *)gen_node;
+	struct ec_node_cmd *priv = ec_node_priv(node);
 
 	if (i > 0)
 		return -1;
 
-	*child = node->cmd;
+	*child = priv->cmd;
 	*refs = 1;
 	return 0;
 }
@@ -552,7 +551,7 @@ EC_NODE_TYPE_REGISTER(ec_node_cmd_type);
 struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 {
 	struct ec_config *config = NULL, *children = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	va_list ap;
 	int ret;
 
@@ -563,8 +562,8 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	if (children == NULL)
 		goto fail;
 
-	gen_node = ec_node_from_type(&ec_node_cmd_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_cmd_type, id);
+	if (node == NULL)
 		goto fail;
 
 	config = ec_config_dict();
@@ -580,15 +579,15 @@ struct ec_node *__ec_node_cmd(const char *id, const char *cmd, ...)
 	}
 	children = NULL;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node); /* will also free added children */
+	ec_node_free(node); /* will also free added children */
 	ec_config_free(children);
 	ec_config_free(config);
 

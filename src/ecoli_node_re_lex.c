@@ -34,7 +34,6 @@ struct regexp_pattern {
 };
 
 struct ec_node_re_lex {
-	struct ec_node gen;
 	struct ec_node *child;
 	struct regexp_pattern *table;
 	size_t len;
@@ -116,17 +115,17 @@ fail:
 }
 
 static int
-ec_node_re_lex_parse(const struct ec_node *gen_node,
+ec_node_re_lex_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct ec_node_re_lex *priv = ec_node_priv(node);
 	struct ec_strvec *new_vec = NULL;
 	struct ec_parse *child_parse;
 	const char *str;
 	int ret;
 
-	if (node->child == NULL) {
+	if (priv->child == NULL) {
 		errno = EINVAL;
 		goto fail;
 	}
@@ -135,12 +134,12 @@ ec_node_re_lex_parse(const struct ec_node *gen_node,
 		new_vec = ec_strvec();
 	} else {
 		str = ec_strvec_val(strvec, 0);
-		new_vec = tokenize(node->table, node->len, str);
+		new_vec = tokenize(priv->table, priv->len, str);
 	}
 	if (new_vec == NULL)
 		goto fail;
 
-	ret = ec_node_parse_child(node->child, state, new_vec);
+	ret = ec_node_parse_child(priv->child, state, new_vec);
 	if (ret < 0)
 		goto fail;
 
@@ -163,41 +162,41 @@ ec_node_re_lex_parse(const struct ec_node *gen_node,
 	return -1;
 }
 
-static void ec_node_re_lex_free_priv(struct ec_node *gen_node)
+static void ec_node_re_lex_free_priv(struct ec_node *node)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct ec_node_re_lex *priv = ec_node_priv(node);
 	unsigned int i;
 
-	ec_node_free(node->child);
-	for (i = 0; i < node->len; i++) {
-		ec_free(node->table[i].pattern);
-		ec_free(node->table[i].attr_name);
-		regfree(&node->table[i].r);
+	ec_node_free(priv->child);
+	for (i = 0; i < priv->len; i++) {
+		ec_free(priv->table[i].pattern);
+		ec_free(priv->table[i].attr_name);
+		regfree(&priv->table[i].r);
 	}
 
-	ec_free(node->table);
+	ec_free(priv->table);
 }
 
 static size_t
-ec_node_re_lex_get_children_count(const struct ec_node *gen_node)
+ec_node_re_lex_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct ec_node_re_lex *priv = ec_node_priv(node);
 
-	if (node->child)
+	if (priv->child)
 		return 1;
 	return 0;
 }
 
 static int
-ec_node_re_lex_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_re_lex_get_child(const struct ec_node *node, size_t i,
 			struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct ec_node_re_lex *priv = ec_node_priv(node);
 
 	if (i >= 1)
 		return -1;
 
-	*child = node->child;
+	*child = priv->child;
 	*refs = 2;
 	return 0;
 }
@@ -252,10 +251,10 @@ static const struct ec_config_schema ec_node_re_lex_schema[] = {
 	},
 };
 
-static int ec_node_re_lex_set_config(struct ec_node *gen_node,
+static int ec_node_re_lex_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_re_lex *node = (struct ec_node_re_lex *)gen_node;
+	struct ec_node_re_lex *priv = ec_node_priv(node);
 	struct regexp_pattern *table = NULL;
 	const struct ec_config *patterns, *child, *elt, *pattern, *keep, *attr;
 	char *pattern_str = NULL, *attr_name = NULL;
@@ -340,17 +339,17 @@ static int ec_node_re_lex_set_config(struct ec_node *gen_node,
 		}
 	}
 
-	if (node->child != NULL)
-		ec_node_free(node->child);
-	node->child = ec_node_clone(child->node);
-	for (i = 0; i < (ssize_t)node->len; i++) {
-		ec_free(node->table[i].pattern);
-		ec_free(node->table[i].attr_name);
-		regfree(&node->table[i].r);
+	if (priv->child != NULL)
+		ec_node_free(priv->child);
+	priv->child = ec_node_clone(child->node);
+	for (i = 0; i < (ssize_t)priv->len; i++) {
+		ec_free(priv->table[i].pattern);
+		ec_free(priv->table[i].attr_name);
+		regfree(&priv->table[i].r);
 	}
-	ec_free(node->table);
-	node->table = table;
-	node->len = n;
+	ec_free(priv->table);
+	priv->table = table;
+	priv->len = n;
 
 	return 0;
 
@@ -382,14 +381,14 @@ static struct ec_node_type ec_node_re_lex_type = {
 
 EC_NODE_TYPE_REGISTER(ec_node_re_lex_type);
 
-int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep,
+int ec_node_re_lex_add(struct ec_node *node, const char *pattern, int keep,
 	const char *attr_name)
 {
 	const struct ec_config *cur_config = NULL;
 	struct ec_config *config = NULL, *patterns = NULL, *elt = NULL;
 	int ret;
 
-	if (ec_node_check_type(gen_node, &ec_node_re_lex_type) < 0)
+	if (ec_node_check_type(node, &ec_node_re_lex_type) < 0)
 		goto fail;
 
 	elt = ec_config_dict();
@@ -405,7 +404,7 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep,
 			goto fail;
 	}
 
-	cur_config = ec_node_get_config(gen_node);
+	cur_config = ec_node_get_config(node);
 	if (cur_config == NULL)
 		config = ec_config_dict();
 	else
@@ -429,7 +428,7 @@ int ec_node_re_lex_add(struct ec_node *gen_node, const char *pattern, int keep,
 	}
 	elt = NULL;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
@@ -443,16 +442,16 @@ fail:
 }
 
 static int
-ec_node_re_lex_set_child(struct ec_node *gen_node, struct ec_node *child)
+ec_node_re_lex_set_child(struct ec_node *node, struct ec_node *child)
 {
 	const struct ec_config *cur_config = NULL;
 	struct ec_config *config = NULL;
 	int ret;
 
-	if (ec_node_check_type(gen_node, &ec_node_re_lex_type) < 0)
+	if (ec_node_check_type(node, &ec_node_re_lex_type) < 0)
 		goto fail;
 
-	cur_config = ec_node_get_config(gen_node);
+	cur_config = ec_node_get_config(node);
 	if (cur_config == NULL)
 		config = ec_config_dict();
 	else
@@ -466,7 +465,7 @@ ec_node_re_lex_set_child(struct ec_node *gen_node, struct ec_node *child)
 	}
 	child = NULL; /* freed */
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
@@ -481,24 +480,24 @@ fail:
 
 struct ec_node *ec_node_re_lex(const char *id, struct ec_node *child)
 {
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 
 	if (child == NULL)
 		return NULL;
 
-	gen_node = ec_node_from_type(&ec_node_re_lex_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_re_lex_type, id);
+	if (node == NULL)
 		goto fail;
 
-	if (ec_node_re_lex_set_child(gen_node, child) < 0) {
+	if (ec_node_re_lex_set_child(node, child) < 0) {
 		child = NULL; /* freed */
 		goto fail;
 	}
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	ec_node_free(child);
 	return NULL;
 }

@@ -21,35 +21,34 @@
 EC_LOG_TYPE_REGISTER(node_any);
 
 struct ec_node_any {
-	struct ec_node gen;
 	char *attr_name;
 };
 
-static int ec_node_any_parse(const struct ec_node *gen_node,
+static int ec_node_any_parse(const struct ec_node *node,
 			struct ec_parse *state,
 			const struct ec_strvec *strvec)
 {
-	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+	struct ec_node_any *priv = ec_node_priv(node);
 	const struct ec_dict *attrs;
 
 	(void)state;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
-	if (node->attr_name != NULL) {
+	if (priv->attr_name != NULL) {
 		attrs = ec_strvec_get_attrs(strvec, 0);
-		if (attrs == NULL || !ec_dict_has_key(attrs, node->attr_name))
+		if (attrs == NULL || !ec_dict_has_key(attrs, priv->attr_name))
 			return EC_PARSE_NOMATCH;
 	}
 
 	return 1;
 }
 
-static void ec_node_any_free_priv(struct ec_node *gen_node)
+static void ec_node_any_free_priv(struct ec_node *node)
 {
-	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+	struct ec_node_any *priv = ec_node_priv(node);
 
-	ec_free(node->attr_name);
+	ec_free(priv->attr_name);
 }
 
 static const struct ec_config_schema ec_node_any_schema[] = {
@@ -63,10 +62,10 @@ static const struct ec_config_schema ec_node_any_schema[] = {
 	},
 };
 
-static int ec_node_any_set_config(struct ec_node *gen_node,
+static int ec_node_any_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_any *node = (struct ec_node_any *)gen_node;
+	struct ec_node_any *priv = ec_node_priv(node);
 	const struct ec_config *value = NULL;
 	char *s = NULL;
 
@@ -77,8 +76,8 @@ static int ec_node_any_set_config(struct ec_node *gen_node,
 			goto fail;
 	}
 
-	ec_free(node->attr_name);
-	node->attr_name = s;
+	ec_free(priv->attr_name);
+	priv->attr_name = s;
 
 	return 0;
 
@@ -103,11 +102,11 @@ struct ec_node *
 ec_node_any(const char *id, const char *attr)
 {
 	struct ec_config *config = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	int ret;
 
-	gen_node = ec_node_from_type(&ec_node_any_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_any_type, id);
+	if (node == NULL)
 		return NULL;
 
 	config = ec_config_dict();
@@ -118,16 +117,16 @@ ec_node_any(const char *id, const char *attr)
 	if (ret < 0)
 		goto fail;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL;
 	if (ret < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
 	ec_config_free(config);
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 }
 

@@ -42,7 +42,6 @@ static struct ec_node *ec_node_cond_parser; /* the expression parser. */
 static struct ec_dict *ec_node_cond_functions; /* functions dictionary */
 
 struct ec_node_cond {
-	struct ec_node gen;
 	char *cond_str;                /* the condition string. */
 	struct ec_parse *parsed_cond;  /* the parsed condition. */
 	struct ec_node *child;         /* the child node. */
@@ -703,18 +702,18 @@ validate_condition(const struct ec_parse *cond, const struct ec_parse *state)
 }
 
 static int
-ec_node_cond_parse(const struct ec_node *gen_node, struct ec_parse *state,
+ec_node_cond_parse(const struct ec_node *node, struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 	struct ec_parse *child;
 	int ret, valid;
 
-	ret = ec_node_parse_child(node->child, state, strvec);
+	ret = ec_node_parse_child(priv->child, state, strvec);
 	if (ret <= 0)
 		return ret;
 
-	valid = validate_condition(node->parsed_cond, state);
+	valid = validate_condition(priv->parsed_cond, state);
 	if (valid < 0)
 		return valid;
 
@@ -729,27 +728,27 @@ ec_node_cond_parse(const struct ec_node *gen_node, struct ec_parse *state,
 }
 
 static int
-ec_node_cond_complete(const struct ec_node *gen_node,
+ec_node_cond_complete(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 
 	// XXX eval condition
 	// XXX before or after completing ? configurable ?
 
-	return ec_node_complete_child(node->child, comp, strvec);
+	return ec_node_complete_child(priv->child, comp, strvec);
 }
 
-static void ec_node_cond_free_priv(struct ec_node *gen_node)
+static void ec_node_cond_free_priv(struct ec_node *node)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 
-	ec_free(node->cond_str);
-	node->cond_str = NULL;
-	ec_parse_free(node->parsed_cond);
-	node->parsed_cond = NULL;
-	ec_node_free(node->child);
+	ec_free(priv->cond_str);
+	priv->cond_str = NULL;
+	ec_parse_free(priv->parsed_cond);
+	priv->parsed_cond = NULL;
+	ec_node_free(priv->child);
 }
 
 static const struct ec_config_schema ec_node_cond_schema[] = {
@@ -768,10 +767,10 @@ static const struct ec_config_schema ec_node_cond_schema[] = {
 	},
 };
 
-static int ec_node_cond_set_config(struct ec_node *gen_node,
+static int ec_node_cond_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 	const struct ec_config *cond = NULL;
 	struct ec_parse *parsed_cond = NULL;
 	const struct ec_config *child;
@@ -797,12 +796,12 @@ static int ec_node_cond_set_config(struct ec_node *gen_node,
 		goto fail;
 
 	/* ok, store the config */
-	ec_parse_free(node->parsed_cond);
-	node->parsed_cond = parsed_cond;
-	ec_free(node->cond_str);
-	node->cond_str = cond_str;
-	ec_node_free(node->child);
-	node->child = ec_node_clone(child->node);
+	ec_parse_free(priv->parsed_cond);
+	priv->parsed_cond = parsed_cond;
+	ec_free(priv->cond_str);
+	priv->cond_str = cond_str;
+	ec_node_free(priv->child);
+	priv->child = ec_node_clone(child->node);
 
 	return 0;
 
@@ -813,25 +812,25 @@ fail:
 }
 
 static size_t
-ec_node_cond_get_children_count(const struct ec_node *gen_node)
+ec_node_cond_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 
-	if (node->child == NULL)
+	if (priv->child == NULL)
 		return 0;
 	return 1;
 }
 
 static int
-ec_node_cond_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_cond_get_child(const struct ec_node *node, size_t i,
 		struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_cond *node = (struct ec_node_cond *)gen_node;
+	struct ec_node_cond *priv = ec_node_priv(node);
 
 	if (i > 0)
 		return -1;
 
-	*child = node->child;
+	*child = priv->child;
 	*refs = 1;
 	return 0;
 }
@@ -854,14 +853,14 @@ struct ec_node *ec_node_cond(const char *id, const char *cmd,
 			struct ec_node *child)
 {
 	struct ec_config *config = NULL;
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 	int ret;
 
 	if (child == NULL)
 		return NULL;
 
-	gen_node = ec_node_from_type(&ec_node_cond_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_cond_type, id);
+	if (node == NULL)
 		goto fail;
 
 	config = ec_config_dict();
@@ -877,15 +876,15 @@ struct ec_node *ec_node_cond(const char *id, const char *cmd,
 	}
 	child = NULL;
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	ec_node_free(child);
 	ec_config_free(config);
 

@@ -24,23 +24,22 @@
 EC_LOG_TYPE_REGISTER(node_dynamic);
 
 struct ec_node_dynamic {
-	struct ec_node gen;
 	ec_node_dynamic_build_t build;
 	void *opaque;
 };
 
 static int
-ec_node_dynamic_parse(const struct ec_node *gen_node,
+ec_node_dynamic_parse(const struct ec_node *node,
 		struct ec_parse *parse,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_dynamic *node = (struct ec_node_dynamic *)gen_node;
+	struct ec_node_dynamic *priv = ec_node_priv(node);
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
 	char key[64];
 	int ret = -1;
 
-	child = node->build(parse, node->opaque);
+	child = priv->build(parse, priv->opaque);
 	if (child == NULL)
 		goto fail;
 
@@ -62,11 +61,11 @@ fail:
 }
 
 static int
-ec_node_dynamic_complete(const struct ec_node *gen_node,
+ec_node_dynamic_complete(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_dynamic *node = (struct ec_node_dynamic *)gen_node;
+	struct ec_node_dynamic *priv = ec_node_priv(node);
 	struct ec_parse *parse;
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
@@ -74,7 +73,7 @@ ec_node_dynamic_complete(const struct ec_node *gen_node,
 	int ret = -1;
 
 	parse = ec_comp_get_state(comp);
-	child = node->build(parse, node->opaque);
+	child = priv->build(parse, priv->opaque);
 	if (child == NULL)
 		goto fail;
 
@@ -105,26 +104,26 @@ static struct ec_node_type ec_node_dynamic_type = {
 struct ec_node *
 ec_node_dynamic(const char *id, ec_node_dynamic_build_t build, void *opaque)
 {
-	struct ec_node *gen_node = NULL;
-	struct ec_node_dynamic *node;
+	struct ec_node *node = NULL;
+	struct ec_node_dynamic *priv;
 
 	if (build == NULL) {
 		errno = EINVAL;
 		goto fail;
 	}
 
-	gen_node = ec_node_from_type(&ec_node_dynamic_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_dynamic_type, id);
+	if (node == NULL)
 		goto fail;
 
-	node = (struct ec_node_dynamic *)gen_node;
-	node->build = build;
-	node->opaque = opaque;
+	priv = ec_node_priv(node);
+	priv->build = build;
+	priv->opaque = opaque;
 
-	return gen_node;
+	return node;
 
 fail:
-	ec_node_free(gen_node);
+	ec_node_free(node);
 	return NULL;
 
 }
@@ -144,7 +143,7 @@ build_counter(struct ec_parse *parse, void *opaque)
 	for (iter = root; iter != NULL;
 	     iter = EC_PARSE_ITER_NEXT(root, iter, 1)) {
 		node = ec_parse_get_node(iter);
-		if (node->id && !strcmp(node->id, "my-id"))
+		if (!strcmp(ec_node_id(node), "my-id"))
 			count++;
 	}
 	snprintf(buf, sizeof(buf), "count-%u", count);

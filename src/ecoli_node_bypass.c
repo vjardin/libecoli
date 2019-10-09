@@ -23,57 +23,56 @@
 EC_LOG_TYPE_REGISTER(node_bypass);
 
 struct ec_node_bypass {
-	struct ec_node gen;
 	struct ec_node *child;
 };
 
 static int
-ec_node_bypass_parse(const struct ec_node *gen_node,
+ec_node_bypass_parse(const struct ec_node *node,
 		struct ec_parse *state,
 		const struct ec_strvec *strvec)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	return ec_node_parse_child(node->child, state, strvec);
+	return ec_node_parse_child(priv->child, state, strvec);
 }
 
 static int
-ec_node_bypass_complete(const struct ec_node *gen_node,
+ec_node_bypass_complete(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	return ec_node_complete_child(node->child, comp, strvec);
+	return ec_node_complete_child(priv->child, comp, strvec);
 }
 
-static void ec_node_bypass_free_priv(struct ec_node *gen_node)
+static void ec_node_bypass_free_priv(struct ec_node *node)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	ec_node_free(node->child);
+	ec_node_free(priv->child);
 }
 
 static size_t
-ec_node_bypass_get_children_count(const struct ec_node *gen_node)
+ec_node_bypass_get_children_count(const struct ec_node *node)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	if (node->child)
+	if (priv->child)
 		return 1;
 	return 0;
 }
 
 static int
-ec_node_bypass_get_child(const struct ec_node *gen_node, size_t i,
+ec_node_bypass_get_child(const struct ec_node *node, size_t i,
 	struct ec_node **child, unsigned int *refs)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 
 	if (i >= 1)
 		return -1;
 
-	*child = node->child;
+	*child = priv->child;
 	*refs = 2;
 	return 0;
 }
@@ -89,10 +88,10 @@ static const struct ec_config_schema ec_node_bypass_schema[] = {
 	},
 };
 
-static int ec_node_bypass_set_config(struct ec_node *gen_node,
+static int ec_node_bypass_set_config(struct ec_node *node,
 				const struct ec_config *config)
 {
-	struct ec_node_bypass *node = (struct ec_node_bypass *)gen_node;
+	struct ec_node_bypass *priv = ec_node_priv(node);
 	const struct ec_config *child;
 
 	child = ec_config_dict_get(config, "child");
@@ -103,9 +102,9 @@ static int ec_node_bypass_set_config(struct ec_node *gen_node,
 		goto fail;
 	}
 
-	if (node->child != NULL)
-		ec_node_free(node->child);
-	node->child = ec_node_clone(child->node);
+	if (priv->child != NULL)
+		ec_node_free(priv->child);
+	priv->child = ec_node_clone(child->node);
 
 	return 0;
 
@@ -128,16 +127,16 @@ static struct ec_node_type ec_node_bypass_type = {
 EC_NODE_TYPE_REGISTER(ec_node_bypass_type);
 
 int
-ec_node_bypass_set_child(struct ec_node *gen_node, struct ec_node *child)
+ec_node_bypass_set_child(struct ec_node *node, struct ec_node *child)
 {
 	const struct ec_config *cur_config = NULL;
 	struct ec_config *config = NULL;
 	int ret;
 
-	if (ec_node_check_type(gen_node, &ec_node_bypass_type) < 0)
+	if (ec_node_check_type(node, &ec_node_bypass_type) < 0)
 		goto fail;
 
-	cur_config = ec_node_get_config(gen_node);
+	cur_config = ec_node_get_config(node);
 	if (cur_config == NULL)
 		config = ec_config_dict();
 	else
@@ -151,7 +150,7 @@ ec_node_bypass_set_child(struct ec_node *gen_node, struct ec_node *child)
 	}
 	child = NULL; /* freed */
 
-	ret = ec_node_set_config(gen_node, config);
+	ret = ec_node_set_config(node, config);
 	config = NULL; /* freed */
 	if (ret < 0)
 		goto fail;
@@ -166,19 +165,19 @@ fail:
 
 struct ec_node *ec_node_bypass(const char *id, struct ec_node *child)
 {
-	struct ec_node *gen_node = NULL;
+	struct ec_node *node = NULL;
 
 	if (child == NULL)
 		goto fail;
 
-	gen_node = ec_node_from_type(&ec_node_bypass_type, id);
-	if (gen_node == NULL)
+	node = ec_node_from_type(&ec_node_bypass_type, id);
+	if (node == NULL)
 		goto fail;
 
-	ec_node_bypass_set_child(gen_node, child);
+	ec_node_bypass_set_child(node, child);
 	child = NULL;
 
-	return gen_node;
+	return node;
 
 fail:
 	ec_node_free(child);
