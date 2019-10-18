@@ -70,7 +70,7 @@ static char *my_completion_entry(const char *s, int state)
 		return NULL;
 
 	item_str = ec_comp_item_get_str(item);
-	if (c->count_full == 1) {
+	if (ec_comp_count(c, EC_COMP_FULL) == 1) {
 
 		/* don't add the trailing space for partial completions */
 		if (state == 0) {
@@ -113,8 +113,7 @@ static char *get_node_help(const struct ec_comp_item *item)
 	const char *node_desc = NULL;
 
 	grp = ec_comp_item_get_grp(item);
-	state = grp->state;
-	for (state = grp->state; state != NULL;
+	for (state = ec_comp_group_get_state(grp); state != NULL;
 	     state = ec_parse_get_parent(state)) {
 		node = ec_parse_get_node(state);
 		if (node_help == NULL)

@@ -393,7 +393,7 @@ static int get_node_help(const struct ec_comp_item *item,
 
 	grp = ec_comp_item_get_grp(item);
 
-	for (state = grp->state; state != NULL;
+	for (state = ec_comp_group_get_state(grp); state != NULL;
 	     state = ec_parse_get_parent(state)) {
 		node = ec_parse_get_node(state);
 		if (node_help == NULL)

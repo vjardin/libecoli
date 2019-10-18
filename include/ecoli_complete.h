@@ -33,29 +33,8 @@ enum ec_comp_type { /* XXX should be a define */
 };
 
 struct ec_comp_item;
-
-TAILQ_HEAD(ec_comp_item_list, ec_comp_item);
-
-struct ec_comp_group {
-	TAILQ_ENTRY(ec_comp_group) next;
-	const struct ec_node *node;
-	struct ec_comp_item_list items;
-	struct ec_parse *state;
-	struct ec_dict *attrs;
-};
-
-TAILQ_HEAD(ec_comp_group_list, ec_comp_group);
-
-struct ec_comp {
-	unsigned count;
-	unsigned count_full;
-	unsigned count_partial;
-	unsigned count_unknown;
-	struct ec_parse *cur_state;
-	struct ec_comp_group *cur_group;
-	struct ec_comp_group_list groups;
-	struct ec_dict *attrs;
-};
+struct ec_comp_group;
+struct ec_comp;
 
 /*
  * return a comp object filled with items
@@ -101,7 +80,23 @@ void ec_comp_dump(FILE *out,
 int ec_comp_merge(struct ec_comp *to,
 		struct ec_comp *from);
 
-struct ec_parse *ec_comp_get_state(struct ec_comp *comp);
+/**
+ * Get current completion state.
+ *
+ */
+struct ec_parse *ec_comp_get_state(const struct ec_comp *comp);
+
+/**
+ * Get current completion group.
+ *
+ */
+struct ec_comp_group *ec_comp_get_group(const struct ec_comp *comp);
+
+/**
+ * Get completion group attributes.
+ *
+ */
+struct ec_dict *ec_comp_get_attrs(const struct ec_comp *comp);
 
 /* shortcut for ec_comp_item() + ec_comp_item_add() */
 int ec_comp_add_item(struct ec_comp *comp,
@@ -179,6 +174,31 @@ int ec_comp_item_set_display(struct ec_comp_item *item,
  */
 int ec_comp_item_set_completion(struct ec_comp_item *item,
 				const char *completion);
+
+/**
+ * Get the completion group node.
+ *
+ *
+ */
+const struct ec_node *
+ec_comp_group_get_node(const struct ec_comp_group *grp);
+
+/**
+ * Get the completion group parsed state.
+ *
+ *
+ */
+const struct ec_parse *
+ec_comp_group_get_state(const struct ec_comp_group *grp);
+
+/**
+ * Get the completion group attributes.
+ *
+ *
+ */
+const struct ec_dict *
+ec_comp_group_get_attrs(const struct ec_comp_group *grp);
+
 
 /**
  *

@@ -34,6 +34,29 @@ struct ec_comp_item {
 	struct ec_dict *attrs;
 };
 
+TAILQ_HEAD(ec_comp_item_list, ec_comp_item);
+
+struct ec_comp_group {
+	TAILQ_ENTRY(ec_comp_group) next;
+	const struct ec_node *node;
+	struct ec_comp_item_list items;
+	struct ec_parse *state;
+	struct ec_dict *attrs;
+};
+
+TAILQ_HEAD(ec_comp_group_list, ec_comp_group);
+
+struct ec_comp {
+	unsigned count;
+	unsigned count_full;
+	unsigned count_partial;
+	unsigned count_unknown;
+	struct ec_parse *cur_state;
+	struct ec_comp_group *cur_group;
+	struct ec_comp_group_list groups;
+	struct ec_dict *attrs;
+};
+
 struct ec_comp *ec_comp(struct ec_parse *state)
 {
 	struct ec_comp *comp = NULL;
@@ -60,9 +83,19 @@ struct ec_comp *ec_comp(struct ec_parse *state)
 	return NULL;
 }
 
-struct ec_parse *ec_comp_get_state(struct ec_comp *comp)
+struct ec_parse *ec_comp_get_state(const struct ec_comp *comp)
 {
 	return comp->cur_state;
+}
+
+struct ec_comp_group *ec_comp_get_group(const struct ec_comp *comp)
+{
+	return comp->cur_group;
+}
+
+struct ec_dict *ec_comp_get_attrs(const struct ec_comp *comp)
+{
+	return comp->attrs;
 }
 
 int
@@ -483,6 +516,24 @@ static void ec_comp_group_free(struct ec_comp_group *grp)
 	ec_parse_free(ec_parse_get_root(grp->state));
 	ec_dict_free(grp->attrs);
 	ec_free(grp);
+}
+
+const struct ec_node *
+ec_comp_group_get_node(const struct ec_comp_group *grp)
+{
+	return grp->node;
+}
+
+const struct ec_parse *
+ec_comp_group_get_state(const struct ec_comp_group *grp)
+{
+	return grp->state;
+}
+
+const struct ec_dict *
+ec_comp_group_get_attrs(const struct ec_comp_group *grp)
+{
+	return grp->attrs;
 }
 
 void ec_comp_free(struct ec_comp *comp)

@@ -80,7 +80,7 @@ ec_node_dynamic_complete(const struct ec_node *node,
 	/* add the node pointer in the attributes, so it will be freed
 	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_dict_set(comp->attrs, key, child,
+	ret = ec_dict_set(ec_comp_get_attrs(comp), key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */
