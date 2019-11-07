@@ -11,7 +11,16 @@
  * This file provide helpers to list and manipulate the possible
  * completions for a given input.
  *
- * XXX comp vs item
+ * Use @ec_node_complete_strvec() to complete a vector of strings when
+ * the input is already split into several tokens. You can use
+ * @ec_node_complete() if you know that the size of the vector is
+ * 1. This is common if you grammar tree has a lexer that will tokenize
+ * the input.
+ *
+ * These 2 functions return a pointer to an @ec_comp structure, that
+ * lists the possible completions. The completions are grouped into
+ * @ec_group. All completions items of a group shares the same parsing
+ * state and are issued by the same node.
  *
  * @}
  */
@@ -24,28 +33,75 @@
 #include <stdio.h>
 
 struct ec_node;
+struct ec_comp_item;
+struct ec_comp_group;
+struct ec_comp;
 
-enum ec_comp_type { /* XXX should be a define */
+/**
+ * Completion item type.
+ */
+enum ec_comp_type {
 	EC_COMP_UNKNOWN = 0x1,
 	EC_COMP_FULL = 0x2,
 	EC_COMP_PARTIAL = 0x4,
 	EC_COMP_ALL = 0x7,
 };
 
-struct ec_comp_item;
-struct ec_comp_group;
-struct ec_comp;
-
-/*
- * return a comp object filled with items
- * return NULL on error (nomem?)
+/**
+ * Get the list of completions from a string input.
+ *
+ * It is equivalent that calling @ec_node_complete_strvec() with a
+ * vector that only contains 1 element, the input string. Using this
+ * function is often more convenient if you get your input from a
+ * buffer, because you won't have to create a vector. Usually, it means
+ * you have a lexer in your grammar tree that will tokenize the input.
+ *
+ * See @ec_complete_strvec() for more details.
+ *
+ * @param node
+ *   The grammar tree.
+ * @param str
+ *   The input string.
+ * @return
+ *   A pointer to the completion list on success, or NULL
+ *   on error (errno is set).
  */
 struct ec_comp *ec_node_complete(const struct ec_node *node,
 	const char *str);
+
+/**
+ * Get the list of completions from a string vector input.
+ *
+ * This function tries to complete the last element of the given string
+ * vector. For instance, to complete with file names in an equivalent of
+ * the "cat" shell command, the passed vector should be ["cat", ""] (and
+ * not ["cat"]). To complete with files starting with "x", the passed
+ * vector should be ["cat", "x"].
+ *
+ * To get the completion list, the engine parses the beginning of the
+ * input using the grammar tree. The resulting parsing tree is saved and
+ * attached to each completion group.
+ *
+ * The result is a @ec_comp structure pointer, which contains several
+ * groups of completion items.
+ *
+ * @param node
+ *   The grammar tree.
+ * @param str
+ *   The input string.
+ * @return
+ *   A pointer to the completion list on success, or NULL
+ *   on error (errno is set).
+ */
 struct ec_comp *ec_node_complete_strvec(const struct ec_node *node,
 	const struct ec_strvec *strvec);
 
-/* internal: used by nodes */
+/**
+ * Get the list of completions when called from a node completion.
+ *
+ * This function is to be used by ecoli nodes.
+ *
+ */
 int ec_node_complete_child(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec);

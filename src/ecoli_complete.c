@@ -37,6 +37,7 @@ struct ec_comp_item {
 TAILQ_HEAD(ec_comp_item_list, ec_comp_item);
 
 struct ec_comp_group {
+	/* XXX counts ? */
 	TAILQ_ENTRY(ec_comp_group) next;
 	const struct ec_node *node;
 	struct ec_comp_item_list items;
