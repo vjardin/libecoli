@@ -116,12 +116,12 @@ fail:
 
 static int
 ec_node_re_lex_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_re_lex *priv = ec_node_priv(node);
 	struct ec_strvec *new_vec = NULL;
-	struct ec_parse *child_parse;
+	struct ec_pnode *child_parse;
 	const char *str;
 	int ret;
 
@@ -139,16 +139,16 @@ ec_node_re_lex_parse(const struct ec_node *node,
 	if (new_vec == NULL)
 		goto fail;
 
-	ret = ec_node_parse_child(priv->child, state, new_vec);
+	ret = ec_parse_child(priv->child, state, new_vec);
 	if (ret < 0)
 		goto fail;
 
 	if ((unsigned)ret == ec_strvec_len(new_vec)) {
 		ret = 1;
 	} else if (ret != EC_PARSE_NOMATCH) {
-		child_parse = ec_parse_get_last_child(state);
-		ec_parse_unlink_child(state, child_parse);
-		ec_parse_free(child_parse);
+		child_parse = ec_pnode_get_last_child(state);
+		ec_pnode_unlink_child(state, child_parse);
+		ec_pnode_free(child_parse);
 		ret = EC_PARSE_NOMATCH;
 	}
 
@@ -372,7 +372,7 @@ static struct ec_node_type ec_node_re_lex_type = {
 	.schema = ec_node_re_lex_schema,
 	.set_config = ec_node_re_lex_set_config,
 	.parse = ec_node_re_lex_parse,
-	.complete = ec_node_complete_unknown,
+	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_re_lex),
 	.free_priv = ec_node_re_lex_free_priv,
 	.get_children_count = ec_node_re_lex_get_children_count,
@@ -547,8 +547,8 @@ static int ec_node_re_lex_testcase(void)
 
 	/* no completion */
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		EC_VA_END);
 
 	ec_node_free(node);
 

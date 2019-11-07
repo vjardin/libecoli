@@ -28,12 +28,12 @@ struct ec_node_bypass {
 
 static int
 ec_node_bypass_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	return ec_node_parse_child(priv->child, state, strvec);
+	return ec_parse_child(priv->child, state, strvec);
 }
 
 static int
@@ -43,7 +43,7 @@ ec_node_bypass_complete(const struct ec_node *node,
 {
 	struct ec_node_bypass *priv = ec_node_priv(node);
 
-	return ec_node_complete_child(priv->child, comp, strvec);
+	return ec_complete_child(priv->child, comp, strvec);
 }
 
 static void ec_node_bypass_free_priv(struct ec_node *node)
@@ -208,14 +208,14 @@ static int ec_node_bypass_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"f", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"f", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"b", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"b", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

@@ -55,7 +55,7 @@ Parsing an input
 
 When the *libecoli* parses an input, it browses the tree (depth first
 search) and returns an *ecoli parse tree*. Let's decompose what is done
-when ``ec_node_parse_strvec(root_node, input)`` is called, step by step:
+when ``ec_parse_strvec(root_node, input)`` is called, step by step:
 
 1. The initial input is a string vector ``["foo bar"]``.
 2. The *sh_lex* node splits the input as a shell would have done it, in

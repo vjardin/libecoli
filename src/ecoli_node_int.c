@@ -75,7 +75,7 @@ static int parse_ullint(struct ec_node_int_uint *priv, const char *str,
 }
 
 static int ec_node_int_uint_parse(const struct ec_node *node,
-			struct ec_parse *state,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_int_uint *priv = ec_node_priv(node);
@@ -177,7 +177,7 @@ static struct ec_node_type ec_node_int_type = {
 	.schema = ec_node_int_schema,
 	.set_config = ec_node_int_set_config,
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_node_complete_unknown,
+	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 	.init_priv = ec_node_uint_init_priv,
 };
@@ -290,7 +290,7 @@ static struct ec_node_type ec_node_uint_type = {
 	.schema = ec_node_uint_schema,
 	.set_config = ec_node_uint_set_config,
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_node_complete_unknown,
+	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 };
 
@@ -369,7 +369,7 @@ int ec_node_uint_getval(const struct ec_node *node, const char *str,
 /* LCOV_EXCL_START */
 static int ec_node_int_testcase(void)
 {
-	struct ec_parse *p;
+	struct ec_pnode *p;
 	struct ec_node *node;
 	const char *s;
 	int testres = 0;
@@ -393,19 +393,19 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "0x100000000000000000");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
 
-	p = ec_node_parse(node, "1");
-	s = ec_strvec_val(ec_parse_strvec(p), 0);
+	p = ec_parse(node, "1");
+	s = ec_strvec_val(ec_pnode_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 1, "bad integer value");
-	ec_parse_free(p);
+	ec_pnode_free(p);
 
-	p = ec_node_parse(node, "10");
-	s = ec_strvec_val(ec_parse_strvec(p), 0);
+	p = ec_parse(node, "10");
+	s = ec_strvec_val(ec_pnode_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 10, "bad integer value");
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	ec_node_free(node);
 
 	node = ec_node_int(EC_NO_ID, -1, LLONG_MAX, 16);
@@ -422,12 +422,12 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "zzz");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
 
-	p = ec_node_parse(node, "10");
-	s = ec_strvec_val(ec_parse_strvec(p), 0);
+	p = ec_parse(node, "10");
+	s = ec_strvec_val(ec_pnode_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_int_getval(node, s, &i64) == 0 &&
 		i64 == 16, "bad integer value");
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	ec_node_free(node);
 
 	node = ec_node_int(EC_NO_ID, LLONG_MIN, 0, 10);
@@ -449,14 +449,14 @@ static int ec_node_int_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"x", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"x", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"1", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"1", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

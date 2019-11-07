@@ -21,6 +21,11 @@
 	(new_type)__x;				\
 	})
 
+/**
+ * Mark the end of the arguments list in some functions.
+ */
+#define EC_VA_END ((void *)1)
+
 #endif
 
 /** @} */

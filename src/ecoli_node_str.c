@@ -26,7 +26,7 @@ struct ec_node_str {
 
 static int
 ec_node_str_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *priv = ec_node_priv(node);
@@ -245,20 +245,20 @@ static int ec_node_str_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"f", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"f", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"x", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"x", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

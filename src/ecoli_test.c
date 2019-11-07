@@ -46,7 +46,7 @@ int ec_test_register(struct ec_test *test)
 
 int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 {
-	struct ec_parse *p;
+	struct ec_pnode *p;
 	struct ec_strvec *vec = NULL;
 	const char *s;
 	int ret = -1, match;
@@ -60,7 +60,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 		goto out;
 
 	for (s = va_arg(ap, const char *);
-	     s != EC_NODE_ENDLIST;
+	     s != EC_VA_END;
 	     s = va_arg(ap, const char *)) {
 		if (s == NULL)
 			goto out;
@@ -69,12 +69,12 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 			goto out;
 	}
 
-	p = ec_node_parse_strvec(tk, vec);
+	p = ec_parse_strvec(tk, vec);
 	if (p == NULL) {
 		EC_LOG(EC_LOG_ERR, "parse is NULL\n");
 	}
-	if (ec_parse_matches(p))
-		match = ec_parse_len(p);
+	if (ec_pnode_matches(p))
+		match = ec_pnode_len(p);
 	else
 		match = -1;
 	if (expected == match) {
@@ -85,7 +85,7 @@ int ec_test_check_parse(struct ec_node *tk, int expected, ...)
 			match, expected);
 	}
 
-	ec_parse_free(p);
+	ec_pnode_free(p);
 
 out:
 	ec_strvec_free(vec);
@@ -110,7 +110,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 		goto out;
 
 	for (s = va_arg(ap, const char *);
-	     s != EC_NODE_ENDLIST;
+	     s != EC_VA_END;
 	     s = va_arg(ap, const char *)) {
 		if (s == NULL)
 			goto out;
@@ -119,7 +119,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 			goto out;
 	}
 
-	c = ec_node_complete_strvec(tk, vec);
+	c = ec_complete_strvec(tk, vec);
 	if (c == NULL) {
 		ret = -1;
 		goto out;
@@ -127,7 +127,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 
 	/* for each expected completion, check it is there */
 	for (s = va_arg(ap, const char *);
-	     s != EC_NODE_ENDLIST;
+	     s != EC_VA_END;
 	     s = va_arg(ap, const char *)) {
 		struct ec_comp_iter *iter;
 		const struct ec_comp_item *item;

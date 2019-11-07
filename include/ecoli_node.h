@@ -54,10 +54,8 @@
  */
 #define EC_NO_ID "no-id"
 
-#define EC_NODE_ENDLIST ((void *)1)
-
 struct ec_node;
-struct ec_parse;
+struct ec_pnode;
 struct ec_comp;
 struct ec_strvec;
 struct ec_dict;
@@ -79,10 +77,10 @@ TAILQ_HEAD(ec_node_type_list, ec_node_type);
 
 typedef int (*ec_node_set_config_t)(struct ec_node *node,
 				const struct ec_config *config);
-typedef int (*ec_node_parse_t)(const struct ec_node *node,
-			struct ec_parse *state,
+typedef int (*ec_parse_t)(const struct ec_node *node,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec);
-typedef int (*ec_node_complete_t)(const struct ec_node *node,
+typedef int (*ec_complete_t)(const struct ec_node *node,
 				struct ec_comp *comp_state,
 				const struct ec_strvec *strvec);
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
@@ -102,8 +100,8 @@ struct ec_node_type {
 	 *  (.type = EC_CONFIG_TYPE_NONE). */
 	const struct ec_config_schema *schema;
 	ec_node_set_config_t set_config; /* validate/ack a config change */
-	ec_node_parse_t parse;
-	ec_node_complete_t complete;
+	ec_parse_t parse;
+	ec_complete_t complete;
 	ec_node_desc_t desc;
 	size_t size;
 	ec_node_init_priv_t init_priv;

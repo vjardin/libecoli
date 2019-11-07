@@ -38,14 +38,14 @@ ec_node_config_node_list_to_table(const struct ec_config *config,
  * Build a list of config nodes from variable arguments.
  *
  * The va_list argument is a list of pointer to ec_node structures,
- * terminated with EC_NODE_ENDLIST.
+ * terminated with EC_VA_END.
  *
  * This helper is used by nodes that contain a list of nodes,
  * like "seq", "or", ...
  *
  * @param ap
  *   List of pointer to ec_node structures, terminated with
- *   EC_NODE_ENDLIST.
+ *   EC_VA_END.
  * @return
  *   A pointer to an ec_config structure. In this case, the
  *   nodes will be freed when the config structure will be freed.

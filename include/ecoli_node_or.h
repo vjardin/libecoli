@@ -11,10 +11,11 @@
 #define ECOLI_NODE_OR_
 
 #include <ecoli_node.h>
+#include <ecoli_utils.h>
 
-#define EC_NODE_OR(args...) __ec_node_or(args, EC_NODE_ENDLIST)
+#define EC_NODE_OR(args...) __ec_node_or(args, EC_VA_END)
 
-/* list must be terminated with EC_NODE_ENDLIST */
+/* list must be terminated with EC_VA_END */
 /* all nodes given in the list will be freed when freeing this one */
 /* avoid using this function directly, prefer the macro EC_NODE_OR() or
  * ec_node_or() + ec_node_or_add() */

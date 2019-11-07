@@ -41,5 +41,4 @@ Who use it?
    installation
    user_guide
    architecture
-   api
    contributing

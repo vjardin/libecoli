@@ -17,8 +17,8 @@
  * @}
  */
 
-#ifndef ECOLI_PARSE_
-#define ECOLI_PARSE_
+#ifndef ECOLI_PNODE_
+#define ECOLI_PNODE_
 
 #include <sys/queue.h>
 #include <sys/types.h>
@@ -27,7 +27,7 @@
 #include <stdbool.h>
 
 struct ec_node;
-struct ec_parse;
+struct ec_pnode;
 
 /**
  * Create an empty parse tree.
@@ -35,28 +35,28 @@ struct ec_parse;
  * @return
  *   The empty parse tree.
  */
-struct ec_parse *ec_parse(const struct ec_node *node);
+struct ec_pnode *ec_pnode(const struct ec_node *node);
 
 /**
  *
  *
  *
  */
-void ec_parse_free(struct ec_parse *parse);
+void ec_pnode_free(struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-void ec_parse_free_children(struct ec_parse *parse);
+void ec_pnode_free_children(struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_parse_dup(const struct ec_parse *parse);
+struct ec_pnode *ec_pnode_dup(const struct ec_pnode *pnode);
 
 /**
  *
@@ -64,7 +64,7 @@ struct ec_parse *ec_parse_dup(const struct ec_parse *parse);
  *
  */
 // _get_ XXX
-const struct ec_strvec *ec_parse_strvec(const struct ec_parse *parse);
+const struct ec_strvec *ec_pnode_strvec(const struct ec_pnode *pnode);
 
 /* a NULL return value is an error, with errno set
   ENOTSUP: no ->parse() operation
@@ -74,14 +74,14 @@ const struct ec_strvec *ec_parse_strvec(const struct ec_parse *parse);
  *
  *
  */
-struct ec_parse *ec_node_parse(const struct ec_node *node, const char *str);
+struct ec_pnode *ec_parse(const struct ec_node *node, const char *str);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_node_parse_strvec(const struct ec_node *node,
+struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec);
 
 /**
@@ -94,7 +94,7 @@ struct ec_parse *ec_node_parse_strvec(const struct ec_node *node,
 /* internal: used by nodes
  *
  * state is the current parse tree, which is built piece by piece while
- *   parsing the node tree: ec_node_parse_child() creates a new child in
+ *   parsing the node tree: ec_parse_child() creates a new child in
  *   this state parse tree, and calls the parse() method for the child
  *   node, with state pointing to this new child. If it does not match,
  *   the child is removed in the state, else it is kept, with its
@@ -105,8 +105,8 @@ struct ec_parse *ec_node_parse_strvec(const struct ec_node *node,
  * EC_PARSE_NOMATCH (positive) if it does not match
  * -1 on error, and errno is set
  */
-int ec_node_parse_child(const struct ec_node *node,
-			struct ec_parse *state,
+int ec_parse_child(const struct ec_node *node,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec);
 
 /**
@@ -114,23 +114,23 @@ int ec_node_parse_child(const struct ec_node *node,
  *
  *
  */
-void ec_parse_link_child(struct ec_parse *parse,
-			struct ec_parse *child);
+void ec_pnode_link_child(struct ec_pnode *pnode,
+			struct ec_pnode *child);
 /**
  *
  *
  *
  */
-void ec_parse_unlink_child(struct ec_parse *parse,
-			struct ec_parse *child);
+void ec_pnode_unlink_child(struct ec_pnode *pnode,
+			struct ec_pnode *child);
 
 /* keep the const */
-#define ec_parse_get_root(parse) ({				\
-	const struct ec_parse *p_ = parse; /* check type */	\
-	struct ec_parse *parse_ = (struct ec_parse *)parse;	\
+#define ec_pnode_get_root(parse) ({				\
+	const struct ec_pnode *p_ = parse; /* check type */	\
+	struct ec_pnode *pnode_ = (struct ec_pnode *)parse;	\
 	typeof(parse) res_;					\
 	(void)p_;						\
-	res_ = __ec_parse_get_root(parse_);			\
+	res_ = __ec_pnode_get_root(pnode_);			\
 	res_;							\
 })
 
@@ -139,86 +139,86 @@ void ec_parse_unlink_child(struct ec_parse *parse,
  *
  *
  */
-struct ec_parse *__ec_parse_get_root(struct ec_parse *parse);
+struct ec_pnode *__ec_pnode_get_root(struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_parse_get_parent(const struct ec_parse *parse);
+struct ec_pnode *ec_pnode_get_parent(const struct ec_pnode *pnode);
 
 /**
  * Get the first child of a tree.
  *
  */
-struct ec_parse *ec_parse_get_first_child(const struct ec_parse *parse);
+struct ec_pnode *ec_pnode_get_first_child(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_parse_get_last_child(const struct ec_parse *parse);
+struct ec_pnode *ec_pnode_get_last_child(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_parse_next(const struct ec_parse *parse);
+struct ec_pnode *ec_pnode_next(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-#define EC_PARSE_FOREACH_CHILD(child, parse)			\
-	for (child = ec_parse_get_first_child(parse);		\
+#define EC_PNODE_FOREACH_CHILD(child, parse)			\
+	for (child = ec_pnode_get_first_child(parse);		\
 	     child != NULL;					\
-	     child = ec_parse_next(child))			\
+	     child = ec_pnode_next(child))			\
 
 /**
  *
  *
  *
  */
-bool ec_parse_has_child(const struct ec_parse *parse);
+bool ec_pnode_has_child(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-const struct ec_node *ec_parse_get_node(const struct ec_parse *parse);
+const struct ec_node *ec_pnode_get_node(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-void ec_parse_del_last_child(struct ec_parse *parse);
+void ec_pnode_del_last_child(struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_dict *ec_parse_get_attrs(struct ec_parse *parse);
+struct ec_dict *ec_pnode_get_attrs(struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-void ec_parse_dump(FILE *out, const struct ec_parse *parse);
+void ec_pnode_dump(FILE *out, const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-struct ec_parse *ec_parse_find(struct ec_parse *parse,
+struct ec_pnode *ec_pnode_find(struct ec_pnode *pnode,
 	const char *id);
 
 /**
@@ -226,26 +226,26 @@ struct ec_parse *ec_parse_find(struct ec_parse *parse,
  *
  *
  */
-struct ec_parse *ec_parse_find_next(struct ec_parse *root,
-				struct ec_parse *start,
+struct ec_pnode *ec_pnode_find_next(struct ec_pnode *root,
+				struct ec_pnode *start,
 				const char *id, bool iter_children);
 
 /**
  * Iterate among parse tree
  *
  * Use it with:
- * for (iter = state; iter != NULL; iter = EC_PARSE_ITER_NEXT(state, iter, 1))
+ * for (iter = state; iter != NULL; iter = EC_PNODE_ITER_NEXT(state, iter, 1))
  */
-struct ec_parse *__ec_parse_iter_next(const struct ec_parse *root,
-				struct ec_parse *parse, bool iter_children);
+struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
+				struct ec_pnode *pnode, bool iter_children);
 
 /* keep the const if any */
-#define EC_PARSE_ITER_NEXT(root, parse, iter_children) ({		\
-	const struct ec_parse *p_ = parse; /* check type */		\
-	struct ec_parse *parse_ = (struct ec_parse *)parse;		\
+#define EC_PNODE_ITER_NEXT(root, parse, iter_children) ({		\
+	const struct ec_pnode *p_ = parse; /* check type */		\
+	struct ec_pnode *pnode_ = (struct ec_pnode *)parse;		\
 	typeof(parse) res_;						\
 	(void)p_;							\
-	res_ = __ec_parse_iter_next(root, parse_, iter_children);	\
+	res_ = __ec_pnode_iter_next(root, pnode_, iter_children);	\
 	res_;								\
 })
 
@@ -254,13 +254,13 @@ struct ec_parse *__ec_parse_iter_next(const struct ec_parse *root,
  *
  *
  */
-size_t ec_parse_len(const struct ec_parse *parse);
+size_t ec_pnode_len(const struct ec_pnode *pnode);
 
 /**
  *
  *
  *
  */
-size_t ec_parse_matches(const struct ec_parse *parse);
+size_t ec_pnode_matches(const struct ec_pnode *pnode);
 
 #endif

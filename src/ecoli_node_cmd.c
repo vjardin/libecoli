@@ -53,7 +53,7 @@ struct ec_node_cmd_ctx {
 
 static int
 ec_node_cmd_eval_var(void **result, void *userctx,
-	const struct ec_parse *var)
+	const struct ec_pnode *var)
 {
 	const struct ec_strvec *vec;
 	struct ec_node_cmd_ctx *ctx = userctx;
@@ -62,7 +62,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 	unsigned int i;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parse_strvec(var);
+	vec = ec_pnode_strvec(var);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -96,7 +96,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 
 static int
 ec_node_cmd_eval_pre_op(void **result, void *userctx, void *operand,
-	const struct ec_parse *operator)
+	const struct ec_pnode *operator)
 {
 	(void)result;
 	(void)userctx;
@@ -109,7 +109,7 @@ ec_node_cmd_eval_pre_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
-	const struct ec_parse *operator)
+	const struct ec_pnode *operator)
 {
 	const struct ec_strvec *vec;
 	struct ec_node *in = operand;;
@@ -118,7 +118,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parse_strvec(operator);
+	vec = ec_pnode_strvec(operator);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -141,7 +141,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 
 static int
 ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
-	const struct ec_parse *operator, void *operand2)
+	const struct ec_pnode *operator, void *operand2)
 
 {
 	const struct ec_strvec *vec;
@@ -152,7 +152,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parse_strvec(operator);
+	vec = ec_pnode_strvec(operator);
 	if (ec_strvec_len(vec) > 1) {
 		errno = EINVAL;
 		return -1;
@@ -223,8 +223,8 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 
 static int
 ec_node_cmd_eval_parenthesis(void **result, void *userctx,
-	const struct ec_parse *open_paren,
-	const struct ec_parse *close_paren,
+	const struct ec_pnode *open_paren,
+	const struct ec_pnode *close_paren,
 	void *value)
 {
 	const struct ec_strvec *vec;
@@ -235,7 +235,7 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 	(void)close_paren;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_parse_strvec(open_paren);
+	vec = ec_pnode_strvec(open_paren);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -358,45 +358,45 @@ static struct ec_node *
 ec_node_cmd_build(const char *cmd_str, struct ec_node **table, size_t len)
 {
 	struct ec_node_cmd_ctx ctx = { table, len };
-	struct ec_parse *p = NULL;
+	struct ec_pnode *p = NULL;
 	void *result;
 	int ret;
 
 	/* parse the command expression */
-	p = ec_node_parse(ec_node_cmd_parser, cmd_str);
+	p = ec_parse(ec_node_cmd_parser, cmd_str);
 	if (p == NULL)
 		goto fail;
 
-	if (!ec_parse_matches(p)) {
+	if (!ec_pnode_matches(p)) {
 		errno = EINVAL;
 		goto fail;
 	}
-	if (!ec_parse_has_child(p)) {
+	if (!ec_pnode_has_child(p)) {
 		errno = EINVAL;
 		goto fail;
 	}
 
 	ret = ec_node_expr_eval(&result, ec_node_cmd_expr,
-				ec_parse_get_first_child(p),
+				ec_pnode_get_first_child(p),
 				&expr_ops, &ctx);
 	if (ret < 0)
 		goto fail;
 
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	return result;
 
 fail:
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	return NULL;
 }
 
 static int
-ec_node_cmd_parse(const struct ec_node *node, struct ec_parse *state,
+ec_node_cmd_parse(const struct ec_node *node, struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	return ec_node_parse_child(priv->cmd, state, strvec);
+	return ec_parse_child(priv->cmd, state, strvec);
 }
 
 static int
@@ -406,7 +406,7 @@ ec_node_cmd_complete(const struct ec_node *node,
 {
 	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	return ec_node_complete_child(priv->cmd, comp, strvec);
+	return ec_complete_child(priv->cmd, comp, strvec);
 }
 
 static void ec_node_cmd_free_priv(struct ec_node *node)
@@ -671,14 +671,14 @@ static int ec_node_cmd_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, 4, "good", "morning", "1", "bob");
 
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"good", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"good", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"g", EC_NODE_ENDLIST,
-		"good", EC_NODE_ENDLIST);
+		"g", EC_VA_END,
+		"good", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"good", "morning", "", EC_NODE_ENDLIST,
-		"bob", "bobby", "michael", EC_NODE_ENDLIST);
+		"good", "morning", "", EC_VA_END,
+		"bob", "bobby", "michael", EC_VA_END);
 
 	ec_node_free(node);
 

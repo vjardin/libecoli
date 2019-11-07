@@ -23,7 +23,7 @@ struct ec_node_space {
 
 static int
 ec_node_space_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	const char *str;
@@ -47,7 +47,7 @@ ec_node_space_parse(const struct ec_node *node,
 static struct ec_node_type ec_node_space_type = {
 	.name = "space",
 	.parse = ec_node_space_parse,
-	.complete = ec_node_complete_unknown,
+	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_space),
 };
 
@@ -79,14 +79,14 @@ static int ec_node_space_testcase(void)
 	}
 	/* never completes whatever the input */
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		" ", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		" ", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"foo", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

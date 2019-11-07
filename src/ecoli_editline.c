@@ -383,7 +383,7 @@ static int get_node_help(const struct ec_comp_item *item,
 			struct ec_editline_help *help)
 {
 	const struct ec_comp_group *grp;
-	const struct ec_parse *state;
+	const struct ec_pnode *state;
 	const struct ec_node *node;
 	const char *node_help = NULL;
 	const char *node_desc = NULL;
@@ -394,8 +394,8 @@ static int get_node_help(const struct ec_comp_item *item,
 	grp = ec_comp_item_get_grp(item);
 
 	for (state = ec_comp_group_get_state(grp); state != NULL;
-	     state = ec_parse_get_parent(state)) {
-		node = ec_parse_get_node(state);
+	     state = ec_pnode_get_parent(state)) {
+		node = ec_pnode_get_node(state);
 		if (node_help == NULL)
 			node_help = ec_dict_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -431,21 +431,21 @@ ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 	const struct ec_comp_group *grp, *prev_grp = NULL;
 	const struct ec_comp_item *item;
 	struct ec_comp *cmpl = NULL;
-	struct ec_parse *parse = NULL;
+	struct ec_pnode *parse = NULL;
 	unsigned int count = 0;
 	struct ec_editline_help *helps = NULL;
 
 	*helps_out = NULL;
 
 	/* check if the current line matches */
-	parse = ec_node_parse(editline->node, full_line);
-	if (ec_parse_matches(parse))
+	parse = ec_parse(editline->node, full_line);
+	if (ec_pnode_matches(parse))
 		count = 1;
-	ec_parse_free(parse);
+	ec_pnode_free(parse);
 	parse = NULL;
 
 	/* complete at current cursor position */
-	cmpl = ec_node_complete(editline->node, line);
+	cmpl = ec_complete(editline->node, line);
 	if (cmpl == NULL) //XXX log error
 		goto fail;
 
@@ -494,7 +494,7 @@ ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 
 fail:
 	ec_comp_iter_free(iter);
-	ec_parse_free(parse);
+	ec_pnode_free(parse);
 	ec_comp_free(cmpl);
 	if (helps != NULL) {
 		while (count--) {
@@ -551,7 +551,7 @@ ec_editline_complete(EditLine *el, int c)
 		goto fail;
 	}
 
-	cmpl = ec_node_complete(editline->node, line);
+	cmpl = ec_complete(editline->node, line);
 	if (cmpl == NULL)
 		goto fail;
 
@@ -653,11 +653,11 @@ fail:
 	return NULL;
 }
 
-struct ec_parse *
+struct ec_pnode *
 ec_editline_parse(struct ec_editline *editline, const struct ec_node *node)
 {
 	char *line = NULL;
-	struct ec_parse *parse = NULL;
+	struct ec_pnode *parse = NULL;
 
 	/* XXX add sh_lex automatically? This node is required, parse and
 	 * complete are based on it. */
@@ -668,7 +668,7 @@ ec_editline_parse(struct ec_editline *editline, const struct ec_node *node)
 	if (line == NULL)
 		goto fail;
 
-	parse = ec_node_parse(node, line);
+	parse = ec_parse(node, line);
 	if (parse == NULL)
 		goto fail;
 
@@ -677,7 +677,7 @@ ec_editline_parse(struct ec_editline *editline, const struct ec_node *node)
 
 fail:
 	ec_free(line);
-	ec_parse_free(parse);
+	ec_pnode_free(parse);
 
 	return NULL;
 }

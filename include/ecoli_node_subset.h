@@ -12,9 +12,9 @@
 
 #include <ecoli_node.h>
 
-#define EC_NODE_SUBSET(args...) __ec_node_subset(args, EC_NODE_ENDLIST)
+#define EC_NODE_SUBSET(args...) __ec_node_subset(args, EC_VA_END)
 
-/* list must be terminated with EC_NODE_ENDLIST */
+/* list must be terminated with EC_VA_END */
 /* all nodes given in the list will be freed when freeing this one */
 /* avoid using this function directly, prefer the macro EC_NODE_SUBSET() or
  * ec_node_subset() + ec_node_subset_add() */

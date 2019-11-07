@@ -54,7 +54,7 @@ static char *my_completion_entry(const char *s, int state)
 			return NULL;
 		line[rl_point] = '\0';
 
-		c = ec_node_complete(commands, line);
+		c = ec_complete(commands, line);
 		free(line);
 		if (c == NULL)
 			return NULL;
@@ -106,7 +106,7 @@ static char **my_attempted_completion(const char *text, int start, int end)
 static char *get_node_help(const struct ec_comp_item *item)
 {
 	const struct ec_comp_group *grp;
-	const struct ec_parse *state;
+	const struct ec_pnode *state;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
@@ -114,8 +114,8 @@ static char *get_node_help(const struct ec_comp_item *item)
 
 	grp = ec_comp_item_get_grp(item);
 	for (state = ec_comp_group_get_state(grp); state != NULL;
-	     state = ec_parse_get_parent(state)) {
-		node = ec_parse_get_node(state);
+	     state = ec_pnode_get_parent(state)) {
+		node = ec_pnode_get_node(state);
 		if (node_help == NULL)
 			node_help = ec_dict_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -139,7 +139,7 @@ static int show_help(int ignore, int invoking_key)
 	const struct ec_comp_group *grp, *prev_grp = NULL;
 	const struct ec_comp_item *item;
 	struct ec_comp *c = NULL;
-	struct ec_parse *p = NULL;
+	struct ec_pnode *p = NULL;
 	char *line = NULL;
 	unsigned int count;
 	char **helps = NULL;
@@ -154,15 +154,15 @@ static int show_help(int ignore, int invoking_key)
 		goto fail;
 
 	/* check if the current line matches */
-	p = ec_node_parse(commands, line);
-	if (ec_parse_matches(p))
+	p = ec_parse(commands, line);
+	if (ec_pnode_matches(p))
 		match = 1;
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	p = NULL;
 
 	/* complete at current cursor position */
 	line[rl_point] = '\0';
-	c = ec_node_complete(commands, line);
+	c = ec_complete(commands, line);
 	free(line);
 	line = NULL;
 	if (c == NULL)
@@ -211,7 +211,7 @@ static int show_help(int ignore, int invoking_key)
 
 fail:
 	ec_comp_iter_free(iter);
-	ec_parse_free(p);
+	ec_pnode_free(p);
 	free(line);
 	ec_comp_free(c);
 	if (helps != NULL) {
@@ -328,7 +328,7 @@ static int create_commands(void)
 
 int main(void)
 {
-	struct ec_parse *p;
+	struct ec_pnode *p;
 	char *line;
 
 	if (ec_init() < 0) {
@@ -347,10 +347,10 @@ int main(void)
 		if (line == NULL)
 			break;
 
-		p = ec_node_parse(commands, line);
-		ec_parse_dump(stdout, p);
+		p = ec_parse(commands, line);
+		ec_pnode_dump(stdout, p);
 		add_history(line);
-		ec_parse_free(p);
+		ec_pnode_free(p);
 	}
 
 

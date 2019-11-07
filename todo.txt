@@ -44,6 +44,7 @@ X use vec for strvec
 X remove weakref?
 - sh_lex to provide offsets in attributes
 - accessors for all structs
+- private vs user attributes?
 
 dependencies
 ============
@@ -436,4 +437,82 @@ There are several options:
 
 3/ one library with core + yaml + edit
    dependency is managed at runtime
+
+
+--------------
+
+current naming: ec_node_parse* and ec_comp_complete* are not
+so good names
+
+struct		ec_comp
+alloc		ec_complete()
+free		ec_complete_free()
+action		ec_comp_complete()
+action		ec_comp_complete_strvec()
+action		ec_comp_dump()
+action		ec_comp_merge()
+accessors	ec_comp_get()
+
+struct		ec_parse
+alloc		ec_parse()
+free		ec_parse_free()
+action		ec_node_parse()
+action		ec_node_parse_strvec()
+accessors	...
+
+struct		ec_node
+alloc		ec_node()
+free		ec_node_free()
+action		...
+accessors	...
+
+struct		ec_strvec
+alloc		ec_strvec()
+free		ec_strvec_free()
+action		ec_strvec_*()
+
+---------
+
+proposal
+
+- struct name must not be a verb (ex: not ec_parse)
+- allocator is the name of struct
+- actions are <structname>_<verb>() except for basic/common actions
+- basic actions are ec_<verb>()
+- accessors (get) are <structname>_<field>()
+- accessors (set) are <structname>_set_<field>()
+
+
+XXX list all functions to be sure
+XXX this could go in documentation (coding rules)
+
+struct		ec_comp
+alloc		ec_comp()
+free		ec_comp_free()
+action		ec_complete()
+action		ec_complete_strvec()
+action		ec_comp_dump()
+action		ec_comp_merge()
+accessors	ec_comp_id()
+accessors	ec_comp_attrs()
+
+(pnode means parsed node)
+struct		ec_pnode
+alloc		ec_pnode()
+free		ec_pnode_free()
+action		ec_parse()
+action		ec_parse_strvec()
+accessors	...
+
+(node means grammar node)
+struct		ec_node
+alloc		ec_node()
+free		ec_node_free()
+action		...
+accessors	ec_node_get*()
+
+struct		ec_strvec
+alloc		ec_strvec()
+free		ec_strvec_free()
+action		ec_strvec_*()
 

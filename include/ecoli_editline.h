@@ -23,7 +23,7 @@
 
 struct ec_editline;
 struct ec_node;
-struct ec_parse;
+struct ec_pnode;
 struct ec_comp;
 
 struct ec_editline_help {
@@ -159,7 +159,7 @@ char *ec_editline_gets(struct ec_editline *editline);
  * Get a line (managing completion) and parse it with passed node
  * XXX find a better name?
  */
-struct ec_parse *
+struct ec_pnode *
 ec_editline_parse(struct ec_editline *editline, const struct ec_node *node);
 
 int

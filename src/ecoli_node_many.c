@@ -30,11 +30,11 @@ struct ec_node_many {
 };
 
 static int ec_node_many_parse(const struct ec_node *node,
-			struct ec_parse *state,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_many *priv = ec_node_priv(node);
-	struct ec_parse *child_parse;
+	struct ec_pnode *child_parse;
 	struct ec_strvec *childvec = NULL;
 	size_t off = 0, count;
 	int ret;
@@ -45,7 +45,7 @@ static int ec_node_many_parse(const struct ec_node *node,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(priv->child, state, childvec);
+		ret = ec_parse_child(priv->child, state, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -57,9 +57,9 @@ static int ec_node_many_parse(const struct ec_node *node,
 
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
-			child_parse = ec_parse_get_last_child(state);
-			ec_parse_unlink_child(state, child_parse);
-			ec_parse_free(child_parse);
+			child_parse = ec_pnode_get_last_child(state);
+			ec_pnode_unlink_child(state, child_parse);
+			ec_pnode_free(child_parse);
 			break;
 		}
 
@@ -67,7 +67,7 @@ static int ec_node_many_parse(const struct ec_node *node,
 	}
 
 	if (count < priv->min) {
-		ec_parse_free_children(state);
+		ec_pnode_free_children(state);
 		return EC_PARSE_NOMATCH;
 	}
 
@@ -83,13 +83,13 @@ __ec_node_many_complete(struct ec_node_many *priv, unsigned int max,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_parse *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
 
 	/* first, try to complete with the child node */
-	ret = ec_node_complete_child(priv->child, comp, strvec);
+	ret = ec_complete_child(priv->child, comp, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -108,7 +108,7 @@ __ec_node_many_complete(struct ec_node_many *priv, unsigned int max,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(priv->child, parse, childvec);
+		ret = ec_parse_child(priv->child, parse, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -117,18 +117,18 @@ __ec_node_many_complete(struct ec_node_many *priv, unsigned int max,
 
 		if ((unsigned int)ret != i) {
 			if (ret != EC_PARSE_NOMATCH)
-				ec_parse_del_last_child(parse);
+				ec_pnode_del_last_child(parse);
 			continue;
 		}
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
 		if (childvec == NULL) {
-			ec_parse_del_last_child(parse);
+			ec_pnode_del_last_child(parse);
 			goto fail;
 		}
 
 		ret = __ec_node_many_complete(priv, max, comp, childvec);
-		ec_parse_del_last_child(parse);
+		ec_pnode_del_last_child(parse);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
@@ -382,26 +382,26 @@ static int ec_node_many_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"f", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"f", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", "", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", "foo", "", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "foo", "foo", "", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", "foo", "foo", "", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "foo", "foo", "foo", "", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"foo", "foo", "foo", "foo", "", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

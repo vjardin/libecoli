@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <errno.h>
 
+#include <ecoli_utils.h>
 #include <ecoli_malloc.h>
 #include <ecoli_config.h>
 #include <ecoli_node.h>
@@ -75,7 +76,7 @@ ec_node_config_node_list_from_vargs(va_list ap)
 	if (list == NULL)
 		goto fail;
 
-	for (; node != EC_NODE_ENDLIST; node = va_arg(ap, struct ec_node *)) {
+	for (; node != EC_VA_END; node = va_arg(ap, struct ec_node *)) {
 		if (node == NULL)
 			goto fail;
 
@@ -86,7 +87,7 @@ ec_node_config_node_list_from_vargs(va_list ap)
 	return list;
 
 fail:
-	for (; node != EC_NODE_ENDLIST; node = va_arg(ap, struct ec_node *))
+	for (; node != EC_VA_END; node = va_arg(ap, struct ec_node *))
 		ec_node_free(node);
 	ec_config_free(list);
 

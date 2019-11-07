@@ -108,10 +108,10 @@ static int parse_args(int argc, char **argv)
 }
 
 static int
-__dump_as_shell(FILE *f, const struct ec_parse *parse, size_t *seq)
+__dump_as_shell(FILE *f, const struct ec_pnode *parse, size_t *seq)
 {
-	const struct ec_node *node = ec_parse_get_node(parse);
-	struct ec_parse *child;
+	const struct ec_node *node = ec_pnode_get_node(parse);
+	struct ec_pnode *child;
 	size_t cur_seq, i, len;
 	const char *s;
 
@@ -125,25 +125,25 @@ __dump_as_shell(FILE *f, const struct ec_parse *parse, size_t *seq)
 	fprintf(f, "ec_node%zu_type='%s'\n", cur_seq,
 		ec_node_type_name(ec_node_type(node)));
 
-	len = ec_strvec_len(ec_parse_strvec(parse));
+	len = ec_strvec_len(ec_pnode_strvec(parse));
 	fprintf(f, "ec_node%zu_strvec_len=%zu\n", cur_seq, len);
 	for (i = 0; i < len; i++) {
-		s = ec_strvec_val(ec_parse_strvec(parse), i);
+		s = ec_strvec_val(ec_pnode_strvec(parse), i);
 		fprintf(f, "ec_node%zu_str%zu='%s'\n", cur_seq, i, s);
 	}
 
-	if (ec_parse_get_first_child(parse) != NULL) {
+	if (ec_pnode_get_first_child(parse) != NULL) {
 		fprintf(f, "ec_node%zu_first_child='ec_node%zu'\n",
 			cur_seq, cur_seq + 1);
 	}
 
-	EC_PARSE_FOREACH_CHILD(child, parse) {
+	EC_PNODE_FOREACH_CHILD(child, parse) {
 		fprintf(f, "ec_node%zu_parent='ec_node%zu'\n",
 			*seq + 1, cur_seq);
 		__dump_as_shell(f, child, seq);
 	}
 
-	if (ec_parse_next(parse) != NULL) {
+	if (ec_pnode_next(parse) != NULL) {
 		fprintf(f, "ec_node%zu_next='ec_node%zu'\n",
 			cur_seq, *seq + 1);
 	}
@@ -152,7 +152,7 @@ __dump_as_shell(FILE *f, const struct ec_parse *parse, size_t *seq)
 }
 
 static int
-dump_as_shell(const struct ec_parse *parse)
+dump_as_shell(const struct ec_pnode *parse)
 {
 	FILE *f;
 	size_t seq = 0;
@@ -173,7 +173,7 @@ static int
 interact(struct ec_node *node)
 {
 	struct ec_editline *editline = NULL;
-	struct ec_parse *parse = NULL;
+	struct ec_pnode *parse = NULL;
 	struct ec_node *shlex = NULL;
 	char *line = NULL;
 
@@ -193,23 +193,23 @@ interact(struct ec_node *node)
 	if (parse == NULL)
 		goto fail;
 
-	if (!ec_parse_matches(parse))
+	if (!ec_pnode_matches(parse))
 		goto fail;
 
-	//ec_parse_dump(stdout, parse);
+	//ec_pnode_dump(stdout, parse);
 
 	if (dump_as_shell(parse) < 0) {
 		fprintf(stderr, "Failed to dump the parsed result\n");
 		goto fail;
 	}
 
-	ec_parse_free(parse);
+	ec_pnode_free(parse);
 	ec_editline_free(editline);
 	ec_node_free(shlex);
 	return 0;
 
 fail:
-	ec_parse_free(parse);
+	ec_pnode_free(parse);
 	ec_editline_free(editline);
 	free(line);
 	ec_node_free(shlex);
@@ -232,7 +232,7 @@ complete_words(const struct ec_node *node, int argc, char *argv[])
 	if (strvec == NULL)
 		goto fail;
 
-	comp = ec_node_complete_strvec(node, strvec);
+	comp = ec_complete_strvec(node, strvec);
 	if (comp == NULL)
 		goto fail;
 

@@ -22,7 +22,7 @@ struct ec_node_none {
 };
 
 static int ec_node_none_parse(const struct ec_node *node,
-			struct ec_parse *state,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec)
 {
 	(void)node;
@@ -76,11 +76,11 @@ static int ec_node_none_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"foo", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

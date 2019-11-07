@@ -92,8 +92,8 @@ $parse_yaml -i $yaml -o $output || match=0
 if [ "$match" = "1" ]; then
 	cat $output
 	. $output
-	name=$(ec_parse_get_str $(ec_parse_find_first ec_node1 name) 0)
-	hello=$(ec_parse_get_str $(ec_parse_find_first ec_node1 hello) 0)
+	name=$(ec_pnode_get_str $(ec_pnode_find_first ec_node1 name) 0)
+	hello=$(ec_pnode_get_str $(ec_pnode_find_first ec_node1 hello) 0)
 
 	if [ "$hello" != "" ]; then
 		echo "$name says hello to you!"

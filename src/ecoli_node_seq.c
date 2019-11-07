@@ -34,7 +34,7 @@ struct ec_node_seq {
 
 static int
 ec_node_seq_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *priv = ec_node_priv(node);
@@ -49,7 +49,7 @@ ec_node_seq_parse(const struct ec_node *node,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(priv->table[i], state, childvec);
+		ret = ec_parse_child(priv->table[i], state, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -57,7 +57,7 @@ ec_node_seq_parse(const struct ec_node *node,
 		childvec = NULL;
 
 		if (ret == EC_PARSE_NOMATCH) {
-			ec_parse_free_children(state);
+			ec_pnode_free_children(state);
 			return EC_PARSE_NOMATCH;
 		}
 
@@ -76,7 +76,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_parse *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_state(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
@@ -96,7 +96,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 	 */
 
 	/* first, try to complete with the first node of the table */
-	ret = ec_node_complete_child(table[0], comp, strvec);
+	ret = ec_complete_child(table[0], comp, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -107,7 +107,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_node_parse_child(table[0], parse, childvec);
+		ret = ec_parse_child(table[0], parse, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -116,20 +116,20 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 
 		if ((unsigned int)ret != i) {
 			if (ret != EC_PARSE_NOMATCH)
-				ec_parse_del_last_child(parse);
+				ec_pnode_del_last_child(parse);
 			continue;
 		}
 
 		childvec = ec_strvec_ndup(strvec, i, ec_strvec_len(strvec) - i);
 		if (childvec == NULL) {
-			ec_parse_del_last_child(parse);
+			ec_pnode_del_last_child(parse);
 			goto fail;
 		}
 
 		ret = __ec_node_seq_complete(&table[1],
 					table_len - 1,
 					comp, childvec);
-		ec_parse_del_last_child(parse);
+		ec_pnode_del_last_child(parse);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 
@@ -325,7 +325,7 @@ struct ec_node *__ec_node_seq(const char *id, ...)
 	if (children == NULL)
 		goto fail_free_children;
 
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *)) {
+	for (; child != EC_VA_END; child = va_arg(ap, struct ec_node *)) {
 		if (child == NULL)
 			goto fail_free_children;
 
@@ -351,7 +351,7 @@ struct ec_node *__ec_node_seq(const char *id, ...)
 	return node;
 
 fail_free_children:
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
+	for (; child != EC_VA_END; child = va_arg(ap, struct ec_node *))
 		ec_node_free(child);
 fail:
 	ec_node_free(node); /* will also free added children */
@@ -400,32 +400,32 @@ static int ec_node_seq_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"f", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"f", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"foo", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "", EC_NODE_ENDLIST,
-		"bar", "toto", EC_NODE_ENDLIST);
+		"foo", "", EC_VA_END,
+		"bar", "toto", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "t", EC_NODE_ENDLIST,
-		"toto", EC_NODE_ENDLIST);
+		"foo", "t", EC_VA_END,
+		"toto", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "b", EC_NODE_ENDLIST,
-		"bar", EC_NODE_ENDLIST);
+		"foo", "b", EC_VA_END,
+		"bar", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foo", "bar", EC_NODE_ENDLIST,
-		"bar", EC_NODE_ENDLIST);
+		"foo", "bar", EC_VA_END,
+		"bar", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"x", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"x", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"foobarx", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"foobarx", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

@@ -43,7 +43,7 @@ struct ec_node_expr {
 };
 
 static int ec_node_expr_parse(const struct ec_node *node,
-			struct ec_parse *state,
+			struct ec_pnode *state,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_expr *priv = ec_node_priv(node);
@@ -53,7 +53,7 @@ static int ec_node_expr_parse(const struct ec_node *node,
 		return -1;
 	}
 
-	return ec_node_parse_child(priv->child, state, strvec);
+	return ec_parse_child(priv->child, state, strvec);
 }
 
 static int
@@ -68,7 +68,7 @@ ec_node_expr_complete(const struct ec_node *node,
 		return -1;
 	}
 
-	return ec_node_complete_child(priv->child, comp, strvec);
+	return ec_complete_child(priv->child, comp, strvec);
 }
 
 static void ec_node_expr_free_priv(struct ec_node *node)
@@ -463,7 +463,7 @@ static enum expr_node_type get_node_type(const struct ec_node *expr_node,
 struct result {
 	bool has_val;
 	void *val;
-	const struct ec_parse *op;
+	const struct ec_pnode *op;
 	enum expr_node_type op_type;
 };
 
@@ -520,18 +520,18 @@ static int eval_expression(struct result *result,
 	void *userctx,
 	const struct ec_node_expr_eval_ops *ops,
 	const struct ec_node *expr_node,
-	const struct ec_parse *parse)
+	const struct ec_pnode *parse)
 
 {
-	struct ec_parse *open = NULL, *close = NULL;
+	struct ec_pnode *open = NULL, *close = NULL;
 	struct result child_result;
-	struct ec_parse *child;
+	struct ec_pnode *child;
 	enum expr_node_type type;
 
 	memset(result, 0, sizeof(*result));
 	memset(&child_result, 0, sizeof(child_result));
 
-	type = get_node_type(expr_node, ec_parse_get_node(parse));
+	type = get_node_type(expr_node, ec_pnode_get_node(parse));
 	if (type == VAL) {
 		if (ops->eval_var(&result->val, userctx, parse) < 0)
 			goto fail;
@@ -541,9 +541,9 @@ static int eval_expression(struct result *result,
 		result->op_type = type;
 	}
 
-	EC_PARSE_FOREACH_CHILD(child, parse) {
+	EC_PNODE_FOREACH_CHILD(child, parse) {
 
-		type = get_node_type(expr_node, ec_parse_get_node(child));
+		type = get_node_type(expr_node, ec_pnode_get_node(child));
 		if (type == PAREN_OPEN) {
 			open = child;
 			continue;
@@ -581,7 +581,7 @@ fail:
 }
 
 int ec_node_expr_eval(void **user_result, const struct ec_node *node,
-	struct ec_parse *parse, const struct ec_node_expr_eval_ops *ops,
+	struct ec_pnode *parse, const struct ec_node_expr_eval_ops *ops,
 	void *userctx)
 {
 	struct result result;
@@ -597,7 +597,7 @@ int ec_node_expr_eval(void **user_result, const struct ec_node *node,
 	if (ec_node_check_type(node, &ec_node_expr_type) < 0)
 		return -1;
 
-	if (!ec_parse_matches(parse)) {
+	if (!ec_pnode_matches(parse)) {
 		errno = EINVAL;
 		return -1;
 	}

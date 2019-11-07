@@ -11,9 +11,9 @@
  * This file provide helpers to list and manipulate the possible
  * completions for a given input.
  *
- * Use @ec_node_complete_strvec() to complete a vector of strings when
+ * Use @ec_complete_strvec() to complete a vector of strings when
  * the input is already split into several tokens. You can use
- * @ec_node_complete() if you know that the size of the vector is
+ * @ec_complete() if you know that the size of the vector is
  * 1. This is common if you grammar tree has a lexer that will tokenize
  * the input.
  *
@@ -50,7 +50,7 @@ enum ec_comp_type {
 /**
  * Get the list of completions from a string input.
  *
- * It is equivalent that calling @ec_node_complete_strvec() with a
+ * It is equivalent that calling @ec_complete_strvec() with a
  * vector that only contains 1 element, the input string. Using this
  * function is often more convenient if you get your input from a
  * buffer, because you won't have to create a vector. Usually, it means
@@ -66,7 +66,7 @@ enum ec_comp_type {
  *   A pointer to the completion list on success, or NULL
  *   on error (errno is set).
  */
-struct ec_comp *ec_node_complete(const struct ec_node *node,
+struct ec_comp *ec_complete(const struct ec_node *node,
 	const char *str);
 
 /**
@@ -93,7 +93,7 @@ struct ec_comp *ec_node_complete(const struct ec_node *node,
  *   A pointer to the completion list on success, or NULL
  *   on error (errno is set).
  */
-struct ec_comp *ec_node_complete_strvec(const struct ec_node *node,
+struct ec_comp *ec_complete_strvec(const struct ec_node *node,
 	const struct ec_strvec *strvec);
 
 /**
@@ -102,7 +102,7 @@ struct ec_comp *ec_node_complete_strvec(const struct ec_node *node,
  * This function is to be used by ecoli nodes.
  *
  */
-int ec_node_complete_child(const struct ec_node *node,
+int ec_complete_child(const struct ec_node *node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec);
 
@@ -111,7 +111,7 @@ int ec_node_complete_child(const struct ec_node *node,
  *
  *
  */
-struct ec_comp *ec_comp(struct ec_parse *state);
+struct ec_comp *ec_comp(struct ec_pnode *state);
 
 /**
  * Free a completion object and all its items.
@@ -140,7 +140,7 @@ int ec_comp_merge(struct ec_comp *to,
  * Get current completion state.
  *
  */
-struct ec_parse *ec_comp_get_state(const struct ec_comp *comp);
+struct ec_pnode *ec_comp_get_state(const struct ec_comp *comp);
 
 /**
  * Get current completion group.
@@ -244,7 +244,7 @@ ec_comp_group_get_node(const struct ec_comp_group *grp);
  *
  *
  */
-const struct ec_parse *
+const struct ec_pnode *
 ec_comp_group_get_state(const struct ec_comp_group *grp);
 
 /**
@@ -262,7 +262,7 @@ ec_comp_group_get_attrs(const struct ec_comp_group *grp);
  *
  */
 int
-ec_node_complete_unknown(const struct ec_node *gen_node,
+ec_complete_unknown(const struct ec_node *gen_node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec);
 

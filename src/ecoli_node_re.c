@@ -27,7 +27,7 @@ struct ec_node_re {
 
 static int
 ec_node_re_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_re *priv = ec_node_priv(node);
@@ -116,7 +116,7 @@ static struct ec_node_type ec_node_re_type = {
 	.schema = ec_node_re_schema,
 	.set_config = ec_node_re_set_config,
 	.parse = ec_node_re_parse,
-	.complete = ec_node_complete_unknown,
+	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_re),
 	.free_priv = ec_node_re_free_priv,
 };

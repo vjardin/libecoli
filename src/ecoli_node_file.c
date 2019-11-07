@@ -36,7 +36,7 @@ struct ec_node_file {
 
 static int
 ec_node_file_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	(void)node;
@@ -394,20 +394,20 @@ static int ec_node_file_testcase(void)
 
 	/* test completion */
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp/toto/t", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"/tmp/toto/t", EC_VA_END,
+		EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE_PARTIAL(node,
-		"/tmp/toto/t", EC_NODE_ENDLIST,
-		"/tmp/toto/titi/", "/tmp/toto/tutu/", EC_NODE_ENDLIST);
+		"/tmp/toto/t", EC_VA_END,
+		"/tmp/toto/titi/", "/tmp/toto/tutu/", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp/toto/f", EC_NODE_ENDLIST,
-		"/tmp/toto/foo", EC_NODE_ENDLIST);
+		"/tmp/toto/f", EC_VA_END,
+		"/tmp/toto/foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"/tmp/toto/b", EC_NODE_ENDLIST,
-		"/tmp/toto/bar", "/tmp/toto/bar2", EC_NODE_ENDLIST);
+		"/tmp/toto/b", EC_VA_END,
+		"/tmp/toto/bar", "/tmp/toto/bar2", EC_VA_END);
 
 	ec_node_free(node);
 

@@ -41,7 +41,7 @@ struct ec_comp_group {
 	TAILQ_ENTRY(ec_comp_group) next;
 	const struct ec_node *node;
 	struct ec_comp_item_list items;
-	struct ec_parse *state;
+	struct ec_pnode *state;
 	struct ec_dict *attrs;
 };
 
@@ -52,13 +52,13 @@ struct ec_comp {
 	unsigned count_full;
 	unsigned count_partial;
 	unsigned count_unknown;
-	struct ec_parse *cur_state;
+	struct ec_pnode *cur_state;
 	struct ec_comp_group *cur_group;
 	struct ec_comp_group_list groups;
 	struct ec_dict *attrs;
 };
 
-struct ec_comp *ec_comp(struct ec_parse *state)
+struct ec_comp *ec_comp(struct ec_pnode *state)
 {
 	struct ec_comp *comp = NULL;
 
@@ -84,7 +84,7 @@ struct ec_comp *ec_comp(struct ec_parse *state)
 	return NULL;
 }
 
-struct ec_parse *ec_comp_get_state(const struct ec_comp *comp)
+struct ec_pnode *ec_comp_get_state(const struct ec_comp *comp)
 {
 	return comp->cur_state;
 }
@@ -100,11 +100,11 @@ struct ec_dict *ec_comp_get_attrs(const struct ec_comp *comp)
 }
 
 int
-ec_node_complete_child(const struct ec_node *node,
+ec_complete_child(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_parse *child_state, *cur_state;
+	struct ec_pnode *child_state, *cur_state;
 	struct ec_comp_group *cur_group;
 	int ret;
 
@@ -115,12 +115,12 @@ ec_node_complete_child(const struct ec_node *node,
 
 	/* save previous parse state, prepare child state */
 	cur_state = comp->cur_state;
-	child_state = ec_parse(node);
+	child_state = ec_pnode(node);
 	if (child_state == NULL)
 		return -1;
 
 	if (cur_state != NULL)
-		ec_parse_link_child(cur_state, child_state);
+		ec_pnode_link_child(cur_state, child_state);
 	comp->cur_state = child_state;
 	cur_group = comp->cur_group;
 	comp->cur_group = NULL;
@@ -130,10 +130,10 @@ ec_node_complete_child(const struct ec_node *node,
 
 	/* restore parent parse state */
 	if (cur_state != NULL) {
-		ec_parse_unlink_child(cur_state, child_state);
-		assert(!ec_parse_has_child(child_state));
+		ec_pnode_unlink_child(cur_state, child_state);
+		assert(!ec_pnode_has_child(child_state));
 	}
-	ec_parse_free(child_state);
+	ec_pnode_free(child_state);
 	comp->cur_state = cur_state;
 	comp->cur_group = cur_group;
 
@@ -143,7 +143,7 @@ ec_node_complete_child(const struct ec_node *node,
 	return 0;
 }
 
-struct ec_comp *ec_node_complete_strvec(const struct ec_node *node,
+struct ec_comp *ec_complete_strvec(const struct ec_node *node,
 	const struct ec_strvec *strvec)
 {
 	struct ec_comp *comp = NULL;
@@ -153,7 +153,7 @@ struct ec_comp *ec_node_complete_strvec(const struct ec_node *node,
 	if (comp == NULL)
 		goto fail;
 
-	ret = ec_node_complete_child(node, comp, strvec);
+	ret = ec_complete_child(node, comp, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -164,7 +164,7 @@ fail:
 	return NULL;
 }
 
-struct ec_comp *ec_node_complete(const struct ec_node *node,
+struct ec_comp *ec_complete(const struct ec_node *node,
 	const char *str)
 {
 	struct ec_strvec *strvec = NULL;
@@ -178,7 +178,7 @@ struct ec_comp *ec_node_complete(const struct ec_node *node,
 	if (ec_strvec_add(strvec, str) < 0)
 		goto fail;
 
-	comp = ec_node_complete_strvec(node, strvec);
+	comp = ec_complete_strvec(node, strvec);
 	if (comp == NULL)
 		goto fail;
 
@@ -191,7 +191,7 @@ struct ec_comp *ec_node_complete(const struct ec_node *node,
 }
 
 static struct ec_comp_group *
-ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
+ec_comp_group(const struct ec_node *node, struct ec_pnode *parse)
 {
 	struct ec_comp_group *grp = NULL;
 
@@ -203,7 +203,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
 	if (grp->attrs == NULL)
 		goto fail;
 
-	grp->state = ec_parse_dup(parse);
+	grp->state = ec_pnode_dup(parse);
 	if (grp->state == NULL)
 		goto fail;
 
@@ -214,7 +214,7 @@ ec_comp_group(const struct ec_node *node, struct ec_parse *parse)
 
 fail:
 	if (grp != NULL) {
-		ec_parse_free(grp->state);
+		ec_pnode_free(grp->state);
 		ec_dict_free(grp->attrs);
 	}
 	ec_free(grp);
@@ -485,7 +485,7 @@ fail:
 
 /* return a completion item of type "unknown" */
 int
-ec_node_complete_unknown(const struct ec_node *gen_node,
+ec_complete_unknown(const struct ec_node *gen_node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
@@ -514,7 +514,7 @@ static void ec_comp_group_free(struct ec_comp_group *grp)
 		TAILQ_REMOVE(&grp->items, item, next);
 		ec_comp_item_free(item);
 	}
-	ec_parse_free(ec_parse_get_root(grp->state));
+	ec_pnode_free(ec_pnode_get_root(grp->state));
 	ec_dict_free(grp->attrs);
 	ec_free(grp);
 }
@@ -525,7 +525,7 @@ ec_comp_group_get_node(const struct ec_comp_group *grp)
 	return grp->node;
 }
 
-const struct ec_parse *
+const struct ec_pnode *
 ec_comp_group_get_state(const struct ec_comp_group *grp)
 {
 	return grp->state;
@@ -716,19 +716,19 @@ static int ec_comp_testcase(void)
 	if (node == NULL)
 		goto fail;
 
-	c = ec_node_complete(node, "xcdscds");
+	c = ec_complete(node, "xcdscds");
 	testres |= EC_TEST_CHECK(
 		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 0,
 		"complete count should is not 0\n");
 	ec_comp_free(c);
 
-	c = ec_node_complete(node, "x");
+	c = ec_complete(node, "x");
 	testres |= EC_TEST_CHECK(
 		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 1,
 		"complete count should is not 1\n");
 	ec_comp_free(c);
 
-	c = ec_node_complete(node, "");
+	c = ec_complete(node, "");
 	testres |= EC_TEST_CHECK(
 		c != NULL && ec_comp_count(c, EC_COMP_ALL) == 2,
 		"complete count should is not 2\n");

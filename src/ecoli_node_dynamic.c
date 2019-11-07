@@ -30,7 +30,7 @@ struct ec_node_dynamic {
 
 static int
 ec_node_dynamic_parse(const struct ec_node *node,
-		struct ec_parse *parse,
+		struct ec_pnode *parse,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_dynamic *priv = ec_node_priv(node);
@@ -46,14 +46,14 @@ ec_node_dynamic_parse(const struct ec_node *node,
 	/* add the node pointer in the attributes, so it will be freed
 	 * when parse is freed */
 	snprintf(key, sizeof(key), "_dyn_%p", child);
-	ret = ec_dict_set(ec_parse_get_attrs(parse), key, child,
+	ret = ec_dict_set(ec_pnode_get_attrs(parse), key, child,
 			(void *)node_free);
 	if (ret < 0) {
 		child = NULL; /* already freed */
 		goto fail;
 	}
 
-	return ec_node_parse_child(child, parse, strvec);
+	return ec_parse_child(child, parse, strvec);
 
 fail:
 	ec_node_free(child);
@@ -66,7 +66,7 @@ ec_node_dynamic_complete(const struct ec_node *node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_dynamic *priv = ec_node_priv(node);
-	struct ec_parse *parse;
+	struct ec_pnode *parse;
 	struct ec_node *child = NULL;
 	void (*node_free)(struct ec_node *) = ec_node_free;
 	char key[64];
@@ -87,7 +87,7 @@ ec_node_dynamic_complete(const struct ec_node *node,
 		goto fail;
 	}
 
-	return ec_node_complete_child(child, comp, strvec);
+	return ec_complete_child(child, comp, strvec);
 
 fail:
 	ec_node_free(child);
@@ -131,18 +131,18 @@ fail:
 EC_NODE_TYPE_REGISTER(ec_node_dynamic_type);
 
 static struct ec_node *
-build_counter(struct ec_parse *parse, void *opaque)
+build_counter(struct ec_pnode *parse, void *opaque)
 {
 	const struct ec_node *node;
-	struct ec_parse *root, *iter;
+	struct ec_pnode *root, *iter;
 	unsigned int count = 0;
 	char buf[32];
 
 	(void)opaque;
-	root = ec_parse_get_root(parse);
+	root = ec_pnode_get_root(parse);
 	for (iter = root; iter != NULL;
-	     iter = EC_PARSE_ITER_NEXT(root, iter, 1)) {
-		node = ec_parse_get_node(iter);
+	     iter = EC_PNODE_ITER_NEXT(root, iter, 1)) {
+		node = ec_pnode_get_node(iter);
 		if (!strcmp(ec_node_id(node), "my-id"))
 			count++;
 	}
@@ -171,11 +171,11 @@ static int ec_node_dynamic_testcase(void)
 	/* test completion */
 
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"c", EC_NODE_ENDLIST,
-		"count-0", EC_NODE_ENDLIST);
+		"c", EC_VA_END,
+		"count-0", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"count-0", "", EC_NODE_ENDLIST,
-		"count-1", EC_NODE_ENDLIST,
+		"count-0", "", EC_VA_END,
+		"count-1", EC_VA_END,
 		"count-1");
 	ec_node_free(node);
 

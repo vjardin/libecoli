@@ -31,7 +31,7 @@ struct ec_node_or {
 
 static int
 ec_node_or_parse(const struct ec_node *node,
-		struct ec_parse *state,
+		struct ec_pnode *state,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *priv = ec_node_priv(node);
@@ -39,7 +39,7 @@ ec_node_or_parse(const struct ec_node *node,
 	int ret;
 
 	for (i = 0; i < priv->len; i++) {
-		ret = ec_node_parse_child(priv->table[i], state, strvec);
+		ret = ec_parse_child(priv->table[i], state, strvec);
 		if (ret == EC_PARSE_NOMATCH)
 			continue;
 		return ret;
@@ -58,7 +58,7 @@ ec_node_or_complete(const struct ec_node *node,
 	size_t n;
 
 	for (n = 0; n < priv->len; n++) {
-		ret = ec_node_complete_child(priv->table[n],
+		ret = ec_complete_child(priv->table[n],
 					comp, strvec);
 		if (ret < 0)
 			return ret;
@@ -238,7 +238,7 @@ struct ec_node *__ec_node_or(const char *id, ...)
 	if (children == NULL)
 		goto fail_free_children;
 
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *)) {
+	for (; child != EC_VA_END; child = va_arg(ap, struct ec_node *)) {
 		if (child == NULL)
 			goto fail_free_children;
 
@@ -264,7 +264,7 @@ struct ec_node *__ec_node_or(const char *id, ...)
 	return node;
 
 fail_free_children:
-	for (; child != EC_NODE_ENDLIST; child = va_arg(ap, struct ec_node *))
+	for (; child != EC_VA_END; child = va_arg(ap, struct ec_node *))
 		ec_node_free(child);
 fail:
 	ec_node_free(node); /* will also free added children */
@@ -311,26 +311,26 @@ static int ec_node_or_testcase(void)
 		return -1;
 	}
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"", EC_NODE_ENDLIST,
-		"foo", "bar", "bar2", "toto", "titi", EC_NODE_ENDLIST);
+		"", EC_VA_END,
+		"foo", "bar", "bar2", "toto", "titi", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"f", EC_NODE_ENDLIST,
-		"foo", EC_NODE_ENDLIST);
+		"f", EC_VA_END,
+		"foo", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"b", EC_NODE_ENDLIST,
-		"bar", "bar2", EC_NODE_ENDLIST);
+		"b", EC_VA_END,
+		"bar", "bar2", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"bar", EC_NODE_ENDLIST,
-		"bar", "bar2", EC_NODE_ENDLIST);
+		"bar", EC_VA_END,
+		"bar", "bar2", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"t", EC_NODE_ENDLIST,
-		"toto", "titi", EC_NODE_ENDLIST);
+		"t", EC_VA_END,
+		"toto", "titi", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"to", EC_NODE_ENDLIST,
-		"toto", EC_NODE_ENDLIST);
+		"to", EC_VA_END,
+		"toto", EC_VA_END);
 	testres |= EC_TEST_CHECK_COMPLETE(node,
-		"x", EC_NODE_ENDLIST,
-		EC_NODE_ENDLIST);
+		"x", EC_VA_END,
+		EC_VA_END);
 	ec_node_free(node);
 
 	return testres;

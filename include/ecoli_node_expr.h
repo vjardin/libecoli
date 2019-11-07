@@ -29,7 +29,7 @@
  */
 typedef int (*ec_node_expr_eval_var_t)(
 	void **result, void *userctx,
-	const struct ec_parse *var);
+	const struct ec_pnode *var);
 
 /**
  * Callback function type for evaluating a prefix-operator
@@ -51,23 +51,23 @@ typedef int (*ec_node_expr_eval_var_t)(
 typedef int (*ec_node_expr_eval_pre_op_t)(
 	void **result, void *userctx,
 	void *operand,
-	const struct ec_parse *operator);
+	const struct ec_pnode *operator);
 
 typedef int (*ec_node_expr_eval_post_op_t)(
 	void **result, void *userctx,
 	void *operand,
-	const struct ec_parse *operator);
+	const struct ec_pnode *operator);
 
 typedef int (*ec_node_expr_eval_bin_op_t)(
 	void **result, void *userctx,
 	void *operand1,
-	const struct ec_parse *operator,
+	const struct ec_pnode *operator,
 	void *operand2);
 
 typedef int (*ec_node_expr_eval_parenthesis_t)(
 	void **result, void *userctx,
-	const struct ec_parse *open_paren,
-	const struct ec_parse *close_paren,
+	const struct ec_pnode *open_paren,
+	const struct ec_pnode *close_paren,
 	void * value);
 
 typedef void (*ec_node_expr_eval_free_t)(
@@ -92,7 +92,7 @@ struct ec_node_expr_eval_ops {
 };
 
 int ec_node_expr_eval(void **result, const struct ec_node *node,
-	struct ec_parse *parse, const struct ec_node_expr_eval_ops *ops,
+	struct ec_pnode *parse, const struct ec_node_expr_eval_ops *ops,
 	void *userctx);
 
 #endif

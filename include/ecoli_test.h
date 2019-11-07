@@ -15,6 +15,7 @@
 #include <sys/queue.h>
 
 #include <ecoli_log.h>
+#include <ecoli_utils.h>
 
 struct ec_node;
 enum ec_comp_type;
@@ -78,7 +79,7 @@ int ec_test_check_parse(struct ec_node *node, int expected, ...);
 
 /* node, input, [expected1, expected2, ...] */
 #define EC_TEST_CHECK_PARSE(node, args...) ({				\
-	int ret_ = ec_test_check_parse(node, args, EC_NODE_ENDLIST);	\
+	int ret_ = ec_test_check_parse(node, args, EC_VA_END);	\
 	if (ret_)							\
 		EC_TEST_ERR("parse test failed");			\
 	ret_;								\
