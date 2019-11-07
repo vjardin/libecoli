@@ -62,6 +62,15 @@ struct ec_dict;
 struct ec_config;
 struct ec_config_schema;
 
+/**
+ * Register a node type at library load.
+ *
+ * The node type is registered in a function that has the the
+ * constructor attribute: the function is called at library load.
+ *
+ * @param t
+ *   The name of the ec_node_type structure variable.
+ */
 #define EC_NODE_TYPE_REGISTER(t)					\
 	static void ec_node_init_##t(void);				\
 	static void __attribute__((constructor, used))			\
@@ -73,16 +82,100 @@ struct ec_config_schema;
 				t.name);				\
 	}
 
+/**
+ * A list of node types.
+ */
 TAILQ_HEAD(ec_node_type_list, ec_node_type);
 
+/**
+ * Function type used to configure a node.
+ *
+ * The function pointer is not called directly, the helper
+ * @ec_node_set_config() should be used instead.
+ *
+ * @param node
+ *   The node to configure.
+ * @param config
+ *   The configuration to apply to the node.
+ * @return
+ *   0 on success, negative on error (errno is set).
+ */
 typedef int (*ec_node_set_config_t)(struct ec_node *node,
 				const struct ec_config *config);
+
+/**
+ * Parse a string vector using the given grammar tree.
+ *
+ * The function pointer is not called directly, the helpers @ec_parse(),
+ * ec_parse_strvec() or ec_parse_child() should be used instead.
+ *
+ * The implementation of this method for a node that manages children
+ * will call ec_parse_child(child, state, child_strvec).
+ *
+ * @param node
+ *   The root node of the grammar tree.
+ * @param state
+ *   A pointer to the leaf being parsed in the parsing tree. It can be
+ *   used by a node to retrieve information from the current parsing
+ *   tree. To get the root of the tree, @ec_pnode_get_root(state) should
+ *   be used.
+ * @param strvec
+ *   The string vector to be parsed.
+ * @return
+ *   On success, return the number of consumed items in the string vector
+ *   (can be 0) or EC_PARSE_NOMATCH if the node cannot parse the string
+ *   vector. On error, a negative value is returned and errno is set.
+ */
 typedef int (*ec_parse_t)(const struct ec_node *node,
 			struct ec_pnode *state,
 			const struct ec_strvec *strvec);
+
+/**
+ * Get completion items using the given grammar tree.
+ *
+ * The function pointer is not called directly, the helpers @ec_complete(),
+ * ec_complete_strvec() or ec_complete_child() should be used instead.
+ *
+ * This function completes the last element of the string vector.
+ * For instance, node.type->complete(node, comp, ["ls"]) will
+ * list all commands that starts with "ls", while
+ * node.type->complete(node, comp, ["ls", ""]) will list all
+ * possible values for the next argument.
+
+ * The implementation of this function is supposed to either:
+ * - call @ec_comp_add_item(node, comp, ...) for each completion item
+ *   that should be added to the list. This is done in terminal nodes,
+ *   for example in ec_node_str or ec_node_file.
+ * - call @ec_complete_child(child, comp, child_strvec) to let
+ *   the children nodes add their own completion. This is the
+ *   case of ec_node_or which trivially calls @ec_complete_child()
+ *   on all its children, and of ec_node_seq, which has to
+ *   do a more complex job (parsing strvec).
+ *
+ * A node that does not provide any method for the completion
+ * will fallback to ec_complete_unknown(): this helper returns
+ * a completion item of type EC_COMP_UNKNOWN, just to indicate
+ * that everything before the last element of the string vector
+ * has been parsed successfully, but we don't know how to
+ * complete the last element.
+ *
+ * @param node
+ *   The root node of the grammar tree.
+ * @param comp
+ *   The current list of completion items, to be filled by the
+ *   node.type->complete() method.
+ * @param strvec
+ *   The string vector to be completed.
+ * @return
+ *   0 on success, or a negative value on error (errno is set).
+ */
 typedef int (*ec_complete_t)(const struct ec_node *node,
-				struct ec_comp *comp_state,
+				struct ec_comp *comp,
 				const struct ec_strvec *strvec);
+
+/**
+ *
+ */
 typedef const char * (*ec_node_desc_t)(const struct ec_node *);
 typedef int (*ec_node_init_priv_t)(struct ec_node *);
 typedef void (*ec_node_free_priv_t)(struct ec_node *);

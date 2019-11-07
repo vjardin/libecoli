@@ -61,6 +61,7 @@ ec_node_str_complete(const struct ec_node *node,
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
 
+	/* XXX startswith ? */
 	str = ec_strvec_val(strvec, 0);
 	for (n = 0; n < priv->len; n++) {
 		if (str[n] != priv->string[n])

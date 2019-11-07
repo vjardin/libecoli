@@ -108,6 +108,8 @@ ec_complete_child(const struct ec_node *node,
 	struct ec_comp_group *cur_group;
 	int ret;
 
+	//XXX call ec_complete_unknown() instead, as
+	//described in API doc.
 	if (ec_node_type(node)->complete == NULL) {
 		errno = ENOTSUP;
 		return -1;
@@ -483,6 +485,7 @@ fail:
 	return -1;
 }
 
+/* XXX move in helpers + rename ? */
 /* return a completion item of type "unknown" */
 int
 ec_complete_unknown(const struct ec_node *gen_node,
