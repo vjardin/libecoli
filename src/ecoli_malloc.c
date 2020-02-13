@@ -150,7 +150,7 @@ static int ec_malloc_testcase(void)
 		return -1;
 	memset(ptr, 0, 10);
 	ptr2 = ec_realloc(ptr, 20);
-	EC_TEST_CHECK(ptr2 != NULL, "cannot realloc ptr\n");
+	testres |= EC_TEST_CHECK(ptr2 != NULL, "cannot realloc ptr\n");
 	if (ptr2 == NULL)
 		ec_free(ptr);
 	else
@@ -168,8 +168,8 @@ static int ec_malloc_testcase(void)
 	/* here we use atoll() instead of a constant because we want to
 	 * prevent the compiler to check the overflow at compilation
 	 * time */
-	ptr = ec_calloc(2, atoll("0xffffffffffffffff"));
-	EC_TEST_CHECK(ptr == NULL, "bad overflow check in ec_calloc\n");
+	ptr = ec_calloc(3, atoll("9223372036854775807")); /* (1 << 63) - 1 */
+	testres |= EC_TEST_CHECK(ptr == NULL, "bad overflow check in ec_calloc\n");
 
 	return testres;
 }
