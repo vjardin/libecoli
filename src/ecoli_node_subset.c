@@ -37,7 +37,7 @@ struct parse_result {
  * updated accordingly. */
 static int
 __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
-		size_t table_len, struct ec_pnode *state,
+		size_t table_len, struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node **child_table;
@@ -58,7 +58,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 
 	for (i = 0; i < table_len; i++) {
 		/* try to parse elt i */
-		ret = ec_parse_child(table[i], state, strvec);
+		ret = ec_parse_child(table[i], pstate, strvec);
 		if (ret < 0)
 			goto fail;
 
@@ -82,7 +82,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 
 		memset(&result, 0, sizeof(result));
 		ret = __ec_node_subset_parse(&result, child_table,
-					table_len - 1, state, childvec);
+					table_len - 1, pstate, childvec);
 		ec_strvec_free(childvec);
 		childvec = NULL;
 		if (ret < 0)
@@ -91,14 +91,14 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 		/* if result is not the best, ignore */
 		if (result.parse_len < best_result.parse_len) {
 			memset(&result, 0, sizeof(result));
-			ec_pnode_del_last_child(state);
+			ec_pnode_del_last_child(pstate);
 			continue;
 		}
 
 		/* replace the previous best result */
 		ec_pnode_free(best_parse);
-		best_parse = ec_pnode_get_last_child(state);
-		ec_pnode_unlink_child(state, best_parse);
+		best_parse = ec_pnode_get_last_child(pstate);
+		ec_pnode_unlink_child(pstate, best_parse);
 
 		best_result.parse_len = result.parse_len + 1;
 		best_result.len = len + result.len;
@@ -109,7 +109,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 	*out = best_result;
 	ec_free(child_table);
 	if (best_parse != NULL)
-		ec_pnode_link_child(state, best_parse);
+		ec_pnode_link_child(pstate, best_parse);
 
 	return 0;
 
@@ -122,7 +122,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 
 static int
 ec_node_subset_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_subset *priv = ec_node_priv(node);
@@ -133,7 +133,7 @@ ec_node_subset_parse(const struct ec_node *node,
 	memset(&result, 0, sizeof(result));
 
 	ret = __ec_node_subset_parse(&result, priv->table,
-				priv->len, state, strvec);
+				priv->len, pstate, strvec);
 	if (ret < 0)
 		goto fail;
 
@@ -153,7 +153,7 @@ __ec_node_subset_complete(struct ec_node **table, size_t table_len,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_pnode *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_cur_pstate(comp);
 	struct ec_strvec *childvec = NULL;
 	struct ec_node *save;
 	size_t i, len;

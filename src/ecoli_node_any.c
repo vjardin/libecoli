@@ -25,13 +25,13 @@ struct ec_node_any {
 };
 
 static int ec_node_any_parse(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_any *priv = ec_node_priv(node);
 	const struct ec_dict *attrs;
 
-	(void)state;
+	(void)pstate;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
@@ -91,7 +91,6 @@ static struct ec_node_type ec_node_any_type = {
 	.schema = ec_node_any_schema,
 	.set_config = ec_node_any_set_config,
 	.parse = ec_node_any_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_any),
 	.free_priv = ec_node_any_free_priv,
 };

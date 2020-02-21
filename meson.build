@@ -10,8 +10,7 @@ project('libecoli',
 edit_dep = dependency('libedit', method: 'pkg-config')
 yaml_dep = dependency('yaml-0.1', method: 'pkg-config')
 
-# XXX if debug
-add_global_arguments('-Werror', language : 'c')
+add_global_arguments('-Wmissing-prototypes', language : 'c')
 
 inc = include_directories('include')
 priv_inc = include_directories('src')

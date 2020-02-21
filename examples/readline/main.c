@@ -106,16 +106,16 @@ static char **my_attempted_completion(const char *text, int start, int end)
 static char *get_node_help(const struct ec_comp_item *item)
 {
 	const struct ec_comp_group *grp;
-	const struct ec_pnode *state;
+	const struct ec_pnode *pstate;
 	const struct ec_node *node;
 	char *help = NULL;
 	const char *node_help = NULL;
-	const char *node_desc = NULL;
+	char *node_desc = NULL;
 
 	grp = ec_comp_item_get_grp(item);
-	for (state = ec_comp_group_get_state(grp); state != NULL;
-	     state = ec_pnode_get_parent(state)) {
-		node = ec_pnode_get_node(state);
+	for (pstate = ec_comp_group_get_pstate(grp); pstate != NULL;
+	     pstate = ec_pnode_get_parent(pstate)) {
+		node = ec_pnode_get_node(pstate);
 		if (node_help == NULL)
 			node_help = ec_dict_get(ec_node_attrs(node), "help");
 		if (node_desc == NULL)
@@ -130,6 +130,8 @@ static char *get_node_help(const struct ec_comp_item *item)
 	if (asprintf(&help, "%-20s %s", node_desc, node_help) < 0)
 		return NULL;
 
+	ec_free(node_desc);
+
 	return help;
 }
 
@@ -141,7 +143,7 @@ static int show_help(int ignore, int invoking_key)
 	struct ec_comp *c = NULL;
 	struct ec_pnode *p = NULL;
 	char *line = NULL;
-	unsigned int count;
+	size_t count;
 	char **helps = NULL;
 	int match = 0;
 	int cols;

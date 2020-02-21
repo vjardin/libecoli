@@ -23,13 +23,13 @@ struct ec_node_space {
 
 static int
 ec_node_space_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	const char *str;
 	size_t len = 0;
 
-	(void)state;
+	(void)pstate;
 	(void)node;
 
 	if (ec_strvec_len(strvec) == 0)
@@ -47,7 +47,6 @@ ec_node_space_parse(const struct ec_node *node,
 static struct ec_node_type ec_node_space_type = {
 	.name = "space",
 	.parse = ec_node_space_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_space),
 };
 

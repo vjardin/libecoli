@@ -99,7 +99,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 	struct ec_strvec *vec = NULL;
 	const char *s;
 	int ret = 0;
-	unsigned int count = 0;
+	size_t count = 0;
 	va_list ap;
 
 	va_start(ap, type);
@@ -155,7 +155,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 	/* check if we have more completions (or less) than expected */
 	if (count != ec_comp_count(c, type)) {
 		EC_LOG(EC_LOG_ERR,
-			"nb_completion (%d) does not match (%d)\n",
+			"nb_completion (%zu) does not match (%zu)\n",
 			count, ec_comp_count(c, type));
 		ec_comp_dump(stdout, c);
 		ret = -1;

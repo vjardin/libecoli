@@ -6,7 +6,7 @@
  * @defgroup parse Parse
  * @{
  *
- * @brief Create parse tree from string input and grammar tree
+ * @brief Create parse tree from string input and grammar graph
  *
  * Node parse API.
  *
@@ -93,10 +93,10 @@ struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
 
 /* internal: used by nodes
  *
- * state is the current parse tree, which is built piece by piece while
+ * pstate is the current parse tree, which is built piece by piece while
  *   parsing the node tree: ec_parse_child() creates a new child in
  *   this state parse tree, and calls the parse() method for the child
- *   node, with state pointing to this new child. If it does not match,
+ *   node, with pstate pointing to this new child. If it does not match,
  *   the child is removed in the state, else it is kept, with its
  *   possible descendants.
  *
@@ -106,7 +106,7 @@ struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
  * -1 on error, and errno is set
  */
 int ec_parse_child(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec);
 
 /**
@@ -234,7 +234,7 @@ struct ec_pnode *ec_pnode_find_next(struct ec_pnode *root,
  * Iterate among parse tree
  *
  * Use it with:
- * for (iter = state; iter != NULL; iter = EC_PNODE_ITER_NEXT(state, iter, 1))
+ * for (iter = pnode; iter != NULL; iter = EC_PNODE_ITER_NEXT(pnode, iter, 1))
  */
 struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
 				struct ec_pnode *pnode, bool iter_children);

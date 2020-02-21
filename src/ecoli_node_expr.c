@@ -43,7 +43,7 @@ struct ec_node_expr {
 };
 
 static int ec_node_expr_parse(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_expr *priv = ec_node_priv(node);
@@ -53,7 +53,7 @@ static int ec_node_expr_parse(const struct ec_node *node,
 		return -1;
 	}
 
-	return ec_parse_child(priv->child, state, strvec);
+	return ec_parse_child(priv->child, pstate, strvec);
 }
 
 static int

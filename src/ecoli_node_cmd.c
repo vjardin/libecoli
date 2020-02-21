@@ -391,12 +391,12 @@ fail:
 }
 
 static int
-ec_node_cmd_parse(const struct ec_node *node, struct ec_pnode *state,
+ec_node_cmd_parse(const struct ec_node *node, struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cmd *priv = ec_node_priv(node);
 
-	return ec_parse_child(priv->cmd, state, strvec);
+	return ec_parse_child(priv->cmd, pstate, strvec);
 }
 
 static int

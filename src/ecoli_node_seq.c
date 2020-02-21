@@ -34,7 +34,7 @@ struct ec_node_seq {
 
 static int
 ec_node_seq_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_seq *priv = ec_node_priv(node);
@@ -49,7 +49,7 @@ ec_node_seq_parse(const struct ec_node *node,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_parse_child(priv->table[i], state, childvec);
+		ret = ec_parse_child(priv->table[i], pstate, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -57,7 +57,7 @@ ec_node_seq_parse(const struct ec_node *node,
 		childvec = NULL;
 
 		if (ret == EC_PARSE_NOMATCH) {
-			ec_pnode_free_children(state);
+			ec_pnode_free_children(pstate);
 			return EC_PARSE_NOMATCH;
 		}
 
@@ -76,7 +76,7 @@ __ec_node_seq_complete(struct ec_node **table, size_t table_len,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_pnode *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_cur_pstate(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;

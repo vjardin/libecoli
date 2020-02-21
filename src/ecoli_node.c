@@ -25,17 +25,29 @@
 
 EC_LOG_TYPE_REGISTER(node);
 
+/* These states are used to mark the grammar graph when freeing, to
+ * detect loop. */
+enum ec_node_free_state {
+	EC_NODE_FREE_STATE_NONE,
+	EC_NODE_FREE_STATE_TRAVERSED,
+	EC_NODE_FREE_STATE_FREEABLE,
+	EC_NODE_FREE_STATE_NOT_FREEABLE,
+	EC_NODE_FREE_STATE_FREEING,
+};
+
+/**
+ * The grammar node structure.
+ */
 struct ec_node {
-	const struct ec_node_type *type;
-	struct ec_config *config;    /**< Generic configuration. */
-	char *id;
-	char *desc;
-	struct ec_dict *attrs;
-	unsigned int refcnt;
+	const struct ec_node_type *type; /**< The node type. */
+	struct ec_config *config;        /**< Node configuration. */
+	char *id;                  /**< Node identifier (EC_NO_ID if none). */
+	struct ec_dict *attrs;           /**< Attributes of the node. */
+	unsigned int refcnt;             /**< Reference counter. */
 	struct {
-		enum ec_node_free_state state; /**< State of loop detection */
+		enum ec_node_free_state state; /**< State of loop detection. */
 		unsigned int refcnt;    /**< Number of reachable references
-					 *   starting from node beeing freed */
+					 *   starting from node beeing freed. */
 	} free; /**< Freeing state: used for loop detection */
 };
 
@@ -56,14 +68,14 @@ ec_node_type_lookup(const char *name)
 	return NULL;
 }
 
-int ec_node_type_register(struct ec_node_type *type)
+int ec_node_type_register(struct ec_node_type *type, bool override)
 {
-	if (ec_node_type_lookup(type->name) != NULL) {
+	if (!override && ec_node_type_lookup(type->name) != NULL) {
 		errno = EEXIST;
 		return -1;
 	}
 
-	TAILQ_INSERT_TAIL(&node_type_list, type, next);
+	TAILQ_INSERT_HEAD(&node_type_list, type, next);
 
 	return 0;
 }
@@ -99,9 +111,6 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
 	if (node->id == NULL)
 		goto fail;
 
-	if (ec_asprintf(&node->desc, "<%s>", type->name) < 0)
-		goto fail;
-
 	node->attrs = ec_dict();
 	if (node->attrs == NULL)
 		goto fail;
@@ -116,7 +125,6 @@ struct ec_node *ec_node_from_type(const struct ec_node_type *type, const char *i
  fail:
 	if (node != NULL) {
 		ec_dict_free(node->attrs);
-		ec_free(node->desc);
 		ec_free(node->id);
 	}
 	ec_free(node);
@@ -256,7 +264,6 @@ void ec_node_free(struct ec_node *node)
 		if (node->type->free_priv != NULL)
 			node->type->free_priv(node);
 		ec_free(node->id);
-		ec_free(node->desc);
 		ec_dict_free(node->attrs);
 	}
 
@@ -421,12 +428,17 @@ fail:
 	EC_LOG(EC_LOG_ERR, "failed to dump node\n");
 }
 
-const char *ec_node_desc(const struct ec_node *node)
+char *ec_node_desc(const struct ec_node *node)
 {
+	char *desc = NULL;
+
 	if (node->type->desc != NULL)
 		return node->type->desc(node);
 
-	return node->desc;
+	if (ec_asprintf(&desc, "<%s>", node->type->name) < 0)
+		return NULL;
+
+	return desc;
 }
 
 int ec_node_check_type(const struct ec_node *node,
@@ -462,6 +474,7 @@ static int ec_node_testcase(void)
 	unsigned int refs;
 	FILE *f = NULL;
 	char *buf = NULL;
+	char *desc = NULL;
 	size_t buflen = 0;
 	int testres = 0;
 	int ret;
@@ -494,11 +507,14 @@ static int ec_node_testcase(void)
 	free(buf);
 	buf = NULL;
 
+	desc = ec_node_desc(node);
 	testres |= EC_TEST_CHECK(
 		!strcmp(ec_node_type(node)->name, "seq") &&
 		!strcmp(ec_node_id(node), EC_NO_ID) &&
-		!strcmp(ec_node_desc(node), "<seq>"),
+		!strcmp(desc, "<seq>"),
 		"bad child 0");
+	ec_free(desc);
+	desc = NULL;
 
 	testres |= EC_TEST_CHECK(
 		ec_node_get_children_count(node) == 2,
@@ -522,11 +538,14 @@ static int ec_node_testcase(void)
 		"child 2 should be NULL");
 
 	child = ec_node_find(node, "id_x");
+	desc = ec_node_desc(child);
 	testres |= EC_TEST_CHECK(child != NULL &&
 		!strcmp(ec_node_type(child)->name, "str") &&
 		!strcmp(ec_node_id(child), "id_x") &&
-		!strcmp(ec_node_desc(child), "x"),
+		!strcmp(desc, "x"),
 		"bad child id_x");
+	ec_free(desc);
+	desc = NULL;
 	child = ec_node_find(node, "id_dezdex");
 	testres |= EC_TEST_CHECK(child == NULL,
 		"child with wrong id should be NULL");

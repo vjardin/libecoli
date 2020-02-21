@@ -370,34 +370,34 @@ static int get_node_help(const struct ec_comp_item *item,
 			struct ec_editline_help *help)
 {
 	const struct ec_comp_group *grp;
-	const struct ec_pnode *state;
+	const struct ec_pnode *pstate;
 	const struct ec_node *node;
 	const char *node_help = NULL;
-	const char *node_desc = NULL;
+	char *node_desc = NULL;
 
 	help->desc = NULL;
 	help->help = NULL;
 
 	grp = ec_comp_item_get_grp(item);
 
-	for (state = ec_comp_group_get_state(grp); state != NULL;
-	     state = ec_pnode_get_parent(state)) {
-		node = ec_pnode_get_node(state);
+	for (pstate = ec_comp_group_get_pstate(grp); pstate != NULL;
+	     pstate = ec_pnode_get_parent(pstate)) {
+		node = ec_pnode_get_node(pstate);
 		if (node_help == NULL)
 			node_help = ec_dict_get(ec_node_attrs(node), "help");
-		if (node_desc == NULL)
+		if (node_desc == NULL) {
 			node_desc = ec_node_desc(node);
+			if (node_desc == NULL)
+				goto fail;
+		}
 	}
 
-	if (node_help == NULL)
-		node_help = "";
 	if (node_desc == NULL)
 		goto fail;
+	if (node_help == NULL)
+		node_help = "";
 
-	help->desc = ec_strdup(node_desc);
-	if (help->desc == NULL)
-		goto fail;
-
+	help->desc = node_desc;
 	help->help = ec_strdup(node_help);
 	if (help->help == NULL)
 		goto fail;
@@ -405,6 +405,7 @@ static int get_node_help(const struct ec_comp_item *item,
 	return 0;
 
 fail:
+	ec_free(node_desc);
 	ec_free(help->desc);
 	ec_free(help->help);
 	return -1;

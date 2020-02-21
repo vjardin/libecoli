@@ -27,10 +27,10 @@ struct ec_comp_item {
 	TAILQ_ENTRY(ec_comp_item) next;
 	enum ec_comp_type type;
 	struct ec_comp_group *grp;
-	char *start;      /* the initial token */
-	char *full;       /* the full token after completion */
-	char *completion; /* chars that are added, NULL if not applicable */
-	char *display;    /* what should be displayed by help/completers */
+	char *start;      /**< The initial token */
+	char *full;       /**< The full token after completion */
+	char *completion; /**< Chars that are added, NULL if not applicable */
+	char *display;    /**< What should be displayed by help/completers */
 	struct ec_dict *attrs;
 };
 
@@ -39,26 +39,27 @@ TAILQ_HEAD(ec_comp_item_list, ec_comp_item);
 struct ec_comp_group {
 	/* XXX counts ? */
 	TAILQ_ENTRY(ec_comp_group) next;
+	const struct ec_comp *comp;
 	const struct ec_node *node;
 	struct ec_comp_item_list items;
-	struct ec_pnode *state;
+	struct ec_pnode *pstate;
 	struct ec_dict *attrs;
 };
 
 TAILQ_HEAD(ec_comp_group_list, ec_comp_group);
 
 struct ec_comp {
-	unsigned count;
-	unsigned count_full;
-	unsigned count_partial;
-	unsigned count_unknown;
-	struct ec_pnode *cur_state;
+	size_t count;
+	size_t count_full;
+	size_t count_partial;
+	size_t count_unknown;
+	struct ec_pnode *cur_pstate;
 	struct ec_comp_group *cur_group;
 	struct ec_comp_group_list groups;
 	struct ec_dict *attrs;
 };
 
-struct ec_comp *ec_comp(struct ec_pnode *state)
+struct ec_comp *ec_comp(void)
 {
 	struct ec_comp *comp = NULL;
 
@@ -72,8 +73,6 @@ struct ec_comp *ec_comp(struct ec_pnode *state)
 
 	TAILQ_INIT(&comp->groups);
 
-	comp->cur_state = state;
-
 	return comp;
 
  fail:
@@ -84,12 +83,12 @@ struct ec_comp *ec_comp(struct ec_pnode *state)
 	return NULL;
 }
 
-struct ec_pnode *ec_comp_get_state(const struct ec_comp *comp)
+struct ec_pnode *ec_comp_get_cur_pstate(const struct ec_comp *comp)
 {
-	return comp->cur_state;
+	return comp->cur_pstate;
 }
 
-struct ec_comp_group *ec_comp_get_group(const struct ec_comp *comp)
+struct ec_comp_group *ec_comp_get_cur_group(const struct ec_comp *comp)
 {
 	return comp->cur_group;
 }
@@ -104,39 +103,38 @@ ec_complete_child(const struct ec_node *node,
 		struct ec_comp *comp,
 		const struct ec_strvec *strvec)
 {
-	struct ec_pnode *child_state, *cur_state;
+	struct ec_pnode *child_pstate, *cur_pstate;
 	struct ec_comp_group *cur_group;
+	ec_complete_t complete_cb;
 	int ret;
 
-	//XXX call ec_complete_unknown() instead, as
-	//described in API doc.
-	if (ec_node_type(node)->complete == NULL) {
-		errno = ENOTSUP;
-		return -1;
-	}
+	/* get the complete method, falling back to ec_complete_unknown() */
+	complete_cb = ec_node_type(node)->complete;
+	if (complete_cb == NULL)
+		complete_cb = ec_complete_unknown;
 
 	/* save previous parse state, prepare child state */
-	cur_state = comp->cur_state;
-	child_state = ec_pnode(node);
-	if (child_state == NULL)
+	cur_pstate = comp->cur_pstate;
+	child_pstate = ec_pnode(node);
+	if (child_pstate == NULL)
 		return -1;
 
-	if (cur_state != NULL)
-		ec_pnode_link_child(cur_state, child_state);
-	comp->cur_state = child_state;
+	if (cur_pstate != NULL)
+		ec_pnode_link_child(cur_pstate, child_pstate);
+	comp->cur_pstate = child_pstate;
 	cur_group = comp->cur_group;
 	comp->cur_group = NULL;
 
 	/* fill the comp struct with items */
-	ret = ec_node_type(node)->complete(node, comp, strvec);
+	ret = complete_cb(node, comp, strvec);
 
 	/* restore parent parse state */
-	if (cur_state != NULL) {
-		ec_pnode_unlink_child(cur_state, child_state);
-		assert(!ec_pnode_has_child(child_state));
+	if (cur_pstate != NULL) {
+		ec_pnode_unlink_child(cur_pstate, child_pstate);
+		assert(!ec_pnode_has_child(child_pstate));
 	}
-	ec_pnode_free(child_state);
-	comp->cur_state = cur_state;
+	ec_pnode_free(child_pstate);
+	comp->cur_pstate = cur_pstate;
 	comp->cur_group = cur_group;
 
 	if (ret < 0)
@@ -151,7 +149,7 @@ struct ec_comp *ec_complete_strvec(const struct ec_node *node,
 	struct ec_comp *comp = NULL;
 	int ret;
 
-	comp = ec_comp(NULL);
+	comp = ec_comp();
 	if (comp == NULL)
 		goto fail;
 
@@ -193,7 +191,8 @@ struct ec_comp *ec_complete(const struct ec_node *node,
 }
 
 static struct ec_comp_group *
-ec_comp_group(const struct ec_node *node, struct ec_pnode *parse)
+ec_comp_group(const struct ec_comp *comp, const struct ec_node *node,
+	struct ec_pnode *parse)
 {
 	struct ec_comp_group *grp = NULL;
 
@@ -201,12 +200,13 @@ ec_comp_group(const struct ec_node *node, struct ec_pnode *parse)
 	if (grp == NULL)
 		return NULL;
 
+	grp->comp = comp;
 	grp->attrs = ec_dict();
 	if (grp->attrs == NULL)
 		goto fail;
 
-	grp->state = ec_pnode_dup(parse);
-	if (grp->state == NULL)
+	grp->pstate = ec_pnode_dup(parse);
+	if (grp->pstate == NULL)
 		goto fail;
 
 	grp->node = node;
@@ -216,7 +216,7 @@ ec_comp_group(const struct ec_node *node, struct ec_pnode *parse)
 
 fail:
 	if (grp != NULL) {
-		ec_pnode_free(grp->state);
+		ec_pnode_free(grp->pstate);
 		ec_dict_free(grp->attrs);
 	}
 	ec_free(grp);
@@ -393,7 +393,7 @@ ec_comp_item_add(struct ec_comp *comp, const struct ec_node *node,
 	if (comp->cur_group == NULL) {
 		struct ec_comp_group *grp;
 
-		grp = ec_comp_group(node, comp->cur_state);
+		grp = ec_comp_group(comp, node, comp->cur_pstate);
 		if (grp == NULL)
 			return -1;
 		TAILQ_INSERT_TAIL(&comp->groups, grp, next);
@@ -457,50 +457,42 @@ ec_comp_item_free(struct ec_comp_item *item)
 	ec_free(item);
 }
 
-int ec_comp_add_item(struct ec_comp *comp,
-			const struct ec_node *node,
-			struct ec_comp_item **p_item,
-			enum ec_comp_type type,
-			const char *start, const char *full)
+struct ec_comp_item *ec_comp_add_item(struct ec_comp *comp,
+		const struct ec_node *node, enum ec_comp_type type,
+		const char *start, const char *full)
 {
 	struct ec_comp_item *item = NULL;
 	int ret;
 
 	item = ec_comp_item(type, start, full);
 	if (item == NULL)
-		return -1;
+		return NULL;
 
 	ret = ec_comp_item_add(comp, node, item);
 	if (ret < 0)
 		goto fail;
 
-	if (p_item != NULL)
-		*p_item = item;
-
-	return 0;
+	return item;
 
 fail:
 	ec_comp_item_free(item);
-
-	return -1;
+	return NULL;
 }
 
-/* XXX move in helpers + rename ? */
 /* return a completion item of type "unknown" */
 int
 ec_complete_unknown(const struct ec_node *gen_node,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	int ret;
+	const struct ec_comp_item *item = NULL;
 
 	if (ec_strvec_len(strvec) != 1)
 		return 0;
 
-	ret = ec_comp_add_item(comp, gen_node, NULL,
-				EC_COMP_UNKNOWN, NULL, NULL);
-	if (ret < 0)
-		return ret;
+	item = ec_comp_add_item(comp, gen_node, EC_COMP_UNKNOWN, NULL, NULL);
+	if (item == NULL)
+		return -1;
 
 	return 0;
 }
@@ -517,7 +509,7 @@ static void ec_comp_group_free(struct ec_comp_group *grp)
 		TAILQ_REMOVE(&grp->items, item, next);
 		ec_comp_item_free(item);
 	}
-	ec_pnode_free(ec_pnode_get_root(grp->state));
+	ec_pnode_free(ec_pnode_get_root(grp->pstate));
 	ec_dict_free(grp->attrs);
 	ec_free(grp);
 }
@@ -529,9 +521,9 @@ ec_comp_group_get_node(const struct ec_comp_group *grp)
 }
 
 const struct ec_pnode *
-ec_comp_group_get_state(const struct ec_comp_group *grp)
+ec_comp_group_get_pstate(const struct ec_comp_group *grp)
 {
-	return grp->state;
+	return grp->pstate;
 }
 
 const struct ec_dict *
@@ -566,7 +558,7 @@ void ec_comp_dump(FILE *out, const struct ec_comp *comp)
 		return;
 	}
 
-	fprintf(out, "completion: count=%u full=%u partial=%u unknown=%u\n",
+	fprintf(out, "completion: count=%zu full=%zu partial=%zu unknown=%zu\n",
 		comp->count, comp->count_full,
 		comp->count_partial,  comp->count_unknown);
 
@@ -609,11 +601,9 @@ int ec_comp_merge(struct ec_comp *to,
 	return 0;
 }
 
-unsigned int ec_comp_count(
-	const struct ec_comp *comp,
-	enum ec_comp_type type)
+size_t ec_comp_count(const struct ec_comp *comp, enum ec_comp_type type)
 {
-	unsigned int count = 0;
+	size_t count = 0;
 
 	if (comp == NULL)
 		return count;

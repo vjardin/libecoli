@@ -26,13 +26,13 @@ struct ec_node_str {
 
 static int
 ec_node_str_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *priv = ec_node_priv(node);
 	const char *str;
 
-	(void)state;
+	(void)pstate;
 
 	if (priv->string == NULL) {
 		errno = EINVAL;
@@ -55,6 +55,7 @@ ec_node_str_complete(const struct ec_node *node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_str *priv = ec_node_priv(node);
+	const struct ec_comp_item *item;
 	const char *str;
 	size_t n = 0;
 
@@ -72,18 +73,18 @@ ec_node_str_complete(const struct ec_node *node,
 	if (str[n] != '\0')
 		return EC_PARSE_NOMATCH;
 
-	if (ec_comp_add_item(comp, node, NULL, EC_COMP_FULL,
-					str, priv->string) < 0)
+	item = ec_comp_add_item(comp, node, EC_COMP_FULL, str, priv->string);
+	if (item == NULL)
 		return -1;
 
 	return 0;
 }
 
-static const char *ec_node_str_desc(const struct ec_node *node)
+static char *ec_node_str_desc(const struct ec_node *node)
 {
 	struct ec_node_str *priv = ec_node_priv(node);
 
-	return priv->string;
+	return ec_strdup(priv->string);
 }
 
 static void ec_node_str_free_priv(struct ec_node *node)
@@ -201,14 +202,18 @@ static int ec_node_str_testcase(void)
 {
 	struct ec_node *node;
 	int testres = 0;
+	char *desc = NULL;
 
 	node = ec_node_str(EC_NO_ID, "foo");
 	if (node == NULL) {
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	testres |= EC_TEST_CHECK(!strcmp(ec_node_desc(node), "foo"),
+	desc = ec_node_desc(node);
+	testres |= EC_TEST_CHECK(!strcmp(desc, "foo"),
 		"Invalid node description.");
+	ec_free(desc);
+	desc = NULL;
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo", "bar");
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "foobar");

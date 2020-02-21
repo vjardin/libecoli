@@ -22,11 +22,11 @@ struct ec_node_empty {
 };
 
 static int ec_node_empty_parse(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
 	(void)node;
-	(void)state;
+	(void)pstate;
 	(void)strvec;
 	return 0;
 }
@@ -34,7 +34,6 @@ static int ec_node_empty_parse(const struct ec_node *node,
 static struct ec_node_type ec_node_empty_type = {
 	.name = "empty",
 	.parse = ec_node_empty_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_empty),
 };
 

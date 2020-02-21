@@ -116,7 +116,7 @@ fail:
 
 static int
 ec_node_re_lex_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_re_lex *priv = ec_node_priv(node);
@@ -139,15 +139,15 @@ ec_node_re_lex_parse(const struct ec_node *node,
 	if (new_vec == NULL)
 		goto fail;
 
-	ret = ec_parse_child(priv->child, state, new_vec);
+	ret = ec_parse_child(priv->child, pstate, new_vec);
 	if (ret < 0)
 		goto fail;
 
 	if ((unsigned)ret == ec_strvec_len(new_vec)) {
 		ret = 1;
 	} else if (ret != EC_PARSE_NOMATCH) {
-		child_parse = ec_pnode_get_last_child(state);
-		ec_pnode_unlink_child(state, child_parse);
+		child_parse = ec_pnode_get_last_child(pstate);
+		ec_pnode_unlink_child(pstate, child_parse);
 		ec_pnode_free(child_parse);
 		ret = EC_PARSE_NOMATCH;
 	}
@@ -372,7 +372,6 @@ static struct ec_node_type ec_node_re_lex_type = {
 	.schema = ec_node_re_lex_schema,
 	.set_config = ec_node_re_lex_set_config,
 	.parse = ec_node_re_lex_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_re_lex),
 	.free_priv = ec_node_re_lex_free_priv,
 	.get_children_count = ec_node_re_lex_get_children_count,

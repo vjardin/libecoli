@@ -71,10 +71,11 @@ struct cond_result {
 };
 
 typedef struct cond_result *(cond_func_t)(
-	const struct ec_pnode *state,
+	const struct ec_pnode *pstate,
 	struct cond_result **in, size_t in_len);
 
-void cond_result_free(struct cond_result *res)
+static void
+cond_result_free(struct cond_result *res)
 {
 	if (res == NULL)
 		return;
@@ -94,7 +95,8 @@ void cond_result_free(struct cond_result *res)
 	ec_free(res);
 }
 
-void cond_result_table_free(struct cond_result **table, size_t len)
+static void
+cond_result_table_free(struct cond_result **table, size_t len)
 {
 	size_t i;
 
@@ -204,7 +206,7 @@ fail:
 }
 
 static struct cond_result *
-eval_root(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
+eval_root(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 {
 	struct cond_result *out = NULL;
 	const struct ec_pnode *root = NULL;
@@ -226,7 +228,7 @@ eval_root(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
 	if (out->htable == NULL)
 		goto fail;
 
-	root = ec_pnode_get_root(state);
+	root = ec_pnode_get_root(pstate);
 	if (ec_htable_set(out->htable, &root, sizeof(root), NULL, NULL) < 0)
 		goto fail;
 
@@ -240,7 +242,7 @@ fail:
 }
 
 static struct cond_result *
-eval_current(const struct ec_pnode *state, struct cond_result **in,
+eval_current(const struct ec_pnode *pstate, struct cond_result **in,
 	size_t in_len)
 {
 	struct cond_result *out = NULL;
@@ -262,7 +264,7 @@ eval_current(const struct ec_pnode *state, struct cond_result **in,
 	if (out->htable == NULL)
 		goto fail;
 
-	if (ec_htable_set(out->htable, &state, sizeof(state), NULL, NULL) < 0)
+	if (ec_htable_set(out->htable, &pstate, sizeof(pstate), NULL, NULL) < 0)
 		goto fail;
 
 	cond_result_table_free(in, in_len);
@@ -292,11 +294,11 @@ boolean_value(const struct cond_result *res)
 }
 
 static struct cond_result *
-eval_bool(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
+eval_bool(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 {
 	struct cond_result *out = NULL;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len != 1) {
 		EC_LOG(LOG_ERR, "bool() takes one argument.\n");
@@ -321,12 +323,12 @@ fail:
 }
 
 static struct cond_result *
-eval_or(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
+eval_or(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 {
 	struct cond_result *out = NULL;
 	size_t i;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len < 2) {
 		EC_LOG(LOG_ERR, "or() takes at least two arguments\n");
@@ -355,12 +357,12 @@ fail:
 }
 
 static struct cond_result *
-eval_and(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
+eval_and(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 {
 	struct cond_result *out = NULL;
 	size_t i;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len < 2) {
 		EC_LOG(LOG_ERR, "or() takes at least two arguments\n");
@@ -389,7 +391,7 @@ fail:
 }
 
 static struct cond_result *
-eval_first_child(const struct ec_pnode *state, struct cond_result **in,
+eval_first_child(const struct ec_pnode *pstate, struct cond_result **in,
 	size_t in_len)
 {
 	struct cond_result *out = NULL;
@@ -397,7 +399,7 @@ eval_first_child(const struct ec_pnode *state, struct cond_result **in,
 	const struct ec_pnode * const *pparse;
 	struct ec_pnode *parse;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len != 1 || in[0]->type != NODESET) {
 		EC_LOG(LOG_ERR, "first_child() takes one argument of type nodeset.\n");
@@ -435,7 +437,7 @@ fail:
 }
 
 static struct cond_result *
-eval_find(const struct ec_pnode *state, struct cond_result **in,
+eval_find(const struct ec_pnode *pstate, struct cond_result **in,
 	size_t in_len)
 {
 	struct cond_result *out = NULL;
@@ -444,7 +446,7 @@ eval_find(const struct ec_pnode *state, struct cond_result **in,
 	struct ec_pnode *parse;
 	const char *id;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len != 2 || in[0]->type != NODESET || in[1]->type != STR) {
 		EC_LOG(LOG_ERR, "find() takes two arguments (nodeset, str).\n");
@@ -485,14 +487,14 @@ fail:
 }
 
 static struct cond_result *
-eval_cmp(const struct ec_pnode *state, struct cond_result **in,
+eval_cmp(const struct ec_pnode *pstate, struct cond_result **in,
 	size_t in_len)
 {
 	struct cond_result *out = NULL;
 	struct ec_htable_elt_ref *iter;
 	bool eq = false, gt = false;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len != 3 || in[0]->type != STR || in[1]->type != in[2]->type) {
 		EC_LOG(LOG_ERR, "cmp() takes 3 arguments (str, <type>, <type>).\n");
@@ -568,11 +570,11 @@ fail:
 }
 
 static struct cond_result *
-eval_count(const struct ec_pnode *state, struct cond_result **in, size_t in_len)
+eval_count(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 {
 	struct cond_result *out = NULL;
 
-	(void)state;
+	(void)pstate;
 
 	if (in_len != 1 || in[0]->type != NODESET) {
 		EC_LOG(LOG_ERR, "count() takes one argument of type nodeset.\n");
@@ -597,7 +599,7 @@ fail:
 }
 
 static struct cond_result *
-eval_func(const char *name, const struct ec_pnode *state,
+eval_func(const char *name, const struct ec_pnode *pstate,
 	struct cond_result **in, size_t in_len)
 {
 	cond_func_t *f;
@@ -611,12 +613,12 @@ eval_func(const char *name, const struct ec_pnode *state,
 		return NULL;
 	}
 
-	return f(state, in, in_len);
+	return f(pstate, in, in_len);
 }
 
 
 static struct cond_result *
-eval_condition(const struct ec_pnode *cond, const struct ec_pnode *state)
+eval_condition(const struct ec_pnode *cond, const struct ec_pnode *pstate)
 {
 	const struct ec_pnode *iter;
 	struct cond_result *res = NULL;
@@ -640,7 +642,7 @@ eval_condition(const struct ec_pnode *cond, const struct ec_pnode *state)
 		iter = ec_pnode_find((void *)arg_list, "id_arg");
 		while (iter != NULL) {
 			args = ec_realloc(args, (n_arg + 1) * sizeof(*args));
-			args[n_arg] = eval_condition(iter, state);
+			args[n_arg] = eval_condition(iter, pstate);
 			if (args[n_arg] == NULL)
 				goto fail;
 			n_arg++;
@@ -649,7 +651,7 @@ eval_condition(const struct ec_pnode *cond, const struct ec_pnode *state)
 		}
 
 		res = eval_func(ec_strvec_val(ec_pnode_strvec(func_name), 0),
-				state, args, n_arg);
+				pstate, args, n_arg);
 		args = NULL;
 		return res;
 	}
@@ -686,12 +688,12 @@ fail:
 }
 
 static int
-validate_condition(const struct ec_pnode *cond, const struct ec_pnode *state)
+validate_condition(const struct ec_pnode *cond, const struct ec_pnode *pstate)
 {
 	struct cond_result *res;
 	int ret;
 
-	res = eval_condition(cond, state);
+	res = eval_condition(cond, pstate);
 	if (res == NULL)
 		return -1;
 
@@ -702,24 +704,24 @@ validate_condition(const struct ec_pnode *cond, const struct ec_pnode *state)
 }
 
 static int
-ec_node_cond_parse(const struct ec_node *node, struct ec_pnode *state,
+ec_node_cond_parse(const struct ec_node *node, struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_cond *priv = ec_node_priv(node);
 	struct ec_pnode *child;
 	int ret, valid;
 
-	ret = ec_parse_child(priv->child, state, strvec);
+	ret = ec_parse_child(priv->child, pstate, strvec);
 	if (ret <= 0)
 		return ret;
 
-	valid = validate_condition(priv->parsed_cond, state);
+	valid = validate_condition(priv->parsed_cond, pstate);
 	if (valid < 0)
 		return valid;
 
 	if (valid == 0) {
-		child = ec_pnode_get_last_child(state);
-		ec_pnode_unlink_child(state, child);
+		child = ec_pnode_get_last_child(pstate);
+		ec_pnode_unlink_child(pstate, child);
 		ec_pnode_free(child);
 		return EC_PARSE_NOMATCH;
 	}

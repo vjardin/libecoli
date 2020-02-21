@@ -72,7 +72,7 @@ ec_node_dynamic_complete(const struct ec_node *node,
 	char key[64];
 	int ret = -1;
 
-	parse = ec_comp_get_state(comp);
+	parse = ec_comp_get_cur_pstate(comp);
 	child = priv->build(parse, priv->opaque);
 	if (child == NULL)
 		goto fail;

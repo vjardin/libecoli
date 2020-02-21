@@ -16,7 +16,7 @@
  *
  * The library also provides helpers to create a an interactive command
  * line based on @ref editline library, and a @ref yaml parser for
- * grammar trees.
+ * grammar graphs.
  */
 
 #ifndef ECOLI_

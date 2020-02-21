@@ -75,7 +75,7 @@ static int parse_ullint(struct ec_node_int_uint *priv, const char *str,
 }
 
 static int ec_node_int_uint_parse(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_int_uint *priv = ec_node_priv(node);
@@ -83,7 +83,7 @@ static int ec_node_int_uint_parse(const struct ec_node *node,
 	uint64_t u64;
 	int64_t i64;
 
-	(void)state;
+	(void)pstate;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
@@ -177,7 +177,6 @@ static struct ec_node_type ec_node_int_type = {
 	.schema = ec_node_int_schema,
 	.set_config = ec_node_int_set_config,
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 	.init_priv = ec_node_uint_init_priv,
 };
@@ -290,7 +289,6 @@ static struct ec_node_type ec_node_uint_type = {
 	.schema = ec_node_uint_schema,
 	.set_config = ec_node_uint_set_config,
 	.parse = ec_node_int_uint_parse,
-	.complete = ec_complete_unknown,
 	.size = sizeof(struct ec_node_int_uint),
 };
 

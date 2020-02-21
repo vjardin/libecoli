@@ -214,7 +214,7 @@ static struct ec_strvec *tokenize(const char *str, int completion,
 
 static int
 ec_node_sh_lex_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *priv = ec_node_priv(node);
@@ -234,15 +234,15 @@ ec_node_sh_lex_parse(const struct ec_node *node,
 	if (new_vec == NULL)
 		goto fail;
 
-	ret = ec_parse_child(priv->child, state, new_vec);
+	ret = ec_parse_child(priv->child, pstate, new_vec);
 	if (ret < 0)
 		goto fail;
 
 	if ((unsigned)ret == ec_strvec_len(new_vec)) {
 		ret = 1;
 	} else if (ret != EC_PARSE_NOMATCH) {
-		child_parse = ec_pnode_get_last_child(state);
-		ec_pnode_unlink_child(state, child_parse);
+		child_parse = ec_pnode_get_last_child(pstate);
+		ec_pnode_unlink_child(pstate, child_parse);
 		ec_pnode_free(child_parse);
 		ret = EC_PARSE_NOMATCH;
 	}

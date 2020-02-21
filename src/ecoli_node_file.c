@@ -36,11 +36,11 @@ struct ec_node_file {
 
 static int
 ec_node_file_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	(void)node;
-	(void)state;
+	(void)pstate;
 
 	if (ec_strvec_len(strvec) == 0)
 		return EC_PARSE_NOMATCH;
@@ -210,8 +210,8 @@ ec_node_file_complete(const struct ec_node *node,
 			if (ec_asprintf(&disp_str, "%s", de->d_name) < 0)
 				goto fail;
 		}
-		if (ec_comp_add_item(comp, node, &item,
-						type, input, comp_str) < 0)
+		item = ec_comp_add_item(comp, node, type, input, comp_str);
+		if (item == NULL)
 			goto out;
 
 		/* fix the display string: we don't want to display the full

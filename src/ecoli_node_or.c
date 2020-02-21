@@ -31,7 +31,7 @@ struct ec_node_or {
 
 static int
 ec_node_or_parse(const struct ec_node *node,
-		struct ec_pnode *state,
+		struct ec_pnode *pstate,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_or *priv = ec_node_priv(node);
@@ -39,7 +39,7 @@ ec_node_or_parse(const struct ec_node *node,
 	int ret;
 
 	for (i = 0; i < priv->len; i++) {
-		ret = ec_parse_child(priv->table[i], state, strvec);
+		ret = ec_parse_child(priv->table[i], pstate, strvec);
 		if (ret == EC_PARSE_NOMATCH)
 			continue;
 		return ret;

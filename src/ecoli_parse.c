@@ -35,7 +35,7 @@ struct ec_pnode {
 };
 
 static int __ec_parse_child(const struct ec_node *node,
-				struct ec_pnode *state,
+				struct ec_pnode *pstate,
 				bool is_root, const struct ec_strvec *strvec)
 {
 	struct ec_strvec *match_strvec;
@@ -54,9 +54,9 @@ static int __ec_parse_child(const struct ec_node *node,
 		if (child == NULL)
 			return -1;
 
-		ec_pnode_link_child(state, child);
+		ec_pnode_link_child(pstate, child);
 	} else {
-		child = state;
+		child = pstate;
 	}
 	ret = ec_node_type(node)->parse(node, child, strvec);
 	if (ret < 0)
@@ -64,7 +64,7 @@ static int __ec_parse_child(const struct ec_node *node,
 
 	if (ret == EC_PARSE_NOMATCH) {
 		if (!is_root) {
-			ec_pnode_unlink_child(state, child);
+			ec_pnode_unlink_child(pstate, child);
 			ec_pnode_free(child);
 		}
 		return ret;
@@ -80,17 +80,17 @@ static int __ec_parse_child(const struct ec_node *node,
 
 fail:
 	if (!is_root) {
-		ec_pnode_unlink_child(state, child);
+		ec_pnode_unlink_child(pstate, child);
 		ec_pnode_free(child);
 	}
 	return -1;
 }
 
-int ec_parse_child(const struct ec_node *node, struct ec_pnode *state,
+int ec_parse_child(const struct ec_node *node, struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
-	assert(state != NULL);
-	return __ec_parse_child(node, state, false, strvec);
+	assert(pstate != NULL);
+	return __ec_parse_child(node, pstate, false, strvec);
 }
 
 // XXX what is returned if no match ??

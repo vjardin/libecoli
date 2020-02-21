@@ -70,7 +70,7 @@ ec_node_once_complete(const struct ec_node *node,
 		const struct ec_strvec *strvec)
 {
 	struct ec_node_once *priv = ec_node_priv(node);
-	struct ec_pnode *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_cur_pstate(comp);
 	unsigned int count;
 	int ret;
 

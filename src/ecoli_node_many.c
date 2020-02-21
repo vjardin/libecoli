@@ -30,7 +30,7 @@ struct ec_node_many {
 };
 
 static int ec_node_many_parse(const struct ec_node *node,
-			struct ec_pnode *state,
+			struct ec_pnode *pstate,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_many *priv = ec_node_priv(node);
@@ -45,7 +45,7 @@ static int ec_node_many_parse(const struct ec_node *node,
 		if (childvec == NULL)
 			goto fail;
 
-		ret = ec_parse_child(priv->child, state, childvec);
+		ret = ec_parse_child(priv->child, pstate, childvec);
 		if (ret < 0)
 			goto fail;
 
@@ -57,8 +57,8 @@ static int ec_node_many_parse(const struct ec_node *node,
 
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
-			child_parse = ec_pnode_get_last_child(state);
-			ec_pnode_unlink_child(state, child_parse);
+			child_parse = ec_pnode_get_last_child(pstate);
+			ec_pnode_unlink_child(pstate, child_parse);
 			ec_pnode_free(child_parse);
 			break;
 		}
@@ -67,7 +67,7 @@ static int ec_node_many_parse(const struct ec_node *node,
 	}
 
 	if (count < priv->min) {
-		ec_pnode_free_children(state);
+		ec_pnode_free_children(pstate);
 		return EC_PARSE_NOMATCH;
 	}
 
@@ -83,7 +83,7 @@ __ec_node_many_complete(struct ec_node_many *priv, unsigned int max,
 			struct ec_comp *comp,
 			const struct ec_strvec *strvec)
 {
-	struct ec_pnode *parse = ec_comp_get_state(comp);
+	struct ec_pnode *parse = ec_comp_get_cur_pstate(comp);
 	struct ec_strvec *childvec = NULL;
 	unsigned int i;
 	int ret;
