@@ -129,7 +129,6 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 	for (s = va_arg(ap, const char *);
 	     s != EC_VA_END;
 	     s = va_arg(ap, const char *)) {
-		struct ec_comp_iter *iter;
 		const struct ec_comp_item *item;
 
 		if (s == NULL) {
@@ -140,8 +139,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 		count++;
 
 		/* only check matching completions */
-		iter = ec_comp_iter(c, type);
-		while ((item = ec_comp_iter_next(iter)) != NULL) {
+		EC_COMP_FOREACH(item, c, type) {
 			const char *str = ec_comp_item_get_str(item);
 			if (str != NULL && strcmp(str, s) == 0)
 				break;
@@ -152,7 +150,6 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 				"completion <%s> not in list\n", s);
 			ret = -1;
 		}
-		ec_comp_iter_free(iter);
 	}
 
 	/* check if we have more completions (or less) than expected */

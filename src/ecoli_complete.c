@@ -628,76 +628,55 @@ unsigned int ec_comp_count(
 	return count;
 }
 
-struct ec_comp_iter *
-ec_comp_iter(const struct ec_comp *comp,
-	enum ec_comp_type type)
+static struct ec_comp_item *
+__ec_comp_iter_next(const struct ec_comp *comp, struct ec_comp_item *item,
+		enum ec_comp_type type)
 {
-	struct ec_comp_iter *iter;
-
-	iter = ec_calloc(1, sizeof(*iter));
-	if (iter == NULL)
-		return NULL;
-
-	iter->comp = comp;
-	iter->type = type;
-	iter->cur_node = NULL;
-	iter->cur_match = NULL;
-
-	return iter;
-}
-
-struct ec_comp_item *ec_comp_iter_next(
-	struct ec_comp_iter *iter)
-{
-	const struct ec_comp *comp;
-	struct ec_comp_group *cur_node;
+	struct ec_comp_group *cur_grp;
 	struct ec_comp_item *cur_match;
 
-	if (iter == NULL)
-		return NULL;
-	comp = iter->comp;
-	if (comp == NULL)
-		return NULL;
-
-	cur_node = iter->cur_node;
-	cur_match = iter->cur_match;
-
 	/* first call */
-	if (cur_node == NULL) {
-		TAILQ_FOREACH(cur_node, &comp->groups, next) {
-			TAILQ_FOREACH(cur_match, &cur_node->items, next) {
-				if (cur_match != NULL &&
-						cur_match->type & iter->type)
-					goto found;
+	if (item == NULL) {
+		TAILQ_FOREACH(cur_grp, &comp->groups, next) {
+			TAILQ_FOREACH(cur_match, &cur_grp->items, next) {
+				if (cur_match->type & type)
+					return cur_match;
 			}
-		}
-		return NULL;
-	} else {
-		cur_match = TAILQ_NEXT(cur_match, next);
-		if (cur_match != NULL &&
-				cur_match->type & iter->type)
-			goto found;
-		cur_node = TAILQ_NEXT(cur_node, next);
-		while (cur_node != NULL) {
-			cur_match = TAILQ_FIRST(&cur_node->items);
-			if (cur_match != NULL &&
-					cur_match->type & iter->type)
-				goto found;
-			cur_node = TAILQ_NEXT(cur_node, next);
 		}
 		return NULL;
 	}
 
-found:
-	iter->cur_node = cur_node;
-	iter->cur_match = cur_match;
+	cur_grp = item->grp;
+	cur_match = TAILQ_NEXT(item, next);
+	while (cur_match != NULL) {
+		if (cur_match->type & type)
+			return cur_match;
+		cur_match = TAILQ_NEXT(cur_match, next);
+	}
+	cur_grp = TAILQ_NEXT(cur_grp, next);
+	while (cur_grp != NULL) {
+		TAILQ_FOREACH(cur_match, &cur_grp->items, next) {
+			if (cur_match->type & type)
+				return cur_match;
+		}
+	}
 
-	return iter->cur_match;
+	return NULL;
 }
 
-void ec_comp_iter_free(struct ec_comp_iter *iter)
+struct ec_comp_item *
+ec_comp_iter_next(struct ec_comp_item *item, enum ec_comp_type type)
 {
-	ec_free(iter);
+	if (item == NULL)
+		return NULL;
+	return __ec_comp_iter_next(item->grp->comp, item, type);
+}
+
+
+struct ec_comp_item *
+ec_comp_iter_first(const struct ec_comp *comp, enum ec_comp_type type)
+{
+	return __ec_comp_iter_next(comp, NULL, type);
 }
 
 /* LCOV_EXCL_START */
@@ -705,7 +684,6 @@ static int ec_comp_testcase(void)
 {
 	struct ec_node *node = NULL;
 	struct ec_comp *c = NULL;
-	struct ec_comp_iter *iter = NULL;
 	struct ec_comp_item *item;
 	FILE *f = NULL;
 	char *buf = NULL;
@@ -762,8 +740,7 @@ static int ec_comp_testcase(void)
 	free(buf);
 	buf = NULL;
 
-	iter = ec_comp_iter(c, EC_COMP_ALL);
-	item = ec_comp_iter_next(iter);
+	item = ec_comp_iter_first(c, EC_COMP_ALL);
 	if (item == NULL)
 		goto fail;
 
@@ -777,7 +754,7 @@ static int ec_comp_testcase(void)
 		!strcmp(ec_node_id(ec_comp_item_get_node(item)), "id_x"),
 		"bad item node\n");
 
-	item = ec_comp_iter_next(iter);
+	item = ec_comp_iter_next(item, EC_COMP_ALL);
 	if (item == NULL)
 		goto fail;
 
@@ -791,17 +768,15 @@ static int ec_comp_testcase(void)
 		!strcmp(ec_node_id(ec_comp_item_get_node(item)), "id_y"),
 		"bad item node\n");
 
-	item = ec_comp_iter_next(iter);
+	item = ec_comp_iter_next(item, EC_COMP_ALL);
 	testres |= EC_TEST_CHECK(item == NULL, "should be the last item\n");
 
-	ec_comp_iter_free(iter);
 	ec_comp_free(c);
 	ec_node_free(node);
 
 	return testres;
 
 fail:
-	ec_comp_iter_free(iter);
 	ec_comp_free(c);
 	ec_node_free(node);
 	if (f != NULL)

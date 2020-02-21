@@ -311,16 +311,11 @@ void ec_editline_free_completions(char **matches, size_t len)
 ssize_t
 ec_editline_get_completions(const struct ec_comp *cmpl, char ***matches_out)
 {
-	const struct ec_comp_item *item;
-	struct ec_comp_iter *iter = NULL;
+	struct ec_comp_item *item;
 	char **matches = NULL;
 	size_t count = 0;
 
-	iter = ec_comp_iter(cmpl, EC_COMP_FULL | EC_COMP_PARTIAL);
-	if (iter == NULL)
-		goto fail;
-
-	while ((item = ec_comp_iter_next(iter)) != NULL) {
+	EC_COMP_FOREACH(item, cmpl, EC_COMP_FULL | EC_COMP_PARTIAL) {
 		char **tmp;
 
 		tmp = realloc(matches, (count + 1) * sizeof(char *));
@@ -339,24 +334,18 @@ ec_editline_get_completions(const struct ec_comp *cmpl, char ***matches_out)
 fail:
 	ec_editline_free_completions(matches, count);
 	*matches_out = NULL;
-	ec_comp_iter_free(iter);
 	return -1;
 }
 
 char *
 ec_editline_append_chars(const struct ec_comp *cmpl)
 {
-	const struct ec_comp_item *item;
-	struct ec_comp_iter *iter = NULL;
+	struct ec_comp_item *item;
 	const char *append;
 	char *ret = NULL;
 	size_t n;
 
-	iter = ec_comp_iter(cmpl, EC_COMP_FULL | EC_COMP_PARTIAL);
-	if (iter == NULL)
-		goto fail;
-
-	while ((item = ec_comp_iter_next(iter)) != NULL) {
+	EC_COMP_FOREACH(item, cmpl, EC_COMP_FULL | EC_COMP_PARTIAL) {
 		append = ec_comp_item_get_completion(item);
 		if (ret == NULL) {
 			ret = ec_strdup(append);
@@ -367,12 +356,10 @@ ec_editline_append_chars(const struct ec_comp *cmpl)
 			ret[n] = '\0';
 		}
 	}
-	ec_comp_iter_free(iter);
 
 	return ret;
 
 fail:
-	ec_comp_iter_free(iter);
 	ec_free(ret);
 
 	return NULL;
@@ -427,9 +414,8 @@ ssize_t
 ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 	const char *full_line, struct ec_editline_help **helps_out)
 {
-	struct ec_comp_iter *iter = NULL;
 	const struct ec_comp_group *grp, *prev_grp = NULL;
-	const struct ec_comp_item *item;
+	struct ec_comp_item *item;
 	struct ec_comp *cmpl = NULL;
 	struct ec_pnode *parse = NULL;
 	unsigned int count = 0;
@@ -449,12 +435,6 @@ ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 	if (cmpl == NULL) //XXX log error
 		goto fail;
 
-	/* let's display one contextual help per node */
-	iter = ec_comp_iter(cmpl,
-		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL);
-	if (iter == NULL)
-		goto fail;
-
 	helps = ec_calloc(1, sizeof(*helps));
 	if (helps == NULL)
 		goto fail;
@@ -467,7 +447,9 @@ ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 			goto fail;
 	}
 
-	while ((item = ec_comp_iter_next(iter)) != NULL) {
+	/* let's display one contextual help per node */
+	EC_COMP_FOREACH(item, cmpl,
+			EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL) {
 		struct ec_editline_help *tmp = NULL;
 
 		/* keep one help per group, skip other items  */
@@ -486,14 +468,12 @@ ec_editline_get_helps(const struct ec_editline *editline, const char *line,
 		count++;
 	}
 
-	ec_comp_iter_free(iter);
 	ec_comp_free(cmpl);
 	*helps_out = helps;
 
 	return count;
 
 fail:
-	ec_comp_iter_free(iter);
 	ec_pnode_free(parse);
 	ec_comp_free(cmpl);
 	if (helps != NULL) {

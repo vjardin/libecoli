@@ -280,36 +280,53 @@ unsigned int ec_comp_count(
  *
  *
  */
-struct ec_comp_iter {
-	enum ec_comp_type type;
-	const struct ec_comp *comp;
-	struct ec_comp_group *cur_node;
-	struct ec_comp_item *cur_match;
-};
 
 /**
+ * Get the first completion item matching the type.
  *
+ * Also see EC_COMP_FOREACH().
  *
- *
+ * @param comp
+ *   The completion list.
+ * @param type
+ *   A logical OR of flags among EC_COMP_UNKNOWN, EC_COMP_PARTIAL and
+ *   EC_COMP_FULL, to select the type to iterate.
+ * @return
+ *   A completion item.
  */
-struct ec_comp_iter *
-ec_comp_iter(const struct ec_comp *comp,
-	enum ec_comp_type type);
+struct ec_comp_item *
+ec_comp_iter_first(const struct ec_comp *comp, enum ec_comp_type type);
 
 /**
+ * Get the first completion item matching the type.
  *
+ * Also see EC_COMP_FOREACH().
  *
- *
+ * @param comp
+ *   The completion list.
+ * @param type
+ *   A logical OR of flags among EC_COMP_UNKNOWN, EC_COMP_PARTIAL and
+ *   EC_COMP_FULL, to select the type to iterate.
+ * @return
+ *   A completion item.
  */
-struct ec_comp_item *ec_comp_iter_next(
-	struct ec_comp_iter *iter);
+struct ec_comp_item *
+ec_comp_iter_next(struct ec_comp_item *item, enum ec_comp_type type);
 
 /**
+ * Iterate items matching a given type.
  *
- *
- *
+ * @param item
+ *   The item that will be set at each iteration.
+ * @param comp
+ *   The completion list.
+ * @param type
+ *   A logical OR of flags among EC_COMP_UNKNOWN, EC_COMP_PARTIAL and
+ *   EC_COMP_FULL, to select the type to iterate.
  */
-void ec_comp_iter_free(struct ec_comp_iter *iter);
-
+#define EC_COMP_FOREACH(item, comp, type)		\
+	for (item = ec_comp_iter_first(comp, type);	\
+	     item != NULL;				\
+	     item = ec_comp_iter_next(item, type))
 
 #endif

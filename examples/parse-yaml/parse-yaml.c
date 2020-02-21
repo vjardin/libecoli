@@ -221,7 +221,6 @@ complete_words(const struct ec_node *node, int argc, char *argv[])
 {
 	struct ec_comp *comp = NULL;
 	struct ec_strvec *strvec = NULL;
-	struct ec_comp_iter *iter = NULL;
 	struct ec_comp_item *item = NULL;
 	size_t count;
 
@@ -239,13 +238,8 @@ complete_words(const struct ec_node *node, int argc, char *argv[])
 	count = ec_comp_count(comp, EC_COMP_UNKNOWN | EC_COMP_FULL |
 			EC_COMP_PARTIAL);
 
-	iter = ec_comp_iter(comp,
-		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL);
-	if (iter == NULL)
-		goto fail;
-
-	while ((item = ec_comp_iter_next(iter)) != NULL) {
-
+	EC_COMP_FOREACH(item, comp, EC_COMP_UNKNOWN | EC_COMP_FULL |
+			EC_COMP_PARTIAL) {
 		/* only one match, display it fully */
 		if (count == 1) {
 			printf("%s\n", ec_comp_item_get_str(item));
@@ -256,7 +250,6 @@ complete_words(const struct ec_node *node, int argc, char *argv[])
 		printf("%s\n", ec_comp_item_get_display(item));
 	}
 
-	ec_comp_iter_free(iter);
 	ec_comp_free(comp);
 	ec_strvec_free(strvec);
 	return 0;

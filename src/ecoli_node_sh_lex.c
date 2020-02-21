@@ -15,6 +15,7 @@
 #include <ecoli_string.h>
 #include <ecoli_test.h>
 #include <ecoli_strvec.h>
+#include <ecoli_htable.h>
 #include <ecoli_node.h>
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
@@ -262,10 +263,9 @@ ec_node_sh_lex_complete(const struct ec_node *node,
 			const struct ec_strvec *strvec)
 {
 	struct ec_node_sh_lex *priv = ec_node_priv(node);
-	struct ec_comp *tmp_comp = NULL;
 	struct ec_strvec *new_vec = NULL;
-	struct ec_comp_iter *iter = NULL;
 	struct ec_comp_item *item = NULL;
+	struct ec_htable *htable = NULL;
 	char *new_str = NULL;
 	const char *str;
 	char missing_quote = '\0';
@@ -279,22 +279,27 @@ ec_node_sh_lex_complete(const struct ec_node *node,
 	if (new_vec == NULL)
 		goto fail;
 
-	/* we will store the completions in a temporary struct, because
-	 * we want to update them (ex: add missing quotes) */
-	tmp_comp = ec_comp(ec_comp_get_state(comp));
-	if (tmp_comp == NULL)
+	/* let's store the existing full completions in a htable */
+	htable = ec_htable();
+	if (htable == NULL)
 		goto fail;
 
-	ret = ec_complete_child(priv->child, tmp_comp, new_vec);
+	EC_COMP_FOREACH(item, comp, EC_COMP_FULL) {
+		if (ec_htable_set(htable, &item, sizeof(item), NULL, NULL) < 0)
+			goto fail;
+	}
+
+	/* do the completion */
+	ret = ec_complete_child(priv->child, comp, new_vec);
 	if (ret < 0)
 		goto fail;
 
-	/* add missing quote for full completions  */
+	/* add missing quote for any new full completions */
 	if (missing_quote != '\0') {
-		iter = ec_comp_iter(tmp_comp, EC_COMP_FULL);
-		if (iter == NULL)
-			goto fail;
-		while ((item = ec_comp_iter_next(iter)) != NULL) {
+		EC_COMP_FOREACH(item, comp, EC_COMP_FULL) {
+			if (ec_htable_has_key(htable, &item, sizeof(item)))
+				continue;
+
 			str = ec_comp_item_get_str(item);
 			if (ec_asprintf(&new_str, "%c%s%c", missing_quote, str,
 					missing_quote) < 0) {
@@ -319,18 +324,15 @@ ec_node_sh_lex_complete(const struct ec_node *node,
 		}
 	}
 
-	ec_comp_iter_free(iter);
 	ec_strvec_free(new_vec);
-
-	ec_comp_merge(comp, tmp_comp);
+	ec_htable_free(htable);
 
 	return 0;
 
  fail:
-	ec_comp_free(tmp_comp);
-	ec_comp_iter_free(iter);
 	ec_strvec_free(new_vec);
 	ec_free(new_str);
+	ec_htable_free(htable);
 
 	return -1;
 }
