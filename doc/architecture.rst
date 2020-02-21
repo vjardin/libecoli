@@ -17,16 +17,17 @@ parts:
   *libecoli*.
 - utilities: logging, string, strings vector, hash table, ...
 
-The grammar tree
-----------------
+The grammar graph
+-----------------
 
-The *ecoli nodes* are organized in a tree. An *ecoli grammar tree*
+The *ecoli nodes* are organized in a graph. Actually, it is mostly a
+tree, but loops are allowed in some cases. An *ecoli grammar tree*
 describes how the input is parsed and completed. Let's take a simple
 example:
 
 .. figure:: simple-tree.svg
 
-   A simple *ecoli grammar tree*.
+   A simple *ecoli grammar graph*.
 
 We can also represent it as text like this::
 
@@ -85,7 +86,7 @@ Let's take another simple example.
 
 .. figure:: simple-tree2.svg
 
-   Another simple *ecoli grammar tree*.
+   Another simple *ecoli grammar graph*.
 
 In that case, there is no lexer (the *sh_lex* node), so the input must
 be a string vector that is already split. For instance, it matches:
@@ -101,7 +102,7 @@ But it does **not** match:
 - ``[]`` (empty vector)
 
 At the time the input is parsed, a *parse tree* is built. When it
-matches, it describes which part of the *ecoli grammar tree* that
+matches, it describes which part of the *ecoli grammar graph* that
 actually matched, and what input matched for each node.
 
 Passing ``["bar", "1"]`` to the previous tree would result in the
@@ -111,7 +112,7 @@ following *parse tree*:
 
    The *ecoli parse tree*, result of parsing.
 
-Each node of the *parse tree* references the node of the *grammar tree*
+Each node of the *parse tree* references the node of the *grammar graph*
 that matched. It also stores the string vector that matched.
 
 .. figure:: parse-tree2.svg
@@ -126,7 +127,7 @@ following example:
 
 .. figure:: simple-tree3.svg
 
-   A simple *ecoli grammar tree*, that matches ``[]``, ``[foo]``,
+   A simple *ecoli grammar graph*, that matches ``[]``, ``[foo]``,
    ``[foo, foo]``, ...
 
 Here is the resulting *parse tree* when the input vector is ``[foo, foo,
@@ -151,3 +152,4 @@ Todo
 - params are consumed
 - nodes
 - attributes
+- extending lib with external nodes (in dev guide?)

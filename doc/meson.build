@@ -3,33 +3,32 @@
 
 doc_install_dir = join_paths('share', 'doc', 'libecoli')
 
-doxygen = find_program('doxygen', required : false)
-if not doxygen.found()
-  error('MESON_SKIP_TEST doxygen not found.')
-endif
-
 cdata = configuration_data()
 cdata.set('VERSION', meson.project_version())
 cdata.set('OUTPUT', join_paths(meson.build_root(), 'doc', 'api'))
 cdata.set('TOPDIR', meson.source_root())
 
-doxygen_conf = configure_file(
-  input: 'Doxyfile.in',
-  output: 'Doxyfile',
-  configuration: cdata,
-  install: false)
-
-doxygen_build = custom_target(
-  'doxygen',
-  input: doxygen_conf,
-  output: 'api',
-  command: [doxygen, '@INPUT@', '@OUTPUT@'],
-  build_by_default: true,
-  install_dir: doc_install_dir)
+doxygen = find_program('doxygen',
+	required : get_option('build_doc'))
 
 sphinx_build = find_program(
   'sphinx-build', required: get_option('build_doc'))
-if get_option('build_doc') and sphinx_build.found()
+
+if get_option('build_doc')
+	doxygen_conf = configure_file(
+	  input: 'Doxyfile.in',
+	  output: 'Doxyfile',
+	  configuration: cdata,
+	  install: false)
+
+	doxygen_build = custom_target(
+	  'doxygen',
+	  input: doxygen_conf,
+	  output: 'api',
+	  command: [doxygen, '@INPUT@', '@OUTPUT@'],
+	  build_by_default: true,
+	  install_dir: doc_install_dir)
+
 	html_doc = custom_target('html_doc',
 		input: meson.current_source_dir(),
 		output: 'html_doc',
