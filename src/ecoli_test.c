@@ -129,7 +129,7 @@ int ec_test_check_complete(struct ec_node *tk, enum ec_comp_type type, ...)
 	for (s = va_arg(ap, const char *);
 	     s != EC_VA_END;
 	     s = va_arg(ap, const char *)) {
-		const struct ec_comp_item *item;
+		struct ec_comp_item *item;
 
 		if (s == NULL) {
 			ret = -1;
