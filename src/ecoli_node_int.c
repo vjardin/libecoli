@@ -392,14 +392,14 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
 
 	p = ec_parse(node, "1");
-	s = ec_strvec_val(ec_pnode_strvec(p), 0);
+	s = ec_strvec_val(ec_pnode_get_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 1, "bad integer value");
 	ec_pnode_free(p);
 
 	p = ec_parse(node, "10");
-	s = ec_strvec_val(ec_pnode_strvec(p), 0);
+	s = ec_strvec_val(ec_pnode_get_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_uint_getval(node, s, &u64) == 0 &&
 		u64 == 10, "bad integer value");
@@ -421,7 +421,7 @@ static int ec_node_int_testcase(void)
 	testres |= EC_TEST_CHECK_PARSE(node, -1, "4r");
 
 	p = ec_parse(node, "10");
-	s = ec_strvec_val(ec_pnode_strvec(p), 0);
+	s = ec_strvec_val(ec_pnode_get_strvec(p), 0);
 	testres |= EC_TEST_CHECK(s != NULL &&
 		ec_node_int_getval(node, s, &i64) == 0 &&
 		i64 == 16, "bad integer value");

@@ -62,7 +62,7 @@ ec_node_cmd_eval_var(void **result, void *userctx,
 	unsigned int i;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(var);
+	vec = ec_pnode_get_strvec(var);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -118,7 +118,7 @@ ec_node_cmd_eval_post_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(operator);
+	vec = ec_pnode_get_strvec(operator);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -152,7 +152,7 @@ ec_node_cmd_eval_bin_op(void **result, void *userctx, void *operand1,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(operator);
+	vec = ec_pnode_get_strvec(operator);
 	if (ec_strvec_len(vec) > 1) {
 		errno = EINVAL;
 		return -1;
@@ -235,7 +235,7 @@ ec_node_cmd_eval_parenthesis(void **result, void *userctx,
 	(void)close_paren;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(open_paren);
+	vec = ec_pnode_get_strvec(open_paren);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -368,10 +368,6 @@ ec_node_cmd_build(const char *cmd_str, struct ec_node **table, size_t len)
 		goto fail;
 
 	if (!ec_pnode_matches(p)) {
-		errno = EINVAL;
-		goto fail;
-	}
-	if (!ec_pnode_has_child(p)) {
 		errno = EINVAL;
 		goto fail;
 	}

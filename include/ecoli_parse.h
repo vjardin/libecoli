@@ -14,6 +14,8 @@
  * strings) matches the node tree. On success, the result is stored in a
  * tree that describes which part of the input matches which node.
  *
+ * The parsing tree is sometimes referenced by another node than the
+ * root node. Use ec_pnode_get_root() to get the root node in that case.
  * @}
  */
 
@@ -30,56 +32,110 @@ struct ec_node;
 struct ec_pnode;
 
 /**
- * Create an empty parse tree.
+ * Create an empty parsing tree.
  *
+ * This function is used internally when parsing an input using
+ * a grammar tree.
+ *
+ * @param node
+ *   The grammar node.
  * @return
  *   The empty parse tree.
  */
 struct ec_pnode *ec_pnode(const struct ec_node *node);
 
 /**
+ * Free a parsing tree.
  *
- *
- *
+ * @param pnode
+ *   The root of the parsing tree to be freed. It must not have
+ *   any parent.
  */
 void ec_pnode_free(struct ec_pnode *pnode);
 
 /**
+ * Remove and free all the children of a parsing tree node.
  *
- *
- *
+ * @param pnode
+ *   Node whose children will be freed.
  */
 void ec_pnode_free_children(struct ec_pnode *pnode);
 
 /**
+ * Duplicate a parsing tree.
  *
- *
- *
+ * @param pnode
+ *   A node inside a parsing tree.
+ * @return
+ *   A pointer to the copy of the input node, at the same place in the
+ *   copy of the parsing tree. Return NULL on error (errno is set).
  */
 struct ec_pnode *ec_pnode_dup(const struct ec_pnode *pnode);
 
 /**
+ * Get the string vector associated to a parsing node.
  *
+ * When an input is parsed successfully (i.e. the input string vector
+ * matches the grammar tree), the matching string vector is copied
+ * inside the associated parsing node.
  *
+ * For instance, parsing the input ["foo", "bar"] on a grammar which is
+ * a sequence of strings, the attached string vector will be ["foo",
+ * "bar"] on the root pnode, ["foo"] on the first leaf, and ["bar"] on
+ * the second leaf.
  *
+ * If the parsing tree does not match (see ec_pnode_matches()), it
+ * the associated string vector is NULL.
+ *
+ * @param pnode
+ *   The parsing node. If NULL, the function returns NULL.
+ * @return
+ *   The string vector associated to the parsing node, or NULL
+ *   if the node is not yet parsed (this happens when building the
+ *   parsing tree), or if the parsing tree does not match the
+ *   input.
  */
-// _get_ XXX
-const struct ec_strvec *ec_pnode_strvec(const struct ec_pnode *pnode);
+const struct ec_strvec *ec_pnode_get_strvec(const struct ec_pnode *pnode);
 
-/* a NULL return value is an error, with errno set
-  ENOTSUP: no ->parse() operation
-*/
 /**
+ * Parse a string using a grammar tree.
  *
+ * This is equivalent to calling ec_parse_strvec() on the same
+ * node, with a string vector containing only the argument string str.
  *
- *
+ * @param node
+ *   The grammar node.
+ * @param str
+ *   The input string.
+ * @return
+ *   A parsing tree, or NULL on error (errno is set).
  */
 struct ec_pnode *ec_parse(const struct ec_node *node, const char *str);
 
 /**
+ * Parse a string vector using a grammar tree.
  *
+ * Generate a parsing tree by parsing the input string vector using the
+ * given grammar tree.
  *
+ * The parsing tree is composed of struct ec_pnode, and each of them is
+ * associated to a struct ec_node (the grammar node), to the string vector
+ * that matched the subtree, and to optional attributes.
  *
+ * When the input matches the grammar tree, the string vector associated
+ * to the root node of the returned parsing tree is the same than the
+ * strvec argument. Calling ec_pnode_matches() on this tree returns true.
+ *
+ * If the input does not match the grammar tree, the returned parsing
+ * tree only contains one root node, with no associated string vector.
+ * Calling ec_pnode_matches() on this tree returns false.
+ *
+ * @param node
+ *   The grammar node.
+ * @param str
+ *   The input string vector.
+ * @return
+ *   A parsing tree, or NULL on error (errno is set).
  */
 struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec);

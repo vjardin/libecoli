@@ -35,7 +35,7 @@ ec_node_expr_test_eval_var(void **result, void *userctx,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(var);
+	vec = ec_pnode_get_strvec(var);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -66,7 +66,7 @@ ec_node_expr_test_eval_pre_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(operator);
+	vec = ec_pnode_get_strvec(operator);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -96,7 +96,7 @@ ec_node_expr_test_eval_post_op(void **result, void *userctx, void *operand,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(operator);
+	vec = ec_pnode_get_strvec(operator);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;
@@ -127,7 +127,7 @@ ec_node_expr_test_eval_bin_op(void **result, void *userctx, void *operand1,
 	(void)userctx;
 
 	/* get parsed string vector, it should contain only one str */
-	vec = ec_pnode_strvec(operator);
+	vec = ec_pnode_get_strvec(operator);
 	if (ec_strvec_len(vec) != 1) {
 		errno = EINVAL;
 		return -1;

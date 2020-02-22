@@ -193,10 +193,6 @@ ec_node_cond_build(const char *cond_str)
 		errno = EINVAL;
 		goto fail;
 	}
-	if (!ec_pnode_has_child(p)) {
-		errno = EINVAL;
-		goto fail;
-	}
 
 	return p;
 
@@ -650,7 +646,7 @@ eval_condition(const struct ec_pnode *cond, const struct ec_pnode *pstate)
 						(void *)iter, "id_arg", 0);
 		}
 
-		res = eval_func(ec_strvec_val(ec_pnode_strvec(func_name), 0),
+		res = eval_func(ec_strvec_val(ec_pnode_get_strvec(func_name), 0),
 				pstate, args, n_arg);
 		args = NULL;
 		return res;
@@ -662,7 +658,7 @@ eval_condition(const struct ec_pnode *cond, const struct ec_pnode *pstate)
 		if (res == NULL)
 			goto fail;
 		res->type = STR;
-		res->str = ec_strdup(ec_strvec_val(ec_pnode_strvec(value), 0));
+		res->str = ec_strdup(ec_strvec_val(ec_pnode_get_strvec(value), 0));
 		if (res->str == NULL)
 			goto fail;
 		return res;
@@ -674,7 +670,7 @@ eval_condition(const struct ec_pnode *cond, const struct ec_pnode *pstate)
 		if (res == NULL)
 			goto fail;
 		res->type = INT;
-		if (ec_str_parse_llint(ec_strvec_val(ec_pnode_strvec(value), 0),
+		if (ec_str_parse_llint(ec_strvec_val(ec_pnode_get_strvec(value), 0),
 					0, LLONG_MIN, LLONG_MAX,
 					&res->int64) < 0)
 			goto fail;
