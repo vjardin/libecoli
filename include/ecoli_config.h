@@ -17,11 +17,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifndef EC_COUNT_OF //XXX
-#define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
-		((size_t)(!(sizeof(x) % sizeof(0[x])))))
-#endif
-
 struct ec_config;
 struct ec_dict;
 

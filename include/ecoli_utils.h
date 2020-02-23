@@ -26,6 +26,12 @@
  */
 #define EC_VA_END ((void *)1)
 
+/**
+ * Count number of elements in an array.
+ */
+#define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
+		((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
 #endif
 
 /** @} */

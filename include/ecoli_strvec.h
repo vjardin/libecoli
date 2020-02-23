@@ -26,11 +26,6 @@
  */
 struct ec_strvec *ec_strvec(void);
 
-#ifndef EC_COUNT_OF
-#define EC_COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / \
-		((size_t)(!(sizeof(x) % sizeof(0[x])))))
-#endif
-
 /**
  * Allocate a new string vector
  *
