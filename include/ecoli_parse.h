@@ -141,149 +141,233 @@ struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
 				const struct ec_strvec *strvec);
 
 /**
- *
- *
- *
+ * Return value of ec_parse_child() when input does not match grammar.
  */
 #define EC_PARSE_NOMATCH INT_MAX
 
-/* internal: used by nodes
+/**
+ * Parse a string vector using a grammar tree, from a parent node.
  *
- * pstate is the current parse tree, which is built piece by piece while
- *   parsing the node tree: ec_parse_child() creates a new child in
- *   this state parse tree, and calls the parse() method for the child
- *   node, with pstate pointing to this new child. If it does not match,
- *   the child is removed in the state, else it is kept, with its
- *   possible descendants.
+ * This function is usually called from an intermediate node (like
+ * ec_node_seq, ec_node_or, ...) to backfill the parsing tree, which is
+ * built piece by piece while browsing the grammar tree.
  *
- * return:
- * the number of matched strings in strvec on success
- * EC_PARSE_NOMATCH (positive) if it does not match
- * -1 on error, and errno is set
+ * ec_parse_child() creates a new child in this parsing tree, and calls
+ * the parse() method for the child node, with pstate pointing to this
+ * new child. If it does not match, the child is removed in the state,
+ * else it is kept, with its possible descendants.
+ *
+ * @param node
+ *   The grammar node.
+ * @param str
+ *   The input string vector.
+ * @return
+ *   On success: the number of matched elements in the input string
+ *   vector (which can be 0), or EC_PARSE_NOMATCH (which is a positive
+ *   value) if the input does not match the grammar. On error, -1 is
+ *   returned, and errno is set.
  */
-int ec_parse_child(const struct ec_node *node,
-			struct ec_pnode *pstate,
-			const struct ec_strvec *strvec);
+int ec_parse_child(const struct ec_node *node, struct ec_pnode *pstate,
+		const struct ec_strvec *strvec);
 
 /**
+ * Link a parsing node to a parsing tree.
  *
+ * Add a child to a node in a parsing tree, at the end of the children
+ * list.
  *
- *
+ * @param pnode
+ *   The node of the parsing tree where the child is added.
+ * @param child
+ *   The node (or subtree) to add in the children list.
  */
-void ec_pnode_link_child(struct ec_pnode *pnode,
-			struct ec_pnode *child);
-/**
- *
- *
- *
- */
-void ec_pnode_unlink_child(struct ec_pnode *pnode,
-			struct ec_pnode *child);
+void ec_pnode_link_child(struct ec_pnode *pnode, struct ec_pnode *child);
 
-/* keep the const */
-#define ec_pnode_get_root(parse) ({				\
+/**
+ * Remove a child node from parsing tree.
+ *
+ * Remove a child node (and its children) from the children list its
+ * parent node in the parsing tree. The child node is not freed.
+ *
+ * @param child
+ *   The node (or subtree) to remove.
+ */
+void ec_pnode_unlink_child(struct ec_pnode *child);
+
+/**
+ * Get the root of the parsing tree.
+ *
+ * Get the root of the parsing tree, keeping the const statement
+ * if the argument has it.
+ *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The root of the parsing tree.
+ */
+#define EC_PNODE_GET_ROOT(parse) ({				\
 	const struct ec_pnode *p_ = parse; /* check type */	\
 	struct ec_pnode *pnode_ = (struct ec_pnode *)parse;	\
 	typeof(parse) res_;					\
 	(void)p_;						\
-	res_ = __ec_pnode_get_root(pnode_);			\
+	res_ = ec_pnode_get_root(pnode_);			\
 	res_;							\
 })
 
 /**
+ * Get the root of the parsing tree.
  *
+ * You may also use EC_PNODE_GET_ROOT() instead, that keeps the
+ * const statement.
  *
- *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The root of the parsing tree.
  */
-struct ec_pnode *__ec_pnode_get_root(struct ec_pnode *pnode);
+struct ec_pnode *ec_pnode_get_root(struct ec_pnode *pnode);
 
 /**
+ * Get the parent node in the parsing tree.
  *
- *
- *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The parent node, or NULL if it is the root.
  */
 struct ec_pnode *ec_pnode_get_parent(const struct ec_pnode *pnode);
 
 /**
- * Get the first child of a tree.
+ * Get the first child of a node in the parsing tree.
  *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The first child node, or NULL if it has no child.
  */
 struct ec_pnode *ec_pnode_get_first_child(const struct ec_pnode *pnode);
 
 /**
+ * Get the last child of a node in the parsing tree.
  *
- *
- *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The last child node, or NULL if it has no child.
  */
 struct ec_pnode *ec_pnode_get_last_child(const struct ec_pnode *pnode);
 
 /**
+ * Get the next sibling node.
  *
+ * If pnode is the root of the parsing tree, return NULL. Else return
+ * the next sibling node.
  *
- *
+ * @param pnode
+ *   A node in the parsing tree..
+ * @return
+ *   The next sibling, or NULL if there is no sibling.
  */
 struct ec_pnode *ec_pnode_next(const struct ec_pnode *pnode);
 
 /**
+ * Iterate the children of a node.
  *
- *
- *
+ * @param child
+ *   The item that will be set at each iteration.
+ * @param pnode
+ *   The parent node in the parsing tree.
  */
-#define EC_PNODE_FOREACH_CHILD(child, parse)			\
-	for (child = ec_pnode_get_first_child(parse);		\
+#define EC_PNODE_FOREACH_CHILD(child, pnode)			\
+	for (child = ec_pnode_get_first_child(pnode);		\
 	     child != NULL;					\
 	     child = ec_pnode_next(child))			\
 
 /**
+ * Get the grammar node corresponding to the parsing node.
  *
- *
- *
- */
-bool ec_pnode_has_child(const struct ec_pnode *pnode);
-
-/**
- *
- *
- *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The corresponding grammar node, that issued the parse.
  */
 const struct ec_node *ec_pnode_get_node(const struct ec_pnode *pnode);
 
 /**
+ * Unlink and free the last child.
  *
+ * Shortcut to unlink and free the last child of a node. It is a quite
+ * common operation in intermediate nodes (like ec_node_seq,
+ * ec_node_many, ...) to remove a subtree that was temporarily added
+ * when during the completion process.
  *
- *
+ * @param pnode
+ *   A node in the parsing tree which has at least one child.
  */
 void ec_pnode_del_last_child(struct ec_pnode *pnode);
 
 /**
+ * Get attributes associated to a node in a parsing tree.
  *
+ * Attributes are key/values that are stored in a dictionary
+ * and attached to a node in the parsing tree. An attribute can be
+ * added to a node by the parsing or completion method of an ec_node.
  *
- *
+ * @param pnode
+ *   A node in the parsing tree.
+ * @return
+ *   The dictionary containing the attributes.
  */
 struct ec_dict *ec_pnode_get_attrs(struct ec_pnode *pnode);
 
 /**
+ * Dump a parsing tree.
  *
- *
- *
+ * @param out
+ *   The stream where the dump is done.
+ * @param pnode
+ *   The parsing tree to dump.
  */
 void ec_pnode_dump(FILE *out, const struct ec_pnode *pnode);
 
 /**
+ * Find a node from its identifier.
  *
+ * Find the first node in the parsing tree which has the given
+ * node identifier. The search is a depth-first search.
  *
- *
+ * @param root
+ *   The node of the parsing tree where the search starts.
+ * @param id
+ *   The node identifier string to match.
+ * @return
+ *   The first node matching the identifier, or NULL if not found.
  */
-struct ec_pnode *ec_pnode_find(struct ec_pnode *pnode,
-	const char *id);
+struct ec_pnode *ec_pnode_find(struct ec_pnode *root, const char *id);
 
 /**
+ * Find the next node matching an identifier.
  *
+ * After a succesful call to ec_pnode_find() or ec_pnode_find_next(), it
+ * is possible to get the next node that has the specified id. There are
+ * 2 options:
+ * - continue the depth-first search where it was interrupted.
+ * - skip the children of the current node, and continue the depth-first
+ *   search.
  *
- *
+ * @param pnode
+ *   The root of the search, as passed to ec_pnode_find().
+ * @param prev
+ *   The node returned by the previous search.
+ * @param id
+ *   The node identifier string to match.
+ * @param iter_children
+ *   True to iterate the children of "prev", false to skip them.
+ * @return
+ *   The next node matching the identifier, or NULL if not found.
  */
 struct ec_pnode *ec_pnode_find_next(struct ec_pnode *root,
-				struct ec_pnode *start,
+				struct ec_pnode *prev,
 				const char *id, bool iter_children);
 
 /**

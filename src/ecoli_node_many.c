@@ -58,7 +58,7 @@ static int ec_node_many_parse(const struct ec_node *node,
 		/* it matches an empty strvec, no need to continue */
 		if (ret == 0) {
 			child_parse = ec_pnode_get_last_child(pstate);
-			ec_pnode_unlink_child(pstate, child_parse);
+			ec_pnode_unlink_child(child_parse);
 			ec_pnode_free(child_parse);
 			break;
 		}

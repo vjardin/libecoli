@@ -64,7 +64,7 @@ static int __ec_parse_child(const struct ec_node *node,
 
 	if (ret == EC_PARSE_NOMATCH) {
 		if (!is_root) {
-			ec_pnode_unlink_child(pstate, child);
+			ec_pnode_unlink_child(child);
 			ec_pnode_free(child);
 		}
 		return ret;
@@ -80,7 +80,7 @@ static int __ec_parse_child(const struct ec_node *node,
 
 fail:
 	if (!is_root) {
-		ec_pnode_unlink_child(pstate, child);
+		ec_pnode_unlink_child(child);
 		ec_pnode_free(child);
 	}
 	return -1;
@@ -211,7 +211,7 @@ struct ec_pnode *ec_pnode_dup(const struct ec_pnode *pnode)
 	const struct ec_pnode *root;
 	struct ec_pnode *dup_root, *dup = NULL;
 
-	root = ec_pnode_get_root(pnode);
+	root = EC_PNODE_GET_ROOT(pnode);
 	dup_root = __ec_pnode_dup(root, pnode, &dup);
 	if (dup_root == NULL)
 		return NULL;
@@ -271,6 +271,7 @@ static void __ec_pnode_dump(FILE *out,
 		__ec_pnode_dump(out, child, indent + 1);
 }
 
+// XXX dump in other formats? yaml? json?
 void ec_pnode_dump(FILE *out, const struct ec_pnode *pnode)
 {
 	fprintf(out, "------------------- parse dump:\n");
@@ -299,11 +300,14 @@ void ec_pnode_link_child(struct ec_pnode *pnode,
 	child->parent = pnode;
 }
 
-void ec_pnode_unlink_child(struct ec_pnode *pnode,
-	struct ec_pnode *child)
+void ec_pnode_unlink_child(struct ec_pnode *child)
 {
-	TAILQ_REMOVE(&pnode->children, child, next);
-	child->parent = NULL;
+	struct ec_pnode *parent = child->parent;
+
+	if (parent != NULL) {
+		TAILQ_REMOVE(&parent->children, child, next);
+		child->parent = NULL;
+	}
 }
 
 struct ec_pnode *
@@ -323,11 +327,6 @@ struct ec_pnode *ec_pnode_next(const struct ec_pnode *pnode)
 	return TAILQ_NEXT(pnode, next);
 }
 
-bool ec_pnode_has_child(const struct ec_pnode *pnode)
-{
-	return !TAILQ_EMPTY(&pnode->children);
-}
-
 const struct ec_node *ec_pnode_get_node(const struct ec_pnode *pnode)
 {
 	if (pnode == NULL)
@@ -341,11 +340,13 @@ void ec_pnode_del_last_child(struct ec_pnode *pnode)
 	struct ec_pnode *child;
 
 	child = ec_pnode_get_last_child(pnode);
-	ec_pnode_unlink_child(pnode, child);
-	ec_pnode_free(child);
+	if (child != NULL) {
+		ec_pnode_unlink_child(child);
+		ec_pnode_free(child);
+	}
 }
 
-struct ec_pnode *__ec_pnode_get_root(struct ec_pnode *pnode)
+struct ec_pnode *ec_pnode_get_root(struct ec_pnode *pnode)
 {
 	if (pnode == NULL)
 		return NULL;
@@ -386,19 +387,19 @@ struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
 }
 
 struct ec_pnode *
-ec_pnode_find_next(struct ec_pnode *root, struct ec_pnode *start,
+ec_pnode_find_next(struct ec_pnode *root, struct ec_pnode *prev,
 		const char *id, bool iter_children)
 {
 	struct ec_pnode *iter;
 
 	if (root == NULL)
 		return NULL;
-	if (start == NULL)
-		start = root;
+	if (prev == NULL)
+		prev = root;
 	else
-		start = EC_PNODE_ITER_NEXT(root, start, iter_children);
+		prev = EC_PNODE_ITER_NEXT(root, prev, iter_children);
 
-	for (iter = start; iter != NULL;
+	for (iter = prev; iter != NULL;
 	     iter = EC_PNODE_ITER_NEXT(root, iter, 1)) {
 		if (iter->node != NULL &&
 				!strcmp(ec_node_id(iter->node), id))
@@ -408,10 +409,9 @@ ec_pnode_find_next(struct ec_pnode *root, struct ec_pnode *start,
 	return NULL;
 }
 
-struct ec_pnode *ec_pnode_find(struct ec_pnode *pnode,
-	const char *id)
+struct ec_pnode *ec_pnode_find(struct ec_pnode *root, const char *id)
 {
-	return ec_pnode_find_next(pnode, NULL, id, 1);
+	return ec_pnode_find_next(root, NULL, id, 1);
 }
 
 struct ec_dict *

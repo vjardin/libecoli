@@ -45,6 +45,8 @@ X remove weakref?
 - sh_lex to provide offsets in attributes
 - accessors for all structs
 - private vs user attributes?
+- limit max loop,
+- limit max completions
 
 dependencies
 ============
@@ -85,6 +87,7 @@ examples
 - mini shell: cd, ls, cat, stat
 - mini network console based on ip
 - dialog-like for use in shell
+- pcap https://github.com/the-tcpdump-group/libpcap/blob/master/grammar.y
 
 doc
 ===
@@ -515,4 +518,6 @@ struct		ec_strvec
 alloc		ec_strvec()
 free		ec_strvec_free()
 action		ec_strvec_*()
+
+---
 

@@ -130,8 +130,8 @@ ec_complete_child(const struct ec_node *node,
 
 	/* restore parent parse state */
 	if (cur_pstate != NULL) {
-		ec_pnode_unlink_child(cur_pstate, child_pstate);
-		assert(!ec_pnode_has_child(child_pstate));
+		ec_pnode_unlink_child(child_pstate);
+		assert(ec_pnode_get_first_child(child_pstate) == NULL);
 	}
 	ec_pnode_free(child_pstate);
 	comp->cur_pstate = cur_pstate;

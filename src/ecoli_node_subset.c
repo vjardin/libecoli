@@ -98,7 +98,7 @@ __ec_node_subset_parse(struct parse_result *out, struct ec_node **table,
 		/* replace the previous best result */
 		ec_pnode_free(best_parse);
 		best_parse = ec_pnode_get_last_child(pstate);
-		ec_pnode_unlink_child(pstate, best_parse);
+		ec_pnode_unlink_child(best_parse);
 
 		best_result.parse_len = result.parse_len + 1;
 		best_result.len = len + result.len;

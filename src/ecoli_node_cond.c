@@ -224,7 +224,7 @@ eval_root(const struct ec_pnode *pstate, struct cond_result **in, size_t in_len)
 	if (out->htable == NULL)
 		goto fail;
 
-	root = ec_pnode_get_root(pstate);
+	root = EC_PNODE_GET_ROOT(pstate);
 	if (ec_htable_set(out->htable, &root, sizeof(root), NULL, NULL) < 0)
 		goto fail;
 
@@ -717,7 +717,7 @@ ec_node_cond_parse(const struct ec_node *node, struct ec_pnode *pstate,
 
 	if (valid == 0) {
 		child = ec_pnode_get_last_child(pstate);
-		ec_pnode_unlink_child(pstate, child);
+		ec_pnode_unlink_child(child);
 		ec_pnode_free(child);
 		return EC_PARSE_NOMATCH;
 	}

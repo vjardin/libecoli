@@ -147,7 +147,7 @@ ec_node_re_lex_parse(const struct ec_node *node,
 		ret = 1;
 	} else if (ret != EC_PARSE_NOMATCH) {
 		child_parse = ec_pnode_get_last_child(pstate);
-		ec_pnode_unlink_child(pstate, child_parse);
+		ec_pnode_unlink_child(child_parse);
 		ec_pnode_free(child_parse);
 		ret = EC_PARSE_NOMATCH;
 	}
