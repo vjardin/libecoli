@@ -142,6 +142,11 @@ ec_editline_print_helps(struct ec_editline *editline,
 void
 ec_editline_free_helps(struct ec_editline_help *helps, size_t len);
 
+ssize_t
+ec_editline_get_suggestions(const struct ec_editline *editline,
+			    struct ec_editline_help **suggestions,
+			    char **full_line, int *pos);
+
 int
 ec_editline_set_prompt(struct ec_editline *editline, const char *prompt);
 

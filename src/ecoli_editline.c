@@ -2,6 +2,7 @@
  * Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -602,6 +603,64 @@ fail:
 	ec_free(append);
 
 	return CC_ERROR;
+}
+
+ssize_t
+ec_editline_get_suggestions(const struct ec_editline *editline,
+			    struct ec_editline_help **suggestions,
+			    char **full_line, int *pos) {
+	struct ec_pnode *p = NULL;
+	struct ec_comp *c = NULL;
+	ssize_t count = -1;
+	char *line = NULL;
+	size_t len, i;
+
+	if (editline == NULL || suggestions == NULL) {
+		errno = EINVAL;
+		goto out;
+	}
+
+	*suggestions = NULL;
+
+	if ((line = ec_editline_curline(editline, false)) == NULL)
+		goto out;
+
+	if (full_line != NULL)
+		*full_line = ec_strdup(line);
+
+	len = strlen(line);
+	for (i = 0; i <= len + 1; i++) {
+		/* XXX: we could do better here be tokenizing properly.
+		 * for this, we would need to update the ecoli sh_lex node to
+		 * return the token offsets in the parsed struct */
+		if (i != (len + 1) && !isspace(line[len - i]))
+			continue;
+		line[len - i + 1] = '\0';
+
+		if ((p = ec_parse(editline->node, line)) == NULL)
+			goto out;
+		if ((c = ec_complete(editline->node, line)) == NULL)
+			goto out;
+		if (ec_pnode_matches(p) || ec_comp_count(c, EC_COMP_ALL) > 0) {
+			if (pos != NULL)
+				*pos = strlen(line);
+			count = ec_editline_get_helps(
+				editline, line, line, suggestions);
+			goto out;
+		}
+		ec_pnode_free(p);
+		p = NULL;
+		ec_comp_free(c);
+		c = NULL;
+	}
+
+	count = 0;
+
+out:
+	free(line);
+	ec_pnode_free(p);
+	ec_comp_free(c);
+	return count;
 }
 
 char *
