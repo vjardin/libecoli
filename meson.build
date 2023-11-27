@@ -5,12 +5,17 @@ project('libecoli',
 	'c',
 	version : '0.1',
 	license : 'BSD-3-clause',
-	default_options: ['warning_level=2'])
+	default_options: [
+		'warning_level=2',
+		'werror=true',
+		'c_std=c99',
+	])
 
 edit_dep = dependency('libedit', required: get_option('with_editline'))
 yaml_dep = dependency('yaml-0.1', required: get_option('with_yaml'))
 
 add_project_arguments('-Wmissing-prototypes', language : 'c')
+add_project_arguments('-D_GNU_SOURCE', language : 'c')
 
 inc = include_directories('include')
 priv_inc = include_directories('src')

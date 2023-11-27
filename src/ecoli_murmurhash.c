@@ -2,8 +2,6 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
-#include <stdint.h>
-
 #include <ecoli_murmurhash.h>
 
 uint32_t ec_murmurhash3(const void *key, int len, uint32_t seed)

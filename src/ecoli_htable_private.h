@@ -5,6 +5,9 @@
 #ifndef ECOLI_HTABLE_PRIVATE_
 #define ECOLI_HTABLE_PRIVATE_
 
+#include <stdint.h>
+#include <sys/queue.h>
+
 #include <ecoli_htable.h>
 
 struct ec_htable_elt {

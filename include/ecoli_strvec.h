@@ -18,6 +18,8 @@
 
 #include <stdio.h>
 
+struct ec_strvec;
+
 /**
  * Allocate a new empty string vector.
  *

@@ -17,7 +17,6 @@
 
 #include <sys/types.h>
 #include <stdint.h>
-#include <stdio.h>
 
 /* if NULL, default does nothing */
 typedef void (*ec_vec_elt_free_t)(void *ptr);

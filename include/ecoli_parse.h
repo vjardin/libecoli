@@ -208,7 +208,7 @@ void ec_pnode_unlink_child(struct ec_pnode *child);
 #define EC_PNODE_GET_ROOT(parse) ({				\
 	const struct ec_pnode *p_ = parse; /* check type */	\
 	struct ec_pnode *pnode_ = (struct ec_pnode *)parse;	\
-	typeof(parse) res_;					\
+	__typeof__(parse) res_;					\
 	(void)p_;						\
 	res_ = ec_pnode_get_root(pnode_);			\
 	res_;							\
@@ -383,7 +383,7 @@ struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
 #define EC_PNODE_ITER_NEXT(root, parse, iter_children) ({		\
 	const struct ec_pnode *p_ = parse; /* check type */		\
 	struct ec_pnode *pnode_ = (struct ec_pnode *)parse;		\
-	typeof(parse) res_;						\
+	__typeof__(parse) res_;						\
 	(void)p_;							\
 	res_ = __ec_pnode_iter_next(root, pnode_, iter_children);	\
 	res_;								\

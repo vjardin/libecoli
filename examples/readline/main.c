@@ -2,11 +2,9 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
-#define _GNU_SOURCE /* for asprintf */
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <assert.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -16,6 +14,7 @@
 #include <ecoli_parse.h>
 #include <ecoli_complete.h>
 #include <ecoli_dict.h>
+#include <ecoli_malloc.h>
 #include <ecoli_node_str.h>
 #include <ecoli_node_seq.h>
 #include <ecoli_node_space.h>
@@ -33,8 +32,7 @@ static struct ec_node *commands;
 static char *my_completion_entry(const char *s, int state)
 {
 	static struct ec_comp *c;
-	static struct ec_comp_iter *iter;
-	const struct ec_comp_item *item;
+	static struct ec_comp_item *item;
 	enum ec_comp_type item_type;
 	const char *item_str, *item_display;
 
@@ -59,15 +57,15 @@ static char *my_completion_entry(const char *s, int state)
 		if (c == NULL)
 			return NULL;
 
-		ec_comp_iter_free(iter);
-		iter = ec_comp_iter(c, EC_COMP_FULL | EC_COMP_PARTIAL);
-		if (iter == NULL)
+		ec_free(item);
+		item = ec_comp_iter_first(c, EC_COMP_FULL | EC_COMP_PARTIAL);
+		if (item == NULL)
+			return NULL;
+	} else {
+		item = ec_comp_iter_next(item, EC_COMP_FULL | EC_COMP_PARTIAL);
+		if (item == NULL)
 			return NULL;
 	}
-
-	item = ec_comp_iter_next(iter);
-	if (item == NULL)
-		return NULL;
 
 	item_str = ec_comp_item_get_str(item);
 	if (ec_comp_count(c, EC_COMP_FULL) == 1) {
@@ -137,9 +135,8 @@ static char *get_node_help(const struct ec_comp_item *item)
 
 static int show_help(int ignore, int invoking_key)
 {
-	struct ec_comp_iter *iter = NULL;
 	const struct ec_comp_group *grp, *prev_grp = NULL;
-	const struct ec_comp_item *item;
+	struct ec_comp_item *item = NULL;
 	struct ec_comp *c = NULL;
 	struct ec_pnode *p = NULL;
 	char *line = NULL;
@@ -170,13 +167,6 @@ static int show_help(int ignore, int invoking_key)
 	if (c == NULL)
 		goto fail;
 
-	/* let's display one contextual help per node */
-	count = 0;
-	iter = ec_comp_iter(c,
-		EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL);
-	if (iter == NULL)
-		goto fail;
-
 	/* strangely, rl_display_match_list() expects first index at 1 */
 	helps = calloc(match + 1, sizeof(char *));
 	if (helps == NULL)
@@ -184,7 +174,9 @@ static int show_help(int ignore, int invoking_key)
 	if (match)
 		helps[1] = "<return>";
 
-	while ((item = ec_comp_iter_next(iter)) != NULL) {
+	/* let's display one contextual help per node */
+	count = 0;
+	EC_COMP_FOREACH(item, c, EC_COMP_UNKNOWN | EC_COMP_FULL | EC_COMP_PARTIAL) {
 		char **tmp;
 
 		/* keep one help per group, skip other items  */
@@ -202,7 +194,7 @@ static int show_help(int ignore, int invoking_key)
 		count++;
 	}
 
-	ec_comp_iter_free(iter);
+	ec_free(item);
 	ec_comp_free(c);
 	/* ensure not more than 1 entry per line */
 	rl_get_screen_size(NULL, &cols);
@@ -212,7 +204,7 @@ static int show_help(int ignore, int invoking_key)
 	return 0;
 
 fail:
-	ec_comp_iter_free(iter);
+	ec_free(item);
 	ec_pnode_free(p);
 	free(line);
 	ec_comp_free(c);

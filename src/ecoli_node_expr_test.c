@@ -4,7 +4,6 @@
 
 #include <errno.h>
 #include <limits.h>
-#include <stdint.h>
 #include <assert.h>
 
 #include <ecoli_malloc.h>

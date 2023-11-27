@@ -36,6 +36,7 @@ struct ec_node;
 struct ec_comp_item;
 struct ec_comp_group;
 struct ec_comp;
+struct ec_strvec;
 
 /**
  * Completion item type.

@@ -2,7 +2,6 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
-#define _GNU_SOURCE /* qsort_r */
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>

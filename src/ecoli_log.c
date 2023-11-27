@@ -2,11 +2,9 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
-#define _GNU_SOURCE /* for vasprintf */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <syslog.h>
 
 #include <ecoli_malloc.h>

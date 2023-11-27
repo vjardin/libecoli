@@ -7,7 +7,12 @@
  */
 
 #ifndef ECOLI_NODE_HELPERS_
-#define ECOLI_NODE_HELPERS
+#define ECOLI_NODE_HELPERS_
+
+#include <stdarg.h>
+#include <stddef.h>
+
+#include <ecoli_config.h>
 
 struct ec_node;
 

@@ -12,6 +12,7 @@
 #ifndef ECOLI_STRING_
 #define ECOLI_STRING_
 
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>

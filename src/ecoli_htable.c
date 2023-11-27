@@ -6,9 +6,7 @@
 #include <sys/stat.h>
 #include <sys/queue.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 

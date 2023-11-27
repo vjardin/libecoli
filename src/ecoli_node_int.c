@@ -5,10 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <limits.h>
-#include <ctype.h>
 #include <errno.h>
 
 #include <ecoli_log.h>

@@ -2,12 +2,12 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+
 #include <ecoli_init.h>
 #include <ecoli_test.h>
 #include <ecoli_malloc.h>
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 

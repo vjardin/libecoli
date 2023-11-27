@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <limits.h>
-#include <stdint.h>
 #include <ctype.h>
 
 #include <ecoli_assert.h>
