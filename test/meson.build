@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-test_sources = [
+test_sources = files(
 	'test.c',
-]
+)
 
 ecoli_test = executable('ecoli-test',
 	test_sources,

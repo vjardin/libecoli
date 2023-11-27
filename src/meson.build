@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-libecoli_sources = [
+libecoli_sources = files(
 	'ecoli_assert.c',
 	'ecoli_complete.c',
 	'ecoli_config.c',
@@ -40,20 +40,20 @@ libecoli_sources = [
 	'ecoli_strvec.c',
 	'ecoli_test.c',
 	'ecoli_vec.c',
-]
+)
 deps = []
-if get_option('with_yaml')
-	libecoli_sources += [
+if yaml_dep.found()
+	libecoli_sources += files(
 		'ecoli_yaml.c',
-	]
+	)
 	deps += [
 		yaml_dep,
 	]
 endif
-if get_option('with_editline')
-	libecoli_sources += [
+if edit_dep.found()
+	libecoli_sources += files(
 		'ecoli_editline.c',
-	]
+	)
 	deps += [
 		edit_dep,
 	]

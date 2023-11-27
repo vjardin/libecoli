@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-parse_yaml_sources = [
+parse_yaml_sources = files(
 	'parse-yaml.c',
-]
+)
 
 ecoli_parse_yaml = executable(
 	'ecoli-parse-yaml',

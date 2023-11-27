@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-libecoli_headers = [
+libecoli_headers = files(
 	'ecoli.h',
 	'ecoli_assert.h',
 	'ecoli_complete.h',
@@ -39,5 +39,5 @@ libecoli_headers = [
 	'ecoli_test.h',
 	'ecoli_utils.h',
 	'ecoli_vec.h',
-]
+)
 install_headers(libecoli_headers)
