@@ -1,0 +1,32 @@
+---
+image: debian/testing
+packages:
+  - doxygen
+  - gcc
+  - gcovr
+  - libc-dev
+  - libedit-dev
+  - libreadline-dev
+  - libyaml-dev
+  - meson
+  - ninja-build
+  - pkg-config
+  - python3-breathe
+  - python3-sphinx
+sources:
+  - "https://git.sr.ht/~rjarry/libecoli"
+tasks:
+  - setup: |
+      meson setup \
+        -Dbuild_tests=true \
+        -Dbuild_examples=true \
+        -Dwith_yaml=true \
+        -Dwith_editline=true \
+        -Dbuild_doc=true \
+        build libecoli
+  - build: |
+      ninja -C build
+  - tests: |
+      ./build/test/ecoli-test
+  - coverage: |
+      gcovr -ur libecoli/ build/
