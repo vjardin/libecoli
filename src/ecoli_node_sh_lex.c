@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <errno.h>
 
 #include <ecoli_malloc.h>
@@ -28,188 +27,6 @@ struct ec_node_sh_lex {
 	struct ec_node *child;
 };
 
-static size_t eat_spaces(const char *str)
-{
-	size_t i = 0;
-
-	/* skip spaces */
-	while (isblank(str[i]))
-		i++;
-
-	return i;
-}
-
-/*
- * Allocate a new string which is a copy of the input string with quotes
- * removed. If quotes are not closed properly, set missing_quote to the
- * missing quote char.
- */
-static char *unquote_str(const char *str, size_t n, int allow_missing_quote,
-	char *missing_quote)
-{
-	unsigned s = 1, d = 0;
-	char quote = str[0];
-	char *dst;
-	int closed = 0;
-
-	dst = ec_malloc(n);
-	if (dst == NULL) {
-		errno = ENOMEM;
-		return NULL;
-	}
-
-	/* copy string and remove quotes */
-	while (s < n && d < n && str[s] != '\0') {
-		if (str[s] == '\\' && str[s+1] == quote) {
-			dst[d++] = quote;
-			s += 2;
-			continue;
-		}
-		if (str[s] == '\\' && str[s+1] == '\\') {
-			dst[d++] = '\\';
-			s += 2;
-			continue;
-		}
-		if (str[s] == quote) {
-			s++;
-			closed = 1;
-			break;
-		}
-		dst[d++] = str[s++];
-	}
-
-	/* not enough room in dst buffer (should not happen) */
-	if (d >= n) {
-		ec_free(dst);
-		errno = EMSGSIZE;
-		return NULL;
-	}
-
-	/* quote not closed */
-	if (closed == 0) {
-		if (missing_quote != NULL)
-			*missing_quote = str[0];
-		if (allow_missing_quote == 0) {
-			ec_free(dst);
-			errno = EBADMSG;
-			return NULL;
-		}
-	}
-	dst[d++] = '\0';
-
-	return dst;
-}
-
-static size_t eat_quoted_str(const char *str)
-{
-	size_t i = 0;
-	char quote = str[0];
-
-	while (str[i] != '\0') {
-		if (str[i] != '\\' && str[i+1] == quote)
-			return i + 2;
-		i++;
-	}
-
-	/* unclosed quote, will be detected later */
-	return i;
-}
-
-static size_t eat_str(const char *str)
-{
-	size_t i = 0;
-
-	/* eat chars until we find a quote, space, or end of string  */
-	while (!isblank(str[i]) && str[i] != '\0' &&
-			str[i] != '"' && str[i] != '\'')
-		i++;
-
-	return i;
-}
-
-static struct ec_strvec *tokenize(const char *str, int completion,
-	int allow_missing_quote, char *missing_quote)
-{
-	struct ec_strvec *strvec = NULL;
-	size_t off = 0, len, suboff, sublen;
-	char *word = NULL, *concat = NULL, *tmp;
-	int last_is_space = 1;
-
-	strvec = ec_strvec();
-	if (strvec == NULL)
-		goto fail;
-
-	while (str[off] != '\0') {
-		if (missing_quote != NULL)
-			*missing_quote = '\0';
-		len = eat_spaces(&str[off]);
-		if (len > 0)
-			last_is_space = 1;
-		off += len;
-
-		len = 0;
-		suboff = off;
-		while (str[suboff] != '\0') {
-			if (missing_quote != NULL)
-				*missing_quote = '\0';
-			last_is_space = 0;
-			if (str[suboff] == '"' || str[suboff] == '\'') {
-				sublen = eat_quoted_str(&str[suboff]);
-				word = unquote_str(&str[suboff], sublen,
-					allow_missing_quote, missing_quote);
-			} else {
-				sublen = eat_str(&str[suboff]);
-				if (sublen == 0)
-					break;
-				word = ec_strndup(&str[suboff], sublen);
-			}
-
-			if (word == NULL)
-				goto fail;
-
-			len += sublen;
-			suboff += sublen;
-
-			if (concat == NULL) {
-				concat = word;
-				word = NULL;
-			} else {
-				tmp = ec_realloc(concat, len + 1);
-				if (tmp == NULL)
-					goto fail;
-				concat = tmp;
-				strcat(concat, word);
-				ec_free(word);
-				word = NULL;
-			}
-		}
-
-		if (concat != NULL) {
-			if (ec_strvec_add(strvec, concat) < 0)
-				goto fail;
-			ec_free(concat);
-			concat = NULL;
-		}
-
-		off += len;
-	}
-
-	/* in completion mode, append an empty string in the vector if
-	 * the input string ends with space */
-	if (completion && last_is_space) {
-		if (ec_strvec_add(strvec, "") < 0)
-			goto fail;
-	}
-
-	return strvec;
-
- fail:
-	ec_free(word);
-	ec_free(concat);
-	ec_strvec_free(strvec);
-	return NULL;
-}
-
 static int
 ec_node_sh_lex_parse(const struct ec_node *node,
 		struct ec_pnode *pstate,
@@ -225,7 +42,7 @@ ec_node_sh_lex_parse(const struct ec_node *node,
 		new_vec = ec_strvec();
 	} else {
 		str = ec_strvec_val(strvec, 0);
-		new_vec = tokenize(str, 0, 0, NULL);
+		new_vec = ec_strvec_sh_lex_str(str, EC_STRVEC_STRICT, NULL);
 	}
 	if (new_vec == NULL && errno == EBADMSG) /* quotes not closed */
 		return EC_PARSE_NOMATCH;
@@ -273,7 +90,7 @@ ec_node_sh_lex_complete(const struct ec_node *node,
 		return 0;
 
 	str = ec_strvec_val(strvec, 0);
-	new_vec = tokenize(str, 1, 1, &missing_quote);
+	new_vec = ec_strvec_sh_lex_str(str, EC_STRVEC_TRAILSP, &missing_quote);
 	if (new_vec == NULL)
 		goto fail;
 
