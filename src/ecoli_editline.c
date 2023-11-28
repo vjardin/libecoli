@@ -132,7 +132,7 @@ ec_editline_set_prompt(struct ec_editline *editline, const char *prompt)
 	char *copy = NULL;
 
 	if (prompt != NULL) {
-		ec_strdup(prompt);
+		copy = ec_strdup(prompt);
 		if (copy == NULL)
 			return -1;
 	}
