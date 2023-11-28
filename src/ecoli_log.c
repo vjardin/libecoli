@@ -217,7 +217,6 @@ static int ec_log_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_log_test = {
 	.name = "log",
@@ -225,3 +224,4 @@ static struct ec_test ec_log_test = {
 };
 
 EC_TEST_REGISTER(ec_log_test);
+/* LCOV_EXCL_STOP */

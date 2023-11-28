@@ -84,7 +84,6 @@ static int ec_node_none_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_none_test = {
 	.name = "node_none",
@@ -92,3 +91,4 @@ static struct ec_test ec_node_none_test = {
 };
 
 EC_TEST_REGISTER(ec_node_none_test);
+/* LCOV_EXCL_STOP */

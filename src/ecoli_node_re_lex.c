@@ -553,7 +553,6 @@ static int ec_node_re_lex_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_re_lex_test = {
 	.name = "node_re_lex",
@@ -561,3 +560,4 @@ static struct ec_test ec_node_re_lex_test = {
 };
 
 EC_TEST_REGISTER(ec_node_re_lex_test);
+/* LCOV_EXCL_STOP */

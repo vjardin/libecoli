@@ -269,7 +269,6 @@ static int ec_node_str_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_str_test = {
 	.name = "node_str",
@@ -277,3 +276,4 @@ static struct ec_test ec_node_str_test = {
 };
 
 EC_TEST_REGISTER(ec_node_str_test);
+/* LCOV_EXCL_STOP */

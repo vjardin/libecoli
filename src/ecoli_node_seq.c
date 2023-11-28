@@ -428,7 +428,6 @@ static int ec_node_seq_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_seq_test = {
 	.name = "node_seq",
@@ -436,3 +435,4 @@ static struct ec_test ec_node_seq_test = {
 };
 
 EC_TEST_REGISTER(ec_node_seq_test);
+/* LCOV_EXCL_STOP */

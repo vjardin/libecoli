@@ -90,7 +90,6 @@ static int ec_node_space_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_space_test = {
 	.name = "space",
@@ -98,3 +97,4 @@ static struct ec_test ec_node_space_test = {
 };
 
 EC_TEST_REGISTER(ec_node_space_test);
+/* LCOV_EXCL_STOP */

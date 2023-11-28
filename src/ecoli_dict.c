@@ -256,7 +256,6 @@ fail:
 	free(buf);
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_dict_test = {
 	.name = "dict",
@@ -264,3 +263,4 @@ static struct ec_test ec_dict_test = {
 };
 
 EC_TEST_REGISTER(ec_dict_test);
+/* LCOV_EXCL_STOP */

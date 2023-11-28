@@ -775,7 +775,6 @@ fail:
 
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_comp_test = {
 	.name = "comp",
@@ -783,3 +782,4 @@ static struct ec_test ec_comp_test = {
 };
 
 EC_TEST_REGISTER(ec_comp_test);
+/* LCOV_EXCL_STOP */

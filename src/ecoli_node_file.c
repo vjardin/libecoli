@@ -413,7 +413,6 @@ static int ec_node_file_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_file_test = {
 	.name = "node_file",
@@ -421,3 +420,4 @@ static struct ec_test ec_node_file_test = {
 };
 
 EC_TEST_REGISTER(ec_node_file_test);
+/* LCOV_EXCL_STOP */

@@ -457,7 +457,6 @@ fail:
 	ec_vec_free(vec2);
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_vec_test = {
 	.name = "vec",
@@ -465,3 +464,4 @@ static struct ec_test ec_vec_test = {
 };
 
 EC_TEST_REGISTER(ec_vec_test);
+/* LCOV_EXCL_STOP */

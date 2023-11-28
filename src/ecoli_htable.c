@@ -422,7 +422,6 @@ fail:
 	free(buf);
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_htable_test = {
 	.name = "htable",
@@ -430,3 +429,4 @@ static struct ec_test ec_htable_test = {
 };
 
 EC_TEST_REGISTER(ec_htable_test);
+/* LCOV_EXCL_STOP */

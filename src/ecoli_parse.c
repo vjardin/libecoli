@@ -548,7 +548,6 @@ fail:
 
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_pnode_test = {
 	.name = "parse",
@@ -556,3 +555,4 @@ static struct ec_test ec_pnode_test = {
 };
 
 EC_TEST_REGISTER(ec_pnode_test);
+/* LCOV_EXCL_STOP */

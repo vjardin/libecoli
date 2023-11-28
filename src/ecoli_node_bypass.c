@@ -218,7 +218,6 @@ static int ec_node_bypass_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_bypass_test = {
 	.name = "node_bypass",
@@ -226,3 +225,4 @@ static struct ec_test ec_node_bypass_test = {
 };
 
 EC_TEST_REGISTER(ec_node_bypass_test);
+/* LCOV_EXCL_STOP */

@@ -404,7 +404,6 @@ static int ec_node_many_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_many_test = {
 	.name = "node_many",
@@ -412,3 +411,4 @@ static struct ec_test ec_node_many_test = {
 };
 
 EC_TEST_REGISTER(ec_node_many_test);
+/* LCOV_EXCL_STOP */

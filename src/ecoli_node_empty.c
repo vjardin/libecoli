@@ -70,7 +70,6 @@ static int ec_node_empty_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_empty_test = {
 	.name = "node_empty",
@@ -78,3 +77,4 @@ static struct ec_test ec_node_empty_test = {
 };
 
 EC_TEST_REGISTER(ec_node_empty_test);
+/* LCOV_EXCL_STOP */

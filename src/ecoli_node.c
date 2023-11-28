@@ -640,7 +640,6 @@ fail:
 	assert(errno != 0);
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_test = {
 	.name = "node",
@@ -648,3 +647,4 @@ static struct ec_test ec_node_test = {
 };
 
 EC_TEST_REGISTER(ec_node_test);
+/* LCOV_EXCL_STOP */

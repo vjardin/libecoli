@@ -173,7 +173,6 @@ static int ec_malloc_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_malloc_test = {
 	.name = "malloc",
@@ -181,3 +180,4 @@ static struct ec_test ec_malloc_test = {
 };
 
 EC_TEST_REGISTER(ec_malloc_test);
+/* LCOV_EXCL_STOP */

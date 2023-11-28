@@ -417,7 +417,6 @@ static int ec_node_subset_testcase(void)
 
 	return testres;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_node_subset_test = {
 	.name = "node_subset",
@@ -425,3 +424,4 @@ static struct ec_test ec_node_subset_test = {
 };
 
 EC_TEST_REGISTER(ec_node_subset_test);
+/* LCOV_EXCL_STOP */

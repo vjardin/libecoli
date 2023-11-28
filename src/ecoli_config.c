@@ -1159,7 +1159,6 @@ fail:
 
 	return -1;
 }
-/* LCOV_EXCL_STOP */
 
 static struct ec_test ec_config_test = {
 	.name = "config",
@@ -1167,3 +1166,4 @@ static struct ec_test ec_config_test = {
 };
 
 EC_TEST_REGISTER(ec_config_test);
+/* LCOV_EXCL_STOP */
