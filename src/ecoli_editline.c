@@ -201,6 +201,9 @@ ec_editline(const char *name, FILE *f_in, FILE *f_out, FILE *f_err,
 	if (flags & EC_EDITLINE_DISABLE_SIGNALS) {
 		if (el_set(el, EL_SETTY, "-d", "-isig", NULL))
 			goto fail;
+	} else if (flags & EC_EDITLINE_DEFAULT_SIGHANDLER) {
+		if (el_set(el, EL_SIGNAL, 1))
+			goto fail;
 	}
 
 	/* set prompt */

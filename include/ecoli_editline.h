@@ -78,6 +78,13 @@ struct ec_editline_help {
  */
 #define EC_EDITLINE_DISABLE_COMPLETION 0x04
 
+/**
+ * Use editline own signal handler for the following signals when reading
+ * command input: SIGCONT, SIGHUP, SIGINT, SIGQUIT, SIGSTOP, SIGTERM, SIGTSTP,
+ * and SIGWINCH. Otherwise, the current signal handlers will be used.
+ */
+#define EC_EDITLINE_DEFAULT_SIGHANDLER 0x08
+
 typedef int (*ec_editline_cmpl_t)(struct ec_editline *editline, int c);
 
 /**
