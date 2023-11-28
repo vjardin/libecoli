@@ -159,8 +159,9 @@ ec_editline_get_suggestions(const struct ec_editline *editline,
 int
 ec_editline_set_prompt(struct ec_editline *editline, const char *prompt);
 
-
-
+int
+ec_editline_set_prompt_esc(struct ec_editline *editline, const char *prompt,
+			   char delim);
 
 char *ec_editline_curline(const struct ec_editline *editline,
 			  bool trim_after_cursor);

@@ -159,6 +159,31 @@ prompt_cb(EditLine *el)
 	return editline->prompt;
 }
 
+int
+ec_editline_set_prompt_esc(struct ec_editline *editline, const char *prompt,
+			   char delim)
+{
+	char *copy = NULL;
+
+	if (prompt != NULL) {
+		copy = ec_strdup(prompt);
+		if (copy == NULL)
+			return -1;
+	}
+
+	if (el_set(editline->el, EL_PROMPT_ESC, prompt_cb, delim) < 0)
+		goto fail;
+
+	ec_free(editline->prompt);
+	editline->prompt = copy;
+
+	return 0;
+
+fail:
+	free(copy);
+	return -1;
+}
+
 struct ec_editline *
 ec_editline(const char *name, FILE *f_in, FILE *f_out, FILE *f_err,
 	unsigned int flags)
