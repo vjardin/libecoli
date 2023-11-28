@@ -58,6 +58,39 @@ struct ec_strvec *ec_strvec_from_array(const char * const *strarr,
 	size_t n);
 
 /**
+ * Options for ec_strvec_sh_lex_str().
+ */
+typedef enum {
+	/**
+	 * Fail if a quote is not closed properly or if the provided
+	 * string ends with an unterminated escape sequence.
+	 */
+	EC_STRVEC_STRICT = 0x1,
+	/**
+	 * If there is trailing white space, add an empty element to the
+	 * output string vector.
+	 */
+	EC_STRVEC_TRAILSP = 0x2,
+} ec_strvec_flag_t;
+
+/**
+ * Split a string into multiple tokens following basic shell lexing rules.
+ *
+ * @param str
+ *   The string to split.
+ * @param flags
+ *   Options for controlling behavior.
+ * @param unclosed_quote
+ *   If not NULL and if the provided string has an unterminated quote. The
+ *   opening quote will be stored here.
+ *
+ * @return
+ *   The new strvec object, or NULL on error (errno is set).
+ */
+struct ec_strvec *ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
+				       char *unclosed_quote);
+
+/**
  * Set a string in the vector at specified index.
  *
  * @param strvec

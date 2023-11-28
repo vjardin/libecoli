@@ -2,12 +2,14 @@
  * Copyright 2016, Olivier MATZ <zer0@droids-corp.org>
  */
 
+#include <ctype.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 
 #include <ecoli_malloc.h>
+#include <ecoli_node.h>
 #include <ecoli_test.h>
 #include <ecoli_log.h>
 #include <ecoli_dict.h>
@@ -273,6 +275,207 @@ int ec_strvec_cmp(const struct ec_strvec *strvec1,
 	return 0;
 }
 
+typedef enum {
+	SPACE,
+	SINGLE_QUOTE,
+	DOUBLE_QUOTE,
+	BACKSLASH,
+	POUND,
+	OTHER,
+} char_class_t;
+
+typedef enum {
+	START,
+	IN_WORD,
+	ESCAPING,
+	ESCAPING_QUOTED,
+	IN_DOUBLE_QUOTES,
+	IN_SINGLE_QUOTES,
+	IN_COMMENT,
+} lexer_state_t;
+
+static char_class_t get_char_class(char c)
+{
+	switch (c) {
+	case '\'':
+		return SINGLE_QUOTE;
+	case '"':
+		return DOUBLE_QUOTE;
+	case '\\':
+		return BACKSLASH;
+	case '#':
+		return POUND;
+	default:
+		if (isspace(c))
+			return SPACE;
+	}
+	return OTHER;
+}
+
+struct ec_strvec *
+ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
+		     char *missing_quote)
+{
+	struct ec_strvec *strvec = NULL;
+	lexer_state_t state = START;
+	/* Weird, but we need an empty string to report as having trailing
+	 * space when EC_STRVEC_SHLEX_KEEP_TRAILING_SPACE is set in flags. */
+	bool trailing_space = true;
+	char token[BUFSIZ];
+	char c, quote;
+	size_t t, i;
+
+#define append(buffer, position, character) \
+	do { \
+		buffer[position++] = character; \
+		if (position >= sizeof(buffer)) { \
+			errno = ENOBUFS; \
+			goto fail; \
+		} \
+	} while (0)
+
+	if (str == NULL) {
+		errno = EINVAL;
+		goto fail;
+	}
+
+	strvec = ec_strvec();
+	if (strvec == NULL)
+		goto fail;
+
+	t = 0;
+	quote = '\0';
+
+	for (i = 0; i < strlen(str); i++) {
+		c = str[i];
+
+		char_class_t cls = get_char_class(c);
+
+		switch (state) {
+		case START:
+			switch (cls) {
+			case SPACE:
+				break;
+			case POUND:
+				state = IN_COMMENT;
+				break;
+			case DOUBLE_QUOTE:
+				state = IN_DOUBLE_QUOTES;
+				quote = c;
+				break;
+			case SINGLE_QUOTE:
+				state = IN_SINGLE_QUOTES;
+				quote = c;
+				break;
+			case BACKSLASH:
+				state = ESCAPING;
+				break;
+			default:
+				/* start a new token */
+				state = IN_WORD;
+				append(token, t, c);
+				break;
+			}
+			trailing_space = cls == SPACE;
+			break;
+		case IN_WORD:
+			switch (cls) {
+			case SPACE:
+				/* end of token */
+				quote = '\0';
+				token[t] = '\0';
+				if (ec_strvec_add(strvec, token) < 0)
+					goto fail;
+				state = START;
+				trailing_space = true;
+				t = 0;
+				break;
+			case DOUBLE_QUOTE:
+				state = IN_DOUBLE_QUOTES;
+				break;
+			case SINGLE_QUOTE:
+				state = IN_SINGLE_QUOTES;
+				break;
+			case BACKSLASH:
+				state = ESCAPING;
+				break;
+			default:
+				append(token, t, c);
+				break;
+			}
+			break;
+		case ESCAPING:
+			state = IN_WORD;
+			append(token, t, c);
+			break;
+		case ESCAPING_QUOTED:
+			state = IN_DOUBLE_QUOTES;
+			append(token, t, c);
+			break;
+		case IN_DOUBLE_QUOTES:
+			switch (cls) {
+			case DOUBLE_QUOTE:
+				state = IN_WORD;
+				break;
+			case BACKSLASH:
+				state = ESCAPING_QUOTED;
+				break;
+			default:
+				append(token, t, c);
+				break;
+			}
+			break;
+		case IN_SINGLE_QUOTES:
+			switch (cls) {
+			case SINGLE_QUOTE:
+				state = IN_WORD;
+				break;
+			default:
+				append(token, t, c);
+				break;
+			}
+			break;
+		case IN_COMMENT:
+			if (c == '\n' || c == '\r')
+				state = START;
+			break;
+		}
+	}
+
+#undef append
+	switch (state) {
+	case START:
+		/* fallthrough */
+	case IN_WORD:
+		/* fallthrough */
+	case IN_COMMENT:
+		break;
+	default:
+		if (missing_quote != NULL) {
+			*missing_quote = quote;
+		}
+		if (flags & EC_STRVEC_STRICT) {
+			errno = EBADMSG;
+			goto fail;
+		}
+		state = IN_WORD;
+	}
+	if (state == IN_WORD && t > 0) {
+		token[t] = '\0';
+		if (ec_strvec_add(strvec, token) < 0)
+			goto fail;
+	} else if (trailing_space && (flags & EC_STRVEC_TRAILSP)) {
+		if (ec_strvec_add(strvec, "") < 0)
+			goto fail;
+	}
+
+	return strvec;
+
+fail:
+	ec_strvec_free(strvec);
+	return NULL;
+}
+
 static int
 cmp_vec_elt(const void *p1, const void *p2, void *arg)
 {
@@ -322,6 +525,7 @@ static int ec_strvec_testcase(void)
 	char *buf = NULL;
 	size_t buflen = 0;
 	int testres = 0;
+	char quote;
 
 	strvec = ec_strvec();
 	if (strvec == NULL) {
@@ -508,6 +712,131 @@ static int ec_strvec_testcase(void)
 	}
 	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
 		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	/* lexing */
+	strvec = ec_strvec_sh_lex_str("  a    b\tc d   # comment",
+		EC_STRVEC_STRICT, NULL);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "b", "c", "d");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	strvec = ec_strvec_sh_lex_str("  a  b   c  d  ",
+		EC_STRVEC_TRAILSP, NULL);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "b", "c", "d", "");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	strvec = ec_strvec_sh_lex_str("a  b  'c  d' ", EC_STRVEC_STRICT, NULL);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "b", "c  d");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	strvec = ec_strvec_sh_lex_str("a  b\\ e  \"c \\\" d\" ",
+		EC_STRVEC_STRICT, NULL);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "b e", "c \" d");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	strvec = ec_strvec_sh_lex_str("a  b  'c  d ", EC_STRVEC_STRICT, NULL);
+	if (strvec != NULL) {
+		testres |= EC_TEST_CHECK(strvec == NULL,
+			"shlex should have failed\n");
+		ec_strvec_free(strvec);
+		strvec = NULL;
+	} else {
+		testres |= EC_TEST_CHECK(errno == EBADMSG,
+			"ec_strvec_shlex_str should report EBADMSG\n");
+	}
+
+	quote = '\0';
+	strvec = ec_strvec_sh_lex_str("a  'b'  'c  d ",
+		EC_STRVEC_TRAILSP, &quote);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "b", "c  d ");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	testres |= EC_TEST_CHECK(quote == '\'',
+		"missing quote should be '\n");
+	ec_strvec_free(strvec);
+	strvec = NULL;
+	ec_strvec_free(strvec2);
+	strvec2 = NULL;
+
+	quote = '\0';
+	strvec = ec_strvec_sh_lex_str("a  'b'\"x\"  'c  d' ",
+		EC_STRVEC_TRAILSP, &quote);
+	if (strvec == NULL) {
+		EC_TEST_ERR("cannot lex strvec from string\n");
+		goto fail;
+	}
+	strvec2 = EC_STRVEC("a", "bx", "c  d", "");
+	if (strvec2 == NULL) {
+		EC_TEST_ERR("cannot create strvec from array\n");
+		goto fail;
+	}
+	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
+		"strvec and strvec2 should be equal\n");
+	testres |= EC_TEST_CHECK(quote == '\0',
+		"there should be no missing quote\n");
 	ec_strvec_free(strvec);
 	strvec = NULL;
 	ec_strvec_free(strvec2);
