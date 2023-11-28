@@ -489,18 +489,45 @@ fail:
 	return -1;
 }
 
+char *
+ec_editline_curline(const struct ec_editline *editline, bool trim_after_cursor)
+{
+	const LineInfo *line_info = NULL;
+	char *line = NULL;
+	int pos;
+
+	if ((line_info = el_line(editline->el)) == NULL) {
+		errno = ENOENT;
+		goto fail;
+	}
+
+	if (trim_after_cursor)
+		pos = line_info->cursor - line_info->buffer;
+	else
+		pos = line_info->lastchar - line_info->buffer;
+
+	if (ec_asprintf(&line, "%.*s", pos, line_info->buffer) < 0) {
+		errno = ENOMEM;
+		goto fail;
+	}
+
+	return line;
+
+fail:
+	free(line);
+	return NULL;
+}
+
 int
 ec_editline_complete(EditLine *el, int c)
 {
+	char *line = NULL, *full_line = NULL;
 	struct ec_editline *editline;
-	const LineInfo *line_info;
 	int ret = CC_REFRESH;
 	struct ec_comp *cmpl = NULL;
 	char *append = NULL;
-	char *line = NULL;
 	void *clientdata;
 	FILE *out, *err;
-	int len;
 
 	if (el_get(el, EL_GETFP, 1, &out))
 		return -1;
@@ -516,15 +543,10 @@ ec_editline_complete(EditLine *el, int c)
 	editline = clientdata;
 	(void)editline;
 
-	line_info = el_line(el);
-	if (line_info == NULL) {
-		fprintf(err, "completion failure: no line info\n");
-		goto fail;
-	}
-
-	len = line_info->cursor - line_info->buffer;
-	if (ec_asprintf(&line, "%.*s", len, line_info->buffer) < 0) {
-		fprintf(err, "completion failure: no memory\n");
+	line = ec_editline_curline(editline, true);
+	full_line = ec_editline_curline(editline, false);
+	if (line == NULL || full_line == NULL) {
+		fprintf(err, "completion failure: %s\n", strerror(errno));
 		goto fail;
 	}
 
@@ -543,7 +565,7 @@ ec_editline_complete(EditLine *el, int c)
 		struct ec_editline_help *helps = NULL;
 		ssize_t count = 0;
 
-		count = ec_editline_get_helps(editline, line, line_info->buffer,
+		count = ec_editline_get_helps(editline, line, full_line,
 				&helps);
 
 		fprintf(out, "\n");
@@ -593,6 +615,7 @@ ec_editline_complete(EditLine *el, int c)
 
 	ec_comp_free(cmpl);
 	ec_free(line);
+	ec_free(full_line);
 	ec_free(append);
 
 	return ret;
@@ -600,6 +623,7 @@ ec_editline_complete(EditLine *el, int c)
 fail:
 	ec_comp_free(cmpl);
 	ec_free(line);
+	ec_free(full_line);
 	ec_free(append);
 
 	return CC_ERROR;

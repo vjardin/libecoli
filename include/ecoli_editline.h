@@ -19,6 +19,8 @@
 #ifndef ECOLI_EDITLINE_
 #define ECOLI_EDITLINE_
 
+#include <stdbool.h>
+
 #include <histedit.h>
 
 struct ec_editline;
@@ -152,6 +154,9 @@ ec_editline_set_prompt(struct ec_editline *editline, const char *prompt);
 
 
 
+
+char *ec_editline_curline(const struct ec_editline *editline,
+			  bool trim_after_cursor);
 
 /**
  * Get a line.
