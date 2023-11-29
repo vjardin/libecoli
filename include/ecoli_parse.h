@@ -343,7 +343,7 @@ void ec_pnode_dump(FILE *out, const struct ec_pnode *pnode);
  * @return
  *   The first node matching the identifier, or NULL if not found.
  */
-struct ec_pnode *ec_pnode_find(struct ec_pnode *root, const char *id);
+const struct ec_pnode *ec_pnode_find(const struct ec_pnode *root, const char *id);
 
 /**
  * Find the next node matching an identifier.
@@ -366,8 +366,8 @@ struct ec_pnode *ec_pnode_find(struct ec_pnode *root, const char *id);
  * @return
  *   The next node matching the identifier, or NULL if not found.
  */
-struct ec_pnode *ec_pnode_find_next(struct ec_pnode *root,
-				struct ec_pnode *prev,
+const struct ec_pnode *ec_pnode_find_next(const struct ec_pnode *root,
+				const struct ec_pnode *prev,
 				const char *id, bool iter_children);
 
 /**

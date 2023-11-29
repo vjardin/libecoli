@@ -385,11 +385,11 @@ struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
 	return NULL;
 }
 
-struct ec_pnode *
-ec_pnode_find_next(struct ec_pnode *root, struct ec_pnode *prev,
+const struct ec_pnode *
+ec_pnode_find_next(const struct ec_pnode *root, const struct ec_pnode *prev,
 		const char *id, bool iter_children)
 {
-	struct ec_pnode *iter;
+	const struct ec_pnode *iter;
 
 	if (root == NULL)
 		return NULL;
@@ -408,7 +408,8 @@ ec_pnode_find_next(struct ec_pnode *root, struct ec_pnode *prev,
 	return NULL;
 }
 
-struct ec_pnode *ec_pnode_find(struct ec_pnode *root, const char *id)
+const struct ec_pnode *
+ec_pnode_find(const struct ec_pnode *root, const char *id)
 {
 	return ec_pnode_find_next(root, NULL, id, 1);
 }

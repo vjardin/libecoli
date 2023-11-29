@@ -437,7 +437,7 @@ eval_find(const struct ec_pnode *pstate, struct cond_result **in,
 	struct cond_result *out = NULL;
 	struct ec_htable_elt_ref *iter;
 	struct ec_pnode * const *pparse;
-	struct ec_pnode *parse;
+	const struct ec_pnode *parse;
 	const char *id;
 
 	(void)pstate;
