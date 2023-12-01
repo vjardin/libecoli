@@ -32,8 +32,8 @@ static void *get_obj(const struct ec_vec *vec, size_t idx)
 }
 
 struct ec_vec *
-ec_vec(size_t elt_size, size_t size, ec_vec_elt_copy_t copy,
-	ec_vec_elt_free_t free)
+ec_vec(size_t elt_size, size_t size, ec_vec_elt_copy_t elt_copy,
+	ec_vec_elt_free_t elt_free)
 {
 	struct ec_vec *vec;
 
@@ -47,8 +47,8 @@ ec_vec(size_t elt_size, size_t size, ec_vec_elt_copy_t copy,
 		return NULL;
 
 	vec->elt_size = elt_size;
-	vec->copy = copy;
-	vec->free = free;
+	vec->copy = elt_copy;
+	vec->free = elt_free;
 
 	if (size == 0)
 		return vec;

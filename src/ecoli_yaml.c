@@ -49,6 +49,10 @@ parse_llint(const char *str, int64_t *val)
 	char *endptr;
 	int save_errno = errno;
 
+	if (str == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 	errno = 0;
 	*val = strtoll(str, &endptr, 0);
 
@@ -71,6 +75,10 @@ parse_ullint(const char *str, uint64_t *val)
 	char *endptr;
 	int save_errno = errno;
 
+	if (str == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 	/* since a negative input is silently converted to a positive
 	 * one by strtoull(), first check that it is positive */
 	if (strchr(str, '-'))
@@ -93,6 +101,10 @@ parse_ullint(const char *str, uint64_t *val)
 static int
 parse_bool(const char *str, bool *val)
 {
+	if (str == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 	if (!strcasecmp(str, "true")) {
 		*val = true;
 		return 0;

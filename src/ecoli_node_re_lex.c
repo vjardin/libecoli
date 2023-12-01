@@ -48,8 +48,8 @@ tokenize(struct regexp_pattern *table, size_t table_len, const char *str)
 	char c;
 	size_t len, off = 0;
 	size_t i;
-	int ret;
-	regmatch_t pos;
+	int ret = 0;
+	regmatch_t pos = {0};
 
 	dup = ec_strdup(str);
 	if (dup == NULL)
@@ -358,12 +358,14 @@ fail:
 		for (i = 0; i < n; i++) {
 			if (table[i].pattern != NULL) {
 				ec_free(table[i].pattern);
+				ec_free(table[i].attr_name);
 				regfree(&table[i].r);
 			}
 		}
 	}
 	ec_free(table);
 	ec_free(pattern_str);
+	ec_free(attr_name);
 	return -1;
 }
 

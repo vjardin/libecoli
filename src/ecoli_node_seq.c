@@ -197,7 +197,7 @@ static int ec_node_seq_set_config(struct ec_node *node,
 	table = ec_node_config_node_list_to_table(
 		ec_config_dict_get(config, "children"), &len);
 	if (table == NULL)
-		goto fail;
+		return -1;
 
 	for (i = 0; i < priv->len; i++)
 		ec_node_free(priv->table[i]);
@@ -206,12 +206,6 @@ static int ec_node_seq_set_config(struct ec_node *node,
 	priv->len = len;
 
 	return 0;
-
-fail:
-	for (i = 0; i < len; i++)
-		ec_node_free(table[i]);
-	ec_free(table);
-	return -1;
 }
 
 static size_t

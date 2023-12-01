@@ -170,6 +170,8 @@ static int ec_malloc_testcase(void)
 	 * time */
 	ptr = ec_calloc(3, atoll("9223372036854775807")); /* (1 << 63) - 1 */
 	testres |= EC_TEST_CHECK(ptr == NULL, "bad overflow check in ec_calloc\n");
+	ec_free(ptr);
+	ptr = NULL;
 
 	return testres;
 }

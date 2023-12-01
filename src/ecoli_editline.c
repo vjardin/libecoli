@@ -435,8 +435,9 @@ static int get_node_help(const struct ec_comp_item *item,
 
 fail:
 	ec_free(node_desc);
-	ec_free(help->desc);
 	ec_free(help->help);
+	help->desc = NULL;
+	help->help = NULL;
 	return -1;
 }
 

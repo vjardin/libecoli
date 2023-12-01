@@ -205,7 +205,7 @@ static int ec_log_testcase(void)
 	testres |= EC_TEST_CHECK(ret != 0,
 				"should not be able to set log level\n");
 
-	ret = ec_log_fct_register(NULL, NULL);
+	ec_log_fct_register(NULL, NULL);
 	ec_log_level_set(LOG_DEBUG);
 	EC_LOG(LOG_DEBUG, "test log\n");
 	ec_log_level_set(LOG_INFO);

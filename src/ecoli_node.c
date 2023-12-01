@@ -597,8 +597,7 @@ static int ec_node_testcase(void)
 
 	/* same loop test, but keep some refs (released later) */
 	expr = ec_node("or", EC_NO_ID);
-	ec_node_clone(expr);
-	expr2 = expr;
+	expr2 = ec_node_clone(expr);
 	val = ec_node_int(EC_NO_ID, 0, 10, 0);
 	op = ec_node_str(EC_NO_ID, "!");
 	seq = EC_NODE_SEQ(EC_NO_ID,

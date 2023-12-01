@@ -496,8 +496,10 @@ static int ec_node_cmd_set_config(struct ec_node *node,
 	return 0;
 
 fail:
-	for (i = 0; i < len; i++)
-		ec_node_free(table[i]);
+	if (table != NULL) {
+		for (i = 0; i < len; i++)
+			ec_node_free(table[i]);
+	}
 	ec_free(table);
 	ec_free(cmd_str);
 	ec_node_free(cmd);

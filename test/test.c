@@ -180,8 +180,7 @@ static void *debug_malloc(size_t size, const char *file, unsigned int line)
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
 		ret = hdr + 1;
-		ftr = (struct debug_alloc_ftr *)(
-			(char *)hdr + size + sizeof(*hdr));
+		ftr = (struct debug_alloc_ftr *)((char *)(hdr + 1) + size);
 		ftr->cookie = 0x87654321;
 	}
 
@@ -240,7 +239,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 {
 	struct debug_alloc_hdr *hdr, *h;
 	struct debug_alloc_ftr *ftr;
-	size_t new_size = size + sizeof(*hdr) + sizeof(unsigned int);
+	size_t new_size = size + sizeof(*hdr) + sizeof(*ftr);
 	void *ret;
 
 	if (ptr != NULL) {
@@ -295,8 +294,7 @@ static void *debug_realloc(void *ptr, size_t size, const char *file,
 		hdr->stacklen = backtrace(hdr->stack, COUNT_OF(hdr->stack));
 		hdr->cookie = 0x12345678;
 		TAILQ_INSERT_TAIL(&debug_alloc_hdr_list, hdr, next);
-		ftr = (struct debug_alloc_ftr *)(
-			(char *)hdr + size + sizeof(*hdr));
+		ftr = (struct debug_alloc_ftr *)((char *)(hdr + 1) + size);
 		ftr->cookie = 0x87654321;
 	}
 

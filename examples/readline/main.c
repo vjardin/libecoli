@@ -143,6 +143,7 @@ static int show_help(int ignore, int invoking_key)
 	size_t count;
 	char **helps = NULL;
 	int match = 0;
+	int ret = 1;
 	int cols;
 
 	(void)ignore;
@@ -201,7 +202,7 @@ static int show_help(int ignore, int invoking_key)
 	rl_display_match_list(helps, count + match, cols);
 	rl_forced_update_display();
 
-	return 0;
+	ret = 0;
 
 fail:
 	ec_free(item);
@@ -214,7 +215,7 @@ fail:
 	}
 	free(helps);
 
-	return 1;
+	return ret;
 }
 
 static int create_commands(void)

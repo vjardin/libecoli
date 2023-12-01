@@ -254,6 +254,9 @@ ec_comp_item(enum ec_comp_type type,
 		if (start_cp == NULL)
 			goto fail;
 
+		if (full == NULL)
+			goto fail;
+
 		if (ec_str_startswith(full, start)) {
 			comp_cp = ec_strdup(&full[strlen(start)]);
 			if (comp_cp == NULL)
