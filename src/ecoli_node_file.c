@@ -253,6 +253,7 @@ ec_node_file_init_priv(struct ec_node *node)
 
 	priv->lstat = lstat;
 	priv->opendir = opendir;
+	priv->closedir = closedir;
 	priv->readdir = readdir;
 	priv->dirfd = dirfd;
 	priv->fstatat = fstatat;
