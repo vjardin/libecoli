@@ -57,7 +57,7 @@
 /**
  * Node has no identifier.
  */
-#define EC_NO_ID "no-id"
+#define EC_NO_ID ""
 
 struct ec_node;
 struct ec_pnode;

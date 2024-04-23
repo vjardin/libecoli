@@ -531,8 +531,8 @@ static int ec_pnode_testcase(void)
 	f = NULL;
 
 	testres |= EC_TEST_CHECK(
-		strstr(buf, "type=sh_lex id=no-id") &&
-		strstr(buf, "type=seq id=no-id") &&
+		strstr(buf, "type=sh_lex id=") &&
+		strstr(buf, "type=seq id=") &&
 		strstr(buf, "type=str id=id_x") &&
 		strstr(buf, "type=str id=id_x"),
 		"bad dump\n");

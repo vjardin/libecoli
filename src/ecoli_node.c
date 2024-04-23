@@ -502,7 +502,7 @@ static int ec_node_testcase(void)
 	f = NULL;
 
 	testres |= EC_TEST_CHECK(
-		strstr(buf, "type=seq id=no-id"), "bad dump\n");
+		strstr(buf, "type=seq id="), "bad dump\n");
 	testres |= EC_TEST_CHECK(
 		strstr(buf, "type=str id=id_x") &&
 		strstr(strstr(buf, "type=str id=id_x") + 1,
