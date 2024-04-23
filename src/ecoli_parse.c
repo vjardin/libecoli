@@ -254,20 +254,24 @@ static void __ec_pnode_dump(FILE *out,
 	struct ec_pnode *child;
 	const struct ec_strvec *vec;
 	const char *id = "none", *typename = "none";
+	char *desc = NULL;
 
 	/* node can be null when parsing is incomplete */
 	if (pnode->node != NULL) {
 		id = ec_node_id(pnode->node);
 		typename = ec_node_type(pnode->node)->name;
+		desc = ec_node_desc(pnode->node);
 	}
 
-	fprintf(out, "%*s" "type=%s id=%s vec=",
-		(int)indent * 4, "", typename, id);
+	fprintf(out, "%*s" "%s type=%s id=%s vec=",
+		(int)indent * 4, "", desc ? : "none", typename, id);
 	vec = ec_pnode_get_strvec(pnode);
 	ec_strvec_dump(out, vec);
 
 	TAILQ_FOREACH(child, &pnode->children, next)
 		__ec_pnode_dump(out, child, indent + 1);
+
+	ec_free(desc);
 }
 
 // XXX dump in other formats? yaml? json?

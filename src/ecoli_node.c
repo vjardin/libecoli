@@ -376,21 +376,24 @@ static void __ec_node_dump(FILE *out,
 	unsigned int refs;
 	char buf[32];
 	size_t i, n;
+	char *desc;
 	int ret;
 
 	id = ec_node_id(node);
+	desc = ec_node_desc(node);
 	typename = node->type->name;
 
 	snprintf(buf, sizeof(buf), "%p", node);
 	if (ec_dict_has_key(dict, buf)) {
-		fprintf(out, "%*s" "type=%s id=%s %p... (loop)\n",
-			(int)indent * 4, "", typename, id, node);
-		return;
+		fprintf(out, "%*s" "%s type=%s id=%s %p... (loop)\n",
+			(int)indent * 4, "", desc, typename, id, node);
+
+		goto end;
 	}
 
 	ec_dict_set(dict, buf, NULL, NULL);
-	fprintf(out, "%*s" "type=%s id=%s %p refs=%u free_state=%d free_refs=%d\n",
-		(int)indent * 4, "", typename, id, node, node->refcnt,
+	fprintf(out, "%*s" "%s type=%s id=%s %p refs=%u free_state=%d free_refs=%d\n",
+		(int)indent * 4, "", desc, typename, id, node, node->refcnt,
 		node->free.state, node->free.refcnt);
 
 	n = ec_node_get_children_count(node);
@@ -399,6 +402,8 @@ static void __ec_node_dump(FILE *out,
 		assert(ret == 0);
 		__ec_node_dump(out, child, indent + 1, dict);
 	}
+end:
+	ec_free(desc);
 }
 
 /* XXX this is too much debug-oriented, we should have a parameter or 2 funcs */
