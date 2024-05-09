@@ -130,6 +130,9 @@ ec_node_subset_parse(const struct ec_node *node,
 	struct parse_result result;
 	int ret;
 
+	if (ec_strvec_len(strvec) == 0)
+		return EC_PARSE_NOMATCH;
+
 	memset(&result, 0, sizeof(result));
 
 	ret = __ec_node_subset_parse(&result, priv->table,
@@ -359,7 +362,7 @@ static int ec_node_subset_testcase(void)
 		EC_LOG(EC_LOG_ERR, "cannot create node\n");
 		return -1;
 	}
-	testres |= EC_TEST_CHECK_PARSE(node, 0);
+	testres |= EC_TEST_CHECK_PARSE(node, -1);
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "foo");
 	testres |= EC_TEST_CHECK_PARSE(node, 1, "bar");
 	testres |= EC_TEST_CHECK_PARSE(node, 2, "foo", "bar", "titi");
