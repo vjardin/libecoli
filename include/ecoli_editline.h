@@ -126,11 +126,13 @@ void ec_editline_set_node(struct ec_editline *editline,
  *   The pointer to the ec_editline structure.
  * @param hist_size
  *   The desired size of the history.
+ * @param hist_file
+ *   Optional file path to load and write the history to.
  * @return
  *   0 on success, or -1 on error (errno is set).
  */
 int ec_editline_set_history(struct ec_editline *editline,
-	size_t hist_size);
+	size_t hist_size, const char *hist_file);
 
 int
 ec_editline_print_cols(struct ec_editline *editline,

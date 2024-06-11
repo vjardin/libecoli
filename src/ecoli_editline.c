@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <histedit.h>
 
@@ -21,6 +22,7 @@
 struct ec_editline {
 	EditLine *el;
 	History *history;
+	char *hist_file;
 	HistEvent histev;
 	const struct ec_node *node;
 	char *prompt;
@@ -241,7 +243,7 @@ ec_editline(const char *name, FILE *f_in, FILE *f_out, FILE *f_err,
 	/* set up history */
 	if ((flags & EC_EDITLINE_DISABLE_HISTORY) == 0) {
 		if (ec_editline_set_history(
-				editline, EC_EDITLINE_HISTORY_SIZE) < 0)
+				editline, EC_EDITLINE_HISTORY_SIZE, NULL) < 0)
 			goto fail;
 	}
 
@@ -271,6 +273,7 @@ void ec_editline_free(struct ec_editline *editline)
 		el_end(editline->el);
 	if (editline->history != NULL)
 		history_end(editline->history);
+	ec_free(editline->hist_file);
 	ec_free(editline->prompt);
 	ec_free(editline);
 }
@@ -293,12 +296,16 @@ ec_editline_set_node(struct ec_editline *editline, const struct ec_node *node)
 }
 
 int ec_editline_set_history(struct ec_editline *editline,
-	size_t hist_size)
+	size_t hist_size, const char *hist_file)
 {
 	EditLine *el = editline->el;
 
 	if (editline->history != NULL)
 		history_end(editline->history);
+	if (editline->hist_file != NULL) {
+		ec_free(editline->hist_file);
+		editline->hist_file = NULL;
+	}
 
 	if (hist_size == 0)
 		return 0;
@@ -311,6 +318,14 @@ int ec_editline_set_history(struct ec_editline *editline,
 		goto fail;
 	if (history(editline->history, &editline->histev, H_SETUNIQUE, 1))
 		goto fail;
+	if (hist_file != NULL) {
+		editline->hist_file = ec_strdup(hist_file);
+		if (editline->hist_file == NULL)
+			goto fail;
+		// ignore errors
+		history(editline->history, &editline->histev,
+					H_LOAD, editline->hist_file);
+	}
 	if (el_set(el, EL_HIST, history, editline->history))
 		goto fail;
 
@@ -737,6 +752,9 @@ ec_editline_gets(struct ec_editline *editline)
 	if (editline->history != NULL && !ec_str_is_space(line_copy)) {
 		history(editline->history, &editline->histev,
 			H_ENTER, line_copy);
+		if (editline->hist_file != NULL)
+			history(editline->history, &editline->histev,
+				H_SAVE, editline->hist_file);
 	}
 
 	return line_copy;
