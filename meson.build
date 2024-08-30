@@ -23,6 +23,7 @@ endif
 
 inc = include_directories('include')
 priv_inc = include_directories('src')
+libecoli_sources = []
 
 subdir('src')
 if get_option('build_tests')
@@ -36,15 +37,27 @@ if get_option('build_doc')
 endif
 
 if meson.is_subproject()
+	libecoli = static_library('ecoli',
+		libecoli_sources,
+		include_directories : [inc, priv_inc],
+		dependencies : deps,
+		install : false
+	)
 	libecoli_dep = declare_dependency(
-		link_with: libecoli,
+		link_whole: libecoli,
 		include_directories: inc,
 	)
+else
+	libecoli = shared_library('ecoli',
+		libecoli_sources,
+		include_directories : [inc, priv_inc],
+		dependencies : deps,
+		install : true
+	)
+	pkg_mod = import('pkgconfig')
+	pkg_mod.generate(libraries : libecoli,
+		version: '0.1',
+		name : 'libecoli',
+		filebase : 'libecoli',
+		description : 'Extensible command line library.')
 endif
-
-pkg_mod = import('pkgconfig')
-pkg_mod.generate(libraries : libecoli,
-	version: '0.1',
-	name : 'libecoli',
-	filebase : 'libecoli',
-	description : 'Extensible command line library.')

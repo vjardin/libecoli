@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2018, Olivier MATZ <zer0@droids-corp.org>
 
-libecoli_sources = files(
+libecoli_sources += files(
 	'ecoli_assert.c',
 	'ecoli_complete.c',
 	'ecoli_config.c',
@@ -58,9 +58,3 @@ if edit_dep.found()
 		edit_dep,
 	]
 endif
-
-libecoli = shared_library('ecoli',
-	libecoli_sources,
-	include_directories : [inc, priv_inc],
-	dependencies : deps,
-	install : true)
