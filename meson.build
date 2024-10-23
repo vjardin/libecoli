@@ -26,15 +26,6 @@ priv_inc = include_directories('src')
 libecoli_sources = []
 
 subdir('src')
-if get_option('build_tests')
-	subdir('test')
-endif
-if get_option('build_examples')
-	subdir('examples')
-endif
-if get_option('build_doc')
-	subdir('doc')
-endif
 
 if meson.is_subproject()
 	libecoli = static_library('ecoli',
@@ -60,4 +51,14 @@ else
 		name : 'libecoli',
 		filebase : 'libecoli',
 		description : 'Extensible command line library.')
+endif
+
+if get_option('build_tests')
+	subdir('test')
+endif
+if get_option('build_examples')
+	subdir('examples')
+endif
+if get_option('build_doc')
+	subdir('doc')
 endif
