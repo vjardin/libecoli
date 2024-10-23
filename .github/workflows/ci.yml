@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2024 Robin Jarry
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      NEEDRESTART_MODE: l
+      CC: gcc-14
+    steps:
+      - name: install system dependencies
+        run: |
+          set -xe
+          sudo apt-get update -qy
+          sudo apt-get install -qy --no-install-recommends \
+            doxygen \
+            gcc \
+            libasan8 \
+            libc-dev \
+            libedit-dev \
+            libreadline-dev \
+            libyaml-dev \
+            meson \
+            ninja-build \
+            pkg-config \
+            python3-breathe \
+            python3-sphinx
+      - uses: actions/checkout@v4
+      - run: |
+          meson setup \
+            -Db_sanitize=address \
+            -Dbuild_tests=true \
+            -Dbuild_examples=true \
+            -Dwith_yaml=true \
+            -Dwith_editline=true \
+            -Dbuild_doc=true \
+            build
+      - run: ninja -C build
+      - run: build/test/ecoli-test
