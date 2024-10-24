@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup murmurhash Murmurhash
+ * @defgroup ecoli_murmurhash Murmurhash
  * @{
  *
  * @brief Hash calculation using murmurhash algorithm

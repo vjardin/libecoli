@@ -3,6 +3,9 @@
  */
 
 /**
+ * @addtogroup ecoli_config
+ * @{
+ *
  * Helpers that are commonly used in nodes.
  */
 
@@ -61,3 +64,5 @@ struct ec_config *
 ec_node_config_node_list_from_vargs(va_list ap);
 
 #endif
+
+/** @} */

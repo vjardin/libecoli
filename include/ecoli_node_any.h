@@ -3,12 +3,8 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
- *
- * This node always matches 1 string in the vector.
- * An optional strvec attribute can be checked too. These
- * attributes are usually set by a lexer node.
  */
 
 #ifndef ECOLI_NODE_ANY_
@@ -16,6 +12,10 @@
 
 /**
  * Create a "any" node.
+ *
+ * This node always matches 1 string in the vector.
+ * An optional strvec attribute can be checked too. These
+ * attributes are usually set by a lexer node.
  *
  * @param id
  *   The node identifier.

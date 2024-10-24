@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
  */
 
@@ -13,17 +13,26 @@
 #include <ecoli_node.h>
 #include <ecoli_utils.h>
 
+/**
+ * Create a new "or" node from an arbitrary list of child nodes.
+ * All nodes given in the list will be freed when freeing this one.
+ */
 #define EC_NODE_OR(args...) __ec_node_or(args, EC_VA_END)
 
-/* list must be terminated with EC_VA_END */
-/* all nodes given in the list will be freed when freeing this one */
-/* avoid using this function directly, prefer the macro EC_NODE_OR() or
- * ec_node_or() + ec_node_or_add() */
+/**
+ * Avoid using this function directly, prefer the macro EC_NODE_OR() or
+ * ec_node_or() + ec_node_or_add()
+ */
 struct ec_node *__ec_node_or(const char *id, ...);
 
+/**
+ * Create an empty "or" node.
+ */
 struct ec_node *ec_node_or(const char *id);
 
-/* child is consumed */
+/**
+ * Add a child to an "or" node. Child is consumed.
+ */
 int ec_node_or_add(struct ec_node *node, struct ec_node *child);
 
 #endif

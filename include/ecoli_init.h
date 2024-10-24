@@ -3,10 +3,8 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
- *
- * @brief Register initialization routines.
  */
 
 #ifndef ECOLI_INIT_
@@ -55,7 +53,7 @@ struct ec_init {
 /**
  * Register an initialization function.
  *
- * @param init
+ * @param test
  *   A pointer to a ec_init structure to be registered.
  */
 void ec_init_register(struct ec_init *test);

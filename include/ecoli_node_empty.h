@@ -3,15 +3,16 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
- *
- * This node always matches an empty string vector
  */
 
 #ifndef ECOLI_NODE_EMPTY_
 #define ECOLI_NODE_EMPTY_
 
+/**
+ * This node always matches an empty string vector
+ */
 struct ec_node *ec_node_empty(const char *id);
 
 #endif

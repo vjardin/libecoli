@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup strvec String vectors
+ * @defgroup ecoli_strvec String vector
  * @{
  *
  * @brief Helpers for strings vectors manipulation.
@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 
+/** String vector */
 struct ec_strvec;
 
 /**
@@ -121,8 +122,6 @@ int ec_strvec_add(struct ec_strvec *strvec, const char *s);
  *
  * @param strvec
  *   The pointer to the string vector.
- * @param s
- *   The string to be added at the end of the vector.
  * @return
  *   0 on success or -1 on error (errno is set).
  */
@@ -149,7 +148,7 @@ struct ec_strvec *ec_strvec_dup(const struct ec_strvec *strvec);
  *   The pointer to the string vector.
  * @param off
  *   The index of the first string to duplicate.
- * @param
+ * @param len
  *   The number of strings to duplicate.
  * @return
  *   The duplicated strvec object, or NULL on error (errno is set).
@@ -221,9 +220,9 @@ int ec_strvec_set_attrs(struct ec_strvec *strvec, size_t idx,
 /**
  * Compare two string vectors
  *
- * @param strvec
+ * @param strvec1
  *   The pointer to the first string vector.
- * @param strvec
+ * @param strvec2
  *   The pointer to the second string vector.
  * @return
  *   0 if the string vectors are equal.
@@ -256,4 +255,4 @@ void ec_strvec_dump(FILE *out, const struct ec_strvec *strvec);
 
 #endif
 
-/** } */
+/** @} */

@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup alloc Allocation
+ * @defgroup ecoli_alloc Allocation
  * @{
  *
  * @brief Helpers to allocate and free memory

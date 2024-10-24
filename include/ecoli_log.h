@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup log Log
+ * @defgroup ecoli_log Log
  * @{
  *
  * @brief Log API
@@ -163,7 +163,7 @@ int ec_vlog(int type, enum ec_log_level level, const char *format, va_list ap);
  *
  * @param level
  *   The log level.
- * @param format
+ * @param args
  *   The format string, followed by optional arguments.
  * @return
  *   0 on success, -1 on error (errno is set).
@@ -179,7 +179,7 @@ int ec_vlog(int type, enum ec_log_level level, const char *format, va_list ap);
  *
  * @param level
  *   The log level.
- * @param format
+ * @param fmt
  *   The format string.
  * @param ap
  *   The list of arguments.
@@ -232,10 +232,8 @@ int ec_log_level_set(enum ec_log_level level);
  * All messages that are at least as critical as the default level are
  * displayed.
  *
- * @param level
- *   The log level to be set.
  * @return
- *   0 on success, -1 on error.
+ *   The current global log level
  */
 enum ec_log_level ec_log_level_get(void);
 

@@ -3,12 +3,8 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
- *
- * The condition node checks that an expression is true before
- * parsing/completing the child node. If it is false, the node
- * doesn't match anything.
  */
 
 #ifndef ECOLI_NODE_COND_
@@ -18,6 +14,10 @@ struct ec_node;
 
 /**
  * Create a condition node.
+ *
+ * The condition node checks that an expression is true before
+ * parsing/completing the child node. If it is false, the node
+ * doesn't match anything.
  *
  * @param id
  *   The node identifier.

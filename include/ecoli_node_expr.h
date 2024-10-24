@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
  */
 
@@ -42,7 +42,7 @@ typedef int (*ec_node_expr_eval_var_t)(
  *   can be used to maintain a state or store global information.
  * @param operand
  *   The evaluated expression on which the operation should be applied.
- * @param var
+ * @param operator
  *   The parse result referencing the operator.
  * @return
  *   0 on success (*result must be set, operand is freed),

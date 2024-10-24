@@ -3,10 +3,8 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
- *
- * This node does not match anything
  */
 
 #ifndef ECOLI_NODE_NONE_

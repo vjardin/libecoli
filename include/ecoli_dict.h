@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup dict Dictionary
+ * @defgroup ecoli_dict Dictionary
  * @{
  *
  * @brief Simple hash table API (string keys)
@@ -20,7 +20,10 @@
 
 typedef void (*ec_dict_elt_free_t)(void *);
 
+/** Dictionary (string key hash table). */
 struct ec_dict;
+
+/** Dictionary element reference. */
 struct ec_dict_elt_ref;
 
 /**

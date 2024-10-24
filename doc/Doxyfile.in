@@ -1,35 +1,43 @@
 PROJECT_NAME           = "Libecoli"
-PROJECT_BRIEF          = "Extensible Command Line library"
+PROJECT_BRIEF          = "Extensible COmmand LIne library"
 PROJECT_NUMBER         = @VERSION@
 INPUT                  = @TOPDIR@/include
 OUTPUT_DIRECTORY       = @OUTPUT@
-FILE_PATTERNS          = *.c *.h *.dox
+FILE_PATTERNS          = ecoli*.h
 
-BRIEF_MEMBER_DESC = YES
-ENABLE_PREPROCESSING   = YES
-MACRO_EXPANSION        = YES
-INLINE_SIMPLE_STRUCTS = YES
-EXTRACT_ALL = YES
-SOURCE_BROWSER = YES
-REPEAT_BRIEF           = NO
+EXCLUDE_SYMBOLS        = __* TAILQ_* free* init* realloc malloc boolean complete desc dict u64 test type size string subschema parse node name list key i64 help set_config schema priority exit get_child get_children_count eval_* @1
 
-EXAMPLE_PATH           =
-EXAMPLE_PATTERNS       = *
-EXAMPLE_RECURSIVE      = NO
+OPTIMIZE_OUTPUT_FOR_C   = YES
+ENABLE_PREPROCESSING    = YES
+MACRO_EXPANSION         = YES
+EXPAND_ONLY_PREDEF      = YES
+EXTRACT_STATIC          = YES
+DISTRIBUTE_GROUP_DOC    = YES
+HIDE_UNDOC_MEMBERS      = NO
+HIDE_UNDOC_CLASSES      = NO
+HIDE_SCOPE_NAMES        = NO
+GENERATE_DEPRECATEDLIST = YES
+INTERNAL_DOCS           = NO
+VERBATIM_HEADERS        = NO
+ALPHABETICAL_INDEX      = NO
+FULL_PATH_NAMES         = NO
+WARN_AS_ERROR           = NO
+MARKDOWN_SUPPORT        = YES
 
-GENERATE_TODOLIST      = YES
-GENERATE_TESTLIST      = YES
-GENERATE_BUGLIST       = YES
-GENERATE_DEPRECATEDLIST= YES
+EXAMPLE_PATH            = @TOPDIR@/examples
+EXAMPLE_PATTERNS        = *.c
+EXAMPLE_RECURSIVE       = YES
 
-GENERATE_HTML          = YES
-HTML_OUTPUT            = html
-HTML_FILE_EXTENSION    = .html
+HTML_OUTPUT             = html
+HTML_DYNAMIC_SECTIONS   = YES
+SEARCHENGINE            = YES
+SORT_MEMBER_DOCS        = NO
 SOURCE_BROWSER          = YES
 
-GENERATE_XML           = YES
-XML_OUTPUT             = xml
-XML_PROGRAMLISTING     = YES
+GENERATE_HTML           = @GENERATE_HTML@
+GENERATE_XML            = NO
+GENERATE_LATEX          = NO
+GENERATE_MAN            = @GENERATE_MAN@
 
-GENERATE_LATEX         = NO
-HAVE_DOT               = NO
+MAN_LINKS               = YES
+MAN_OUTPUT              = man

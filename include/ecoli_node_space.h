@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup nodes Nodes
+ * @addtogroup ecoli_nodes
  * @{
  *
  * This node matches one string in the vector if it is only composed of

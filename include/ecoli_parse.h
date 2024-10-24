@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup parse Parse
+ * @defgroup ecoli_parse Parse nodes
  * @{
  *
  * @brief Create parse tree from string input and grammar graph
@@ -16,7 +16,6 @@
  *
  * The parsing tree is sometimes referenced by another node than the
  * root node. Use ec_pnode_get_root() to get the root node in that case.
- * @}
  */
 
 #ifndef ECOLI_PNODE_
@@ -29,6 +28,8 @@
 #include <stdbool.h>
 
 struct ec_node;
+
+/** Parse tree node. */
 struct ec_pnode;
 
 /**
@@ -132,7 +133,7 @@ struct ec_pnode *ec_parse(const struct ec_node *node, const char *str);
  *
  * @param node
  *   The grammar node.
- * @param str
+ * @param strvec
  *   The input string vector.
  * @return
  *   A parsing tree, or NULL on error (errno is set).
@@ -159,7 +160,9 @@ struct ec_pnode *ec_parse_strvec(const struct ec_node *node,
  *
  * @param node
  *   The grammar node.
- * @param str
+ * @param pstate
+ *   The node of the parsing tree.
+ * @param strvec
  *   The input string vector.
  * @return
  *   On success: the number of matched elements in the input string
@@ -200,7 +203,7 @@ void ec_pnode_unlink_child(struct ec_pnode *child);
  * Get the root of the parsing tree, keeping the const statement
  * if the argument has it.
  *
- * @param pnode
+ * @param parse
  *   A node in the parsing tree.
  * @return
  *   The root of the parsing tree.
@@ -355,7 +358,7 @@ const struct ec_pnode *ec_pnode_find(const struct ec_pnode *root, const char *id
  * - skip the children of the current node, and continue the depth-first
  *   search.
  *
- * @param pnode
+ * @param root
  *   The root of the search, as passed to ec_pnode_find().
  * @param prev
  *   The node returned by the previous search.
@@ -390,17 +393,15 @@ struct ec_pnode *__ec_pnode_iter_next(const struct ec_pnode *root,
 })
 
 /**
- *
- *
- *
+ * Get the total number of elements in a parse node.
  */
 size_t ec_pnode_len(const struct ec_pnode *pnode);
 
 /**
- *
- *
- *
+ * Get the number of matches.
  */
 size_t ec_pnode_matches(const struct ec_pnode *pnode);
 
 #endif
+
+/** @} */

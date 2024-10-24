@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup complete Complete
+ * @defgroup ecoli_complete Complete
  * @{
  *
  * @brief Complete string input using a grammar graph.
@@ -11,15 +11,15 @@
  * This file provides helpers to list and manipulate the possible
  * completions for a given input.
  *
- * Use @ec_complete_strvec() to complete a vector of strings when
+ * Use ec_complete_strvec() to complete a vector of strings when
  * the input is already split into several tokens. You can use
- * @ec_complete() if you know that the size of the vector is
+ * ec_complete() if you know that the size of the vector is
  * 1. This is common if your grammar graph includes a lexer that
  * will tokenize the input.
  *
- * These 2 functions return a pointer to an @ec_comp structure, that
+ * These two functions return a pointer to an ::ec_comp structure, that
  * lists the possible completions. The completions are grouped into
- * @ec_group. All completions items of a group shares the same parsing
+ * ec_comp_group. All completions items of a group shares the same parsing
  * state and are issued by the same node.
  *
  * @}
@@ -51,13 +51,13 @@ enum ec_comp_type {
 /**
  * Get the list of completions from a string input.
  *
- * It is equivalent that calling @ec_complete_strvec() with a
+ * It is equivalent that calling ec_complete_strvec() with a
  * vector that only contains 1 element, the input string. Using this
  * function is often more convenient if you get your input from a
  * buffer, because you won't have to create a vector. Usually, it means
  * you have a lexer in your grammar graph that will tokenize the input.
  *
- * See @ec_complete_strvec() for more details.
+ * See ec_complete_strvec() for more details.
  *
  * @param node
  *   The grammar graph.
@@ -75,7 +75,7 @@ struct ec_comp *ec_complete(const struct ec_node *node,
  *
  * This function tries to complete the last element of the given string
  * vector. For instance, to complete with file names in an equivalent of
- * the "cat" shell command, the passed vector should be ["cat", ""] (and
+ * the `cat` shell command, the passed vector should be ["cat", ""] (and
  * not ["cat"]). To complete with files starting with "x", the passed
  * vector should be ["cat", "x"].
  *
@@ -83,7 +83,7 @@ struct ec_comp *ec_complete(const struct ec_node *node,
  * input using the grammar graph. The resulting parsing tree is saved and
  * attached to each completion group.
  *
- * The result is a @ec_comp structure pointer, which contains several
+ * The result is a ec_comp structure pointer, which contains several
  * groups of completion items.
  *
  * @param node
@@ -101,8 +101,8 @@ struct ec_comp *ec_complete_strvec(const struct ec_node *node,
  * Get the list of completions of a child node.
  *
  * This function is to be used by intermediate ecoli nodes, i.e. nodes
- * which have children (ex: ec_node_seq, ec_node_or, ...). It fills an
- * existing @ec_comp structure, passed by the parent node.
+ * which have children (ex: ec_node_seq(), ec_node_or(), ...). It fills an
+ * existing ::ec_comp structure, passed by the parent node.
  *
  * @param node
  *   The grammar graph.
@@ -145,9 +145,9 @@ void ec_comp_free(struct ec_comp *comp);
 void ec_comp_dump(FILE *out, const struct ec_comp *comp);
 
 /**
- * Merge items contained in 'from' into 'to'.
+ * Merge items contained in @p from into @p to.
  *
- * The 'from' comp struct is freed.
+ * The @p from comp struct is freed.
  *
  * @param to
  *   The destination completion list.
@@ -166,7 +166,7 @@ int ec_comp_merge(struct ec_comp *to, struct ec_comp *from);
  * When processing the list of completions for a given input,
  * an incomplete parsing tree is generated before the completion
  * callback is invoked. A node may use it if the completions list
- * depend on what was previously parsed. For instance, the "once"
+ * depend on what was previously parsed. For instance, the ec_node_once()
  * node checks in the parsing tree if the node is already parsed.
  * In this case, no completion is issued.
  *
@@ -212,10 +212,11 @@ struct ec_dict *ec_comp_get_attrs(const struct ec_comp *comp);
  *
  * This function can be called by a node during the completion process,
  * for each completion item that should be added to the list. This is
- * typically done in terminal nodes, like ec_node_str or ec_node_file.
+ * typically done in terminal nodes, like ec_node_str() or ec_node_file().
  *
  * Create a new completion item, and add it into the completion
  * list. A completion item has a type, which can be:
+ *
  * - EC_COMP_FULL: the item is fully completed (common case, used
  *   for instance in the str node)
  * - EC_COMP_PARTIAL: the item is only partially completed (this
@@ -236,11 +237,12 @@ struct ec_dict *ec_comp_get_attrs(const struct ec_comp *comp);
  *   The string fully completed.
  * @return
  *   The item that was added in the list on success, or NULL
- *   on error. Note: don't free the returned value, as it is referenced
+ *   on error. Note: do not free the returned value, as it is referenced
  *   by the completion list. It is returned in case it needs to be
  *   modified, for instance with ec_comp_item_set_display().
  */
 struct ec_comp_item *ec_comp_add_item(struct ec_comp *comp,
+
 		const struct ec_node *node, enum ec_comp_type type,
 		const char *start, const char *full);
 
@@ -248,7 +250,7 @@ struct ec_comp_item *ec_comp_add_item(struct ec_comp *comp,
  * Get the string value of a completion item.
  *
  * @param item
- *   The completion item..
+ *   The completion item.
  * @return
  *   The completion string of this item.
  */
@@ -262,7 +264,7 @@ ec_comp_item_get_str(const struct ec_comp_item *item);
  * listing the possible completions.
  *
  * @param item
- *   The completion item..
+ *   The completion item.
  * @return
  *   The display string of this item.
  */
@@ -339,7 +341,7 @@ int ec_comp_item_set_str(struct ec_comp_item *item, const char *str);
  * Set the display value of an item.
  *
  * The display string corresponds to what is displayed when listing the
- * possible completions. Some nodes like ec_node_file change the default
+ * possible completions. Some nodes like ec_node_file() change the default
  * value display the base name instead of the full path.
  *
  * @param item

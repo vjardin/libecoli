@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup grammar_graph Grammar Graph
+ * @defgroup ecoli_nodes Grammar nodes
  * @{
  *
  * @brief Libecoli grammar nodes.
@@ -59,7 +59,9 @@
  */
 #define EC_NO_ID ""
 
+/** Grammar tree node. */
 struct ec_node;
+
 struct ec_pnode;
 struct ec_comp;
 struct ec_strvec;
@@ -120,10 +122,10 @@ TAILQ_HEAD(ec_node_type_list, ec_node_type);
  * Function type used to configure a node.
  *
  * The function pointer is not called directly, the helper
- * @ec_node_set_config() should be used instead.
+ * ec_node_set_config() should be used instead.
  *
  * The configuration passed to this function pointer is valid,
- * i.e. @ec_config_validate() returned 0 on it.
+ * i.e. ec_config_validate() returned 0 on it.
  *
  * @param node
  *   The node to configure.
@@ -138,7 +140,7 @@ typedef int (*ec_node_set_config_t)(struct ec_node *node,
 /**
  * Parse a string vector using the given grammar graph.
  *
- * The function pointer is not called directly, the helpers @ec_parse(),
+ * The function pointer is not called directly, the helpers ec_parse(),
  * ec_parse_strvec() or ec_parse_child() should be used instead.
  *
  * The implementation of this method for a node that manages children
@@ -149,7 +151,7 @@ typedef int (*ec_node_set_config_t)(struct ec_node *node,
  * @param pstate
  *   A pointer to the leaf being parsed in the parsing tree. It can be
  *   used by a node to retrieve information from the current parsing
- *   tree. To get the root of the tree, @ec_pnode_get_root(pstate) should
+ *   tree. To get the root of the tree, ec_pnode_get_root(pstate) should
  *   be used.
  * @param strvec
  *   The string vector to be parsed.
@@ -166,7 +168,7 @@ typedef int (*ec_parse_t)(const struct ec_node *node,
  * Get completion items using the given grammar graph.
  *
  * The function pointer should not be called directly, the helpers
- * @ec_complete(), ec_complete_strvec() or ec_complete_child() should be
+ * ec_complete(), ec_complete_strvec() or ec_complete_child() should be
  * used instead.
  *
  * This function completes the last element of the string vector.
@@ -177,12 +179,12 @@ typedef int (*ec_parse_t)(const struct ec_node *node,
  *
  * The implementation of this function in the node is supposed
  * to either:
- * - call @ec_comp_add_item(node, comp, ...) for each completion item
+ * - call ec_comp_add_item() for each completion item
  *   that should be added to the list. This is typically done in
- *   terminal nodes, for example in ec_node_str or ec_node_file.
- * - call @ec_complete_child(child, comp, child_strvec) to let
+ *   terminal nodes, for example in ec_node_str() or ec_node_file().
+ * - call ec_complete_child() to let
  *   the children nodes add their own completion. This is the
- *   case of ec_node_or which trivially calls @ec_complete_child()
+ *   case of ec_node_or which trivially calls ec_complete_child()
  *   on all its children, and of ec_node_seq, which has to
  *   do a more complex job (parsing strvec).
  *
@@ -211,23 +213,24 @@ typedef int (*ec_complete_t)(const struct ec_node *node,
  * Get the short description of a grammar node.
  *
  * This function pointer should not be called directly. The
- * @ec_node_desc() helper should be used instead.
+ * ec_node_desc() helper should be used instead.
  *
  * This callback is typically used when building a help string for a
  * grammar graph. It is used in ecoli editline interface to generate
  * contextual help like this (first column):
- *   <int>     An integer.
+ *
+ *   `<int>`     An integer.
  *   foo       The foo string.
  *   bar       The bar string.
  *
  * If this callback is set to NULL in the node type, the
- * default behavior is to return the node type name inside <>, for
- * instance "<int>". The string node type implements this method to
+ * default behavior is to return the node type name inside `<>`, for
+ * instance `<int>`. The string node type implements this method to
  * return the string value. An integer node could implement it
  * to return its range (ex: "1..10").
  *
  * The returned value is a pointer that must be freed by
- * the caller with @ec_free().
+ * the caller with ec_free().
  *
  * On error, NULL is returned and errno is set.
  */
@@ -236,7 +239,7 @@ typedef char * (*ec_node_desc_t)(const struct ec_node *);
 /**
  * Initialize the node private area.
  *
- * This function pointer should not be called directly. The @ec_node()
+ * This function pointer should not be called directly. The ec_node()
  * and ec_node_from_type() helpers, that allocate new nodes, should be
  * used instead.
  *
@@ -253,7 +256,7 @@ typedef int (*ec_node_init_priv_t)(struct ec_node *);
  * Free the node private area.
  *
  * This function pointer should not be called directly. The
- * @ec_node_free() helper should be used instead.
+ * ec_node_free() helper should be used instead.
  *
  * When a node is deleted, this function is called to free the resources
  * referenced in the node private area.
@@ -264,7 +267,7 @@ typedef void (*ec_node_free_priv_t)(struct ec_node *);
  * Count the number of node children.
  *
  * This function pointer should not be called directly. The
- * @ec_node_get_children_count() helper should be used instead.
+ * ec_node_get_children_count() helper should be used instead.
  *
  * Some grammar nodes like seq, or, many, (...), reference children
  * nodes in the grammar graph. This function returns the number of
@@ -276,7 +279,7 @@ typedef size_t (*ec_node_get_children_count_t)(const struct ec_node *);
  * Count the number of node children.
  *
  * This function pointer should not be called directly. The
- * @ec_node_get_child() helper should be used instead.
+ * ec_node_get_child() helper should be used instead.
  *
  * Some grammar nodes like seq, or, many, (...), reference children
  * nodes in the grammar graph. This function sets the i-th child (with i
@@ -296,7 +299,7 @@ typedef int (*ec_node_get_child_t)(const struct ec_node *,
  *
  * It is usually defined as a static const structure in the code
  * defining a new grammar node type. Examples can be found in
- * ecoli_node_<type>.c files.
+ * `ecoli_node_<type>.c` files.
  */
 struct ec_node_type {
 	TAILQ_ENTRY(ec_node_type) next;  /**< Next in list. */

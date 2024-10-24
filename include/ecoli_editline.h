@@ -3,15 +3,13 @@
  */
 
 /**
- * @defgroup editline Editline
- * @{
+ * @defgroup ecoli_editline Editline
  *
  * @brief Helpers for editline
  *
  * Helpers that can be used to associate an editline instance with
  * an ecoli node tree.
  *
- * XXX support saved history
  * XXX support multiline edition
  * XXX set prompt
  */
@@ -28,6 +26,9 @@ struct ec_node;
 struct ec_pnode;
 struct ec_comp;
 
+/**
+ * 
+ */
 struct ec_editline_help {
 	char *desc;
 	char *help;
@@ -40,7 +41,7 @@ struct ec_editline_help {
 
 /**
  * Ask the terminal to not send signals (STOP, SUSPEND, XXX). The
- * ctrl-c, ctrl-z will be interpreted as standard characters. An
+ * `ctrl-c`, `ctrl-z` will be interpreted as standard characters. An
  * action can be associated to these characters with:
  *
  *	static int cb(EditLine *editline, int c) {
@@ -67,7 +68,7 @@ struct ec_editline_help {
 
 /**
  * Disable completion. The default behavior is to complete when
- * '?' or '<tab>' is hit. You can register your own callback with:
+ * `?` or `<tab>` is hit. You can register your own callback with:
  *
  *	if (el_set(el, EL_ADDFN, "ed-complete", "Complete buffer", callback))
  *		handle_error;

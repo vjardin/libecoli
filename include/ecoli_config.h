@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup config Node configuration
+ * @defgroup ecoli_config Node configuration
  * @{
  *
  * @brief Configure nodes behavior through generic API.
@@ -63,13 +63,13 @@ struct ec_config {
 	enum ec_config_type type;
 
 	union {
-		bool boolean;   /** Boolean value */
-		int64_t i64;    /** Signed integer value */
-		uint64_t u64;   /** Unsigned integer value */
-		char *string;   /** String value */
-		struct ec_node *node;       /** Node value */
-		struct ec_dict *dict;     /** Hash table value */
-		struct ec_config_list list; /** List value */
+		bool boolean;   /**< Boolean value */
+		int64_t i64;    /**< Signed integer value */
+		uint64_t u64;   /**< Unsigned integer value */
+		char *string;   /**< String value */
+		struct ec_node *node;       /**< Node value */
+		struct ec_dict *dict;     /**< Hash table value */
+		struct ec_config_list list; /**< List value */
 	};
 
 	/**
@@ -110,6 +110,8 @@ void ec_config_schema_dump(FILE *out, const struct ec_config_schema *schema);
  * @param schema
  *   Pointer to the first element of the schema array. The array
  *   must be terminated by a sentinel entry (type == EC_CONFIG_TYPE_NONE).
+ * @param key
+ *   Schema key name.
  * @return
  *   The schema entry if it matches a key, or NULL if not found.
  */
@@ -321,7 +323,7 @@ int ec_config_dict_set(struct ec_config *dict, const char *key,
  * @return
  *   0 on success, -1 on error (errno is set).
  */
-int ec_config_dict_del(struct ec_config *config, const char *key);
+int ec_config_dict_del(struct ec_config *dict, const char *key);
 
 /**
  * Compare two configurations.
@@ -339,6 +341,7 @@ struct ec_config *ec_config_dict_get(const struct ec_config *config,
  * Get the first element of a list.
  *
  * Example of use:
+ *
  * for (config = ec_config_list_iter(list);
  *	config != NULL;
  *	config = ec_config_list_next(list, config)) {

@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup htable Hash table
+ * @defgroup ecoli_htable Hash table
  * @{
  *
  * @brief Simple hash table API (any key)

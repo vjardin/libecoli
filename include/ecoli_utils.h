@@ -3,7 +3,7 @@
  */
 
 /**
- * @defgroup utils Utils
+ * @defgroup ecoli_utils Utils
  * @{
  *
  * @brief Misc utils
