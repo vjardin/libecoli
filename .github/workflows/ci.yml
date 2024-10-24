@@ -31,9 +31,7 @@ jobs:
             libyaml-dev \
             meson \
             ninja-build \
-            pkg-config \
-            python3-breathe \
-            python3-sphinx
+            pkg-config
       - uses: actions/checkout@v4
       - run: |
           meson setup \

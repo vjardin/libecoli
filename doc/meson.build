@@ -22,13 +22,3 @@ doxygen_build = custom_target(
 	command: [doxygen, '@INPUT@', '@OUTPUT@'],
 	build_by_default: true,
 	install_dir: doc_install_dir)
-
-python = import('python').find_installation('python3', modules: ['sphinx', 'breathe'])
-
-html_doc = custom_target('html',
-	input: files('conf.py'),
-	output: 'html',
-	command: [python, '-m', 'sphinx.cmd.build', meson.current_source_dir(), '@OUTPUT@'],
-	install: true,
-	build_by_default: true,
-	install_dir: doc_install_dir)
