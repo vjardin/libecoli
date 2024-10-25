@@ -43,14 +43,14 @@ else
 		libecoli_sources,
 		include_directories : inc,
 		dependencies : deps,
+		version : meson.project_version(),
 		install : true
 	)
 	pkg_mod = import('pkgconfig')
-	pkg_mod.generate(libraries : libecoli,
-		version: '0.1',
+	pkg_mod.generate(libecoli,
 		name : 'libecoli',
 		filebase : 'libecoli',
-		description : 'Extensible command line library.')
+		description : 'Extensible COmmand LIne library.')
 endif
 
 if get_option('build_tests')
