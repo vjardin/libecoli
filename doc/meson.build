@@ -22,6 +22,7 @@ custom_target(
 	output: 'man',
 	command: [doxygen, '@INPUT@'],
 	build_by_default: true,
+	install: true,
 	install_dir: get_option('datadir'))
 
 html_cdata = configuration_data()
@@ -39,4 +40,5 @@ custom_target(
 	output: 'html',
 	command: [doxygen, '@INPUT@'],
 	build_by_default: true,
-	install_dir: join_paths(get_option('datadir'), 'doc', 'dpdk'))
+	install: true,
+	install_dir: join_paths(get_option('datadir'), 'doc', 'libecoli'))
