@@ -4,7 +4,7 @@
 cdata = configuration_data()
 cdata.set('VERSION', meson.project_version())
 cdata.set('OUTPUT', meson.current_build_dir())
-cdata.set('TOPDIR', meson.source_root())
+cdata.set('TOPDIR', meson.project_source_root())
 doxygen = find_program('doxygen')
 
 man_cdata = configuration_data()
