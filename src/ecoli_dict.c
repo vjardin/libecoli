@@ -13,8 +13,9 @@
 #include <ecoli_malloc.h>
 #include <ecoli_log.h>
 #include <ecoli_test.h>
-#include <ecoli_htable_private.h>
 #include <ecoli_dict.h>
+
+#include "ecoli_htable_private.h"
 
 EC_LOG_TYPE_REGISTER(dict);
 

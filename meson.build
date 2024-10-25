@@ -22,15 +22,15 @@ if get_option('build_tests')
 endif
 
 inc = include_directories('include')
-priv_inc = include_directories('src')
 libecoli_sources = []
 
 subdir('src')
+subdir('include')
 
 if meson.is_subproject()
 	libecoli = static_library('ecoli',
 		libecoli_sources,
-		include_directories : [inc, priv_inc],
+		include_directories : inc,
 		dependencies : deps,
 		install : false
 	)
@@ -41,7 +41,7 @@ if meson.is_subproject()
 else
 	libecoli = shared_library('ecoli',
 		libecoli_sources,
-		include_directories : [inc, priv_inc],
+		include_directories : inc,
 		dependencies : deps,
 		install : true
 	)
