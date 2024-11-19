@@ -54,6 +54,5 @@ if yaml_dep.found()
 	)
 endif
 
-if meson.is_cross_build()
-  #	install_headers(libecoli_headers, subdir: '')
-endif
+# Use the proper sysroot-aware installation directory
+install_headers(libecoli_headers, subdir: meson.get_compiler('c').get_include_dir())
