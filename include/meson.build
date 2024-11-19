@@ -54,4 +54,6 @@ if yaml_dep.found()
 	)
 endif
 
-install_headers(libecoli_headers)
+if meson.is_cross_build()
+	install_headers(libecoli_headers, subdir: '')
+endif
