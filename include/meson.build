@@ -55,5 +55,5 @@ if yaml_dep.found()
 endif
 
 if meson.is_cross_build()
-	install_headers(libecoli_headers, subdir: '')
+  #	install_headers(libecoli_headers, subdir: '')
 endif
