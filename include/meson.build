@@ -55,4 +55,11 @@ if yaml_dep.found()
 endif
 
 # Use the proper sysroot-aware installation directory
-install_headers(libecoli_headers, subdir: meson.get_compiler('c').get_include_dir())
+sysroot = meson.get_external_property('sys_root', '')
+if sysroot != ''
+	install_dir = sysroot + '/usr/include'
+else
+	install_dir = get_option('includedir')
+endif
+
+install_headers(libecoli_headers, install_dir: install_dir)
