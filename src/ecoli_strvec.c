@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
 
@@ -312,6 +313,26 @@ static char_class_t get_char_class(char c)
 	return OTHER;
 }
 
+static int sh_lex_set_attrs(struct ec_strvec *strvec, size_t idx,
+			    size_t arg_start, size_t arg_end)
+{
+	struct ec_dict *attrs = ec_dict();
+	if (attrs == NULL)
+		return -1;
+
+	if (ec_dict_set(attrs, EC_STRVEC_ATTR_START,
+			(void *)(uintptr_t)arg_start, NULL) < 0)
+		goto fail;
+	if (ec_dict_set(attrs, EC_STRVEC_ATTR_END,
+			(void *)(uintptr_t)arg_end, NULL) < 0)
+		goto fail;
+
+	return ec_strvec_set_attrs(strvec, idx, attrs);
+fail:
+	ec_dict_free(attrs);
+	return -1;
+}
+
 struct ec_strvec *
 ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 		     char *missing_quote)
@@ -321,9 +342,9 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 	/* Weird, but we need an empty string to report as having trailing
 	 * space when EC_STRVEC_SHLEX_KEEP_TRAILING_SPACE is set in flags. */
 	bool trailing_space = true;
+	size_t t, i, arg_start;
 	char token[BUFSIZ];
 	char c, quote;
-	size_t t, i;
 
 #define append(buffer, position, character) \
 	do { \
@@ -377,6 +398,7 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 				break;
 			}
 			trailing_space = cls == SPACE;
+			arg_start = i;
 			break;
 		case IN_WORD:
 			switch (cls) {
@@ -385,6 +407,10 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 				quote = '\0';
 				token[t] = '\0';
 				if (ec_strvec_add(strvec, token) < 0)
+					goto fail;
+				if (sh_lex_set_attrs(strvec,
+						     ec_strvec_len(strvec) - 1,
+						     arg_start, i) < 0)
 					goto fail;
 				state = START;
 				trailing_space = true;
@@ -468,6 +494,9 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 		if (ec_strvec_add(strvec, "") < 0)
 			goto fail;
 	}
+	if (sh_lex_set_attrs(strvec, ec_strvec_len(strvec) - 1,
+			     arg_start, i) < 0)
+		goto fail;
 
 	return strvec;
 
@@ -749,6 +778,34 @@ static int ec_strvec_testcase(void)
 	}
 	testres |= EC_TEST_CHECK(ec_strvec_cmp(strvec, strvec2) == 0,
 		"strvec and strvec2 should be equal\n");
+	for (unsigned i = 0; i < ec_strvec_len(strvec); i++) {
+		const_attrs = ec_strvec_get_attrs(strvec, i);
+		testres |= EC_TEST_CHECK(const_attrs != NULL,
+			"attrs should not be NULL\n");
+		if (const_attrs == NULL)
+			continue;
+		errno = 0;
+		unsigned s = (uintptr_t)ec_dict_get(const_attrs, EC_STRVEC_ATTR_START);
+		unsigned e = (uintptr_t)ec_dict_get(const_attrs, EC_STRVEC_ATTR_END);
+		testres |= EC_TEST_CHECK(errno == 0, "");
+		switch (i) {
+		case 0:
+			testres |= EC_TEST_CHECK(s == 2 && e == 3, "");
+			break;
+		case 1:
+			testres |= EC_TEST_CHECK(s == 5 && e == 6, "");
+			break;
+		case 2:
+			testres |= EC_TEST_CHECK(s == 9 && e == 10, "");
+			break;
+		case 3:
+			testres |= EC_TEST_CHECK(s == 12 && e == 13, "");
+			break;
+		case 4:
+			testres |= EC_TEST_CHECK(s == 14 && e == 15, "");
+			break;
+		}
+	}
 	ec_strvec_free(strvec);
 	strvec = NULL;
 	ec_strvec_free(strvec2);

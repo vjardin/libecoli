@@ -75,6 +75,15 @@ typedef enum {
 } ec_strvec_flag_t;
 
 /**
+ * All elements of the vector returned by ec_strvec_sh_lex_str() have two
+ * attributes accessible via ec_strvec_get_attrs().
+ */
+/** The start index in the original line passed to ec_strvec_sh_lex_str(). */
+#define EC_STRVEC_ATTR_START "start"
+/** The end index in the original line passed to ec_strvec_sh_lex_str(). */
+#define EC_STRVEC_ATTR_END "end"
+
+/**
  * Split a string into multiple tokens following basic shell lexing rules.
  *
  * @param str
