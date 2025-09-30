@@ -366,6 +366,7 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 
 	t = 0;
 	quote = '\0';
+	arg_start = 0;
 
 	for (i = 0; i < strlen(str); i++) {
 		c = str[i];
