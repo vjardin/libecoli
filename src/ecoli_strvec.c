@@ -415,6 +415,7 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 					goto fail;
 				state = START;
 				trailing_space = true;
+				arg_start = i;
 				t = 0;
 				break;
 			case DOUBLE_QUOTE:
@@ -494,6 +495,8 @@ ec_strvec_sh_lex_str(const char *str, ec_strvec_flag_t flags,
 	} else if (trailing_space && (flags & EC_STRVEC_TRAILSP)) {
 		if (ec_strvec_add(strvec, "") < 0)
 			goto fail;
+		arg_start++;
+		i++;
 	}
 	if (sh_lex_set_attrs(strvec, ec_strvec_len(strvec) - 1,
 			     arg_start, i) < 0)
@@ -803,7 +806,7 @@ static int ec_strvec_testcase(void)
 			testres |= EC_TEST_CHECK(s == 12 && e == 13, "");
 			break;
 		case 4:
-			testres |= EC_TEST_CHECK(s == 14 && e == 15, "");
+			testres |= EC_TEST_CHECK(s == 15 && e == 16, "");
 			break;
 		}
 	}
