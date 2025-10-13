@@ -214,7 +214,7 @@ void ec_realloc_func(void *ptr, size_t size);
  *   The pointer to the duplicated string, or NULL on error (errno is set).
  */
 #define ec_strdup(s) ({							\
-	void *ret_;							\
+	char *ret_;							\
 	if (ec_malloc_handler.malloc == NULL)				\
 		ret_ = strdup(s);					\
 	else								\
@@ -237,7 +237,7 @@ void ec_realloc_func(void *ptr, size_t size);
  *   The pointer to the duplicated string, or NULL on error (errno is set).
  */
 #define ec_strndup(s, n) ({						\
-	void *ret_;							\
+	char *ret_;							\
 	if (ec_malloc_handler.malloc == NULL)				\
 		ret_ = strndup(s, n);					\
 	else								\
