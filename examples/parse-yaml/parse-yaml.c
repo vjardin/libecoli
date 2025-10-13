@@ -7,6 +7,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <err.h>
 
 #include <ecoli_init.h>
 #include <ecoli_strvec.h>
@@ -20,24 +21,28 @@
 static char *input_file;
 static char *output_file;
 static bool complete;
+static char *export_file = NULL;
 
 static const char short_options[] =
 	"h"  /* help */
 	"i:" /* input-file */
 	"o:" /* output-file */
 	"c"  /* complete */
+	"e"  /* export */
 	;
 
 #define OPT_HELP "help"
 #define OPT_INPUT_FILE "input-file"
 #define OPT_OUTPUT_FILE "output-file"
 #define OPT_COMPLETE "complete"
+#define OPT_EXPORT "export"
 
 static const struct option long_options[] = {
 	{OPT_HELP, 0, NULL, 'h'},
 	{OPT_INPUT_FILE, 1, NULL, 'i'},
 	{OPT_OUTPUT_FILE, 1, NULL, 'o'},
 	{OPT_COMPLETE, 0, NULL, 'c'},
+	{OPT_EXPORT, 0, NULL, 'e'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -56,6 +61,9 @@ static void usage(const char *prgname)
 		"  -c\n"
 		"  --"OPT_COMPLETE"\n"
 		"      Output the completion list.\n"
+		"  -e\n"
+		"  --"OPT_EXPORT"\n"
+		"      Export back to yaml.\n"
 		, prgname);
 }
 
@@ -81,6 +89,10 @@ static int parse_args(int argc, char **argv)
 
 		case 'c': /* complete */
 			complete = 1;
+			break;
+
+		case 'e': /* export */
+			export_file = strdup(optarg);
 			break;
 
 		default:
@@ -291,6 +303,14 @@ main(int argc, char *argv[])
 	} else {
 		if (interact(node) < 0)
 			goto fail;
+	}
+
+	if (export_file) {
+		if (ec_yaml_export(export_file, node) < 0) {
+			warn("ex_yaml_export failed");
+			goto fail;
+		}
+
 	}
 
 	ec_node_free(node);
