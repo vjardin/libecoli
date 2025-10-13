@@ -45,6 +45,7 @@ deps = []
 if yaml_dep.found()
 	libecoli_sources += files(
 		'ecoli_yaml.c',
+		'ecoli_yaml_export.c',
 	)
 	deps += [
 		yaml_dep,

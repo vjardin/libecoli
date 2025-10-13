@@ -24,4 +24,27 @@ struct ec_node;
  */
 struct ec_node *ec_yaml_import(const char *filename);
 
+/**
+ * Export an ec_node tree to a YAML file.
+ *
+ * Write the YAML representation of the node tree rooted at 'root' into the
+ * file located at 'filename'. The file is created (or truncated) and written
+ * using the libyaml emitter. The function does not take ownership of or
+ * modify the provided 'root' node.
+ * The produced YAML mirrors the format accepted by ec_yaml_import().
+ *
+ * @param filename
+ *   Path to the file to write. Must be a valid, writable path (not NULL).
+ * @param root
+ *  Pointer to the root ec_node to export (must not be NULL).
+ * @return
+ *   0 on success,
+ *  -1 on failure. On failure errno is set to indicate the error:
+ *     EINVAL: invalid argument or internal data inconsistency
+ *     ENOMEM: memory allocation failure
+ *     EIO: I/O or libyaml emit error
+ *     Other errno values may be propagated from fopen() or underlying calls.
+ */
+int ec_yaml_export(const char *filename, const struct ec_node *root);
+
 /** @} */
