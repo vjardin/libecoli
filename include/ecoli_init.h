@@ -18,6 +18,14 @@
  * Register initialization and exit callbacks. These callbacks are
  * ordered by priority: for initialization, the lowest priority is called
  * first. For exit, the callbacks are invoked in reverse order.
+ *
+ * Priority policy:
+ *  0 .. 99 : reserved for libecoli internal use.
+ *  100 ..  : available for user code (recommended).
+ *
+ * Do not use priorities < 100 for application code; internal libecoli
+ * components may depend on those priorities and using them can lead to
+ * uninitialized state, crashes, or undefined behaviour.
  */
 #define EC_INIT_REGISTER(t)						\
 	static void ec_init_init_##t(void);				\
@@ -46,7 +54,7 @@ struct ec_init {
 	TAILQ_ENTRY(ec_init) next;  /**< Next in list. */
 	ec_init_t *init;            /**< Init function. */
 	ec_exit_t *exit;            /**< Exit function. */
-	unsigned int priority;      /**< Priority (0=first, 99=last) */
+	unsigned int priority;      /**< Priority (0=first, 99=last) for internal */
 };
 
 /**
