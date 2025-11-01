@@ -2,6 +2,8 @@
 
 ![logo.svg](/doc/logo.svg)
 
+[![Doxygen](https://img.shields.io/badge/doxygen-2C4AA8)](https://rjarry.github.io/libecoli/)
+
 libecoli stands for **E**xtensible **CO**mmand **LI**ne library.
 
 This library provides helpers to build interactive command line interfaces.

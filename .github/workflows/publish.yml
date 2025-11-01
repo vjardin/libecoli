@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2025 Robin Jarry
+
+---
+name: Publish
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+# Allow only one concurrent deployment, skipping runs queued between the run
+# in-progress and latest queued. However, do NOT cancel in-progress runs as we
+# want to allow these production deployments to complete.
+concurrency:
+  group: Publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      MESON_EXTRA_OPTS: --auto-features=disabled -Ddoc=enabled
+    permissions:
+      contents: read
+    steps:
+      - name: install system dependencies
+        run: |
+          set -xe
+          sudo apt-get update -qy
+          sudo apt-get install -qy --no-install-recommends \
+            doxygen gcc graphviz libc-dev meson ninja-build pkg-config
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - run: make
+      - uses: actions/upload-pages-artifact@v4
+        id: deployment
+        with:
+          path: build/doc/html/
+
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
