@@ -97,7 +97,7 @@ git-config:
 
 .PHONY: tag-release
 tag-release:
-	@cur_version=`sed -En "s/^[[:space:]]+version[[:space:]]*:[[:space:]]*'([0-9\.]+)'\\$$/\\1/p" meson.build` && \
+	@cur_version=`sed -En "s/^[[:space:]]+version[[:space:]]*:[[:space:]]*'([0-9\\.]+)',$$/\\1/p" meson.build` && \
 	next_version=`echo $$cur_version | awk -F. -v OFS=. '{$$(NF) += 1; print}'` && \
 	read -rp "next version ($$next_version)? " n && \
 	if [ -n "$$n" ]; then next_version="$$n"; fi && \
