@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2025, Olivier MATZ <zer0@droids-corp.org>
 
+if not get_option('examples').require(edit_dep.found(),
+		error_message: 'examples require libedit').allowed()
+	subdir_done()
+endif
+
 pool_editline_sources = files(
 	'ip_pool.c',
 	'main.c',
