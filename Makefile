@@ -109,8 +109,8 @@ tag-release:
 	if [ -n "$$n" ]; then next_version="$$n"; fi && \
 	set -xe && \
 	sed -i "s/\<$$cur_version\>/$$next_version/" meson.build && \
-	git commit -sm "release: version $$next_version" -m "`git shortlog -n v$$cur_version..`" meson.build && \
-	git tag -sm "`git shortlog -n v$$cur_version..HEAD^`" "v$$next_version"
+	git commit -sm "release: version $$next_version" -m "`devtools/git-stats v$$cur_version..`" meson.build && \
+	git tag -sm "`devtools/git-stats v$$cur_version..HEAD^`" "v$$next_version"
 
 .PHONY: help
 help:
