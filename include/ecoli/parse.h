@@ -409,6 +409,17 @@ __ec_pnode_iter_next(const struct ec_pnode *root, struct ec_pnode *pnode, bool i
 	})
 
 /**
+ * Iterate depth-first over a parsing tree.
+ *
+ * @param iter
+ *   The item that will be set at each iteration.
+ * @param root
+ *   The root of the parsing tree to iterate.
+ */
+#define EC_PNODE_FOREACH(iter, root)                                                               \
+	for ((iter) = (root); (iter) != NULL; (iter) = EC_PNODE_ITER_NEXT((root), (iter), true))
+
+/**
  * Get the total number of elements in a parse node.
  */
 size_t ec_pnode_len(const struct ec_pnode *pnode);
